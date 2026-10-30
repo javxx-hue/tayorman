@@ -1,0 +1,7 @@
+# Never upload secrets or local-only files
+.env
+.env.*
+supabase/functions/.env
+.claude
+node_modules
+dist

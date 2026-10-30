@@ -23,8 +23,8 @@ function subjectLine(s: Subject, today: string, lang: 'uz' | 'ru'): string | nul
   if (!s.questions.length) return uz ? `• ${s.name}: ${when}, savollar kiritilmagan` : `• ${s.name}: ${when}, вопросы не добавлены`;
   if (!remaining) return uz ? `• ${s.name}: ${when}, hammasi o'zlashtirilgan ✅` : `• ${s.name}: ${when}, всё выучено ✅`;
   const studyDays = daysLeft === 1 ? 1 : daysLeft >= 3 ? daysLeft - 1 : daysLeft;
-  const today = daysLeft === 1 ? remaining : Math.ceil(remaining / studyDays);
-  return uz ? `• ${s.name}: ${when}, bugun ${today} ta savol` : `• ${s.name}: ${when}, сегодня вопросов: ${today}`;
+  const perDay = daysLeft === 1 ? remaining : Math.ceil(remaining / studyDays);
+  return uz ? `• ${s.name}: ${when}, bugun ${perDay} ta savol` : `• ${s.name}: ${when}, сегодня вопросов: ${perDay}`;
 }
 
 // Lines for one user, or [] when there is nothing to do
