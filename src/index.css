@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 30% 95%;
+    --foreground: 0 0% 10%;
+    --card: 45 100% 98%;
+    --card-foreground: 0 0% 10%;
+    --popover: 45 100% 98%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 0% 10%;
+    --primary-foreground: 43 100% 97%;
+    --secondary: 38 25% 92%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 38 25% 92%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 43 100% 97%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 38 22% 86%;
+    --input: 38 22% 86%;
+    --ring: 0 0% 18%;
+    --radius: 0.75rem;
+
+    --creation-quiz: 80 55% 60%;
+    --creation-flashcards: 220 50% 72%;
+    --creation-notes: 43 98% 70%;
+    --creation-exam: 330 55% 75%;
+
+    --creation-quiz-strong: 80 55% 38%;
+    --creation-flashcards-strong: 220 50% 50%;
+    --creation-notes-strong: 43 80% 42%;
+    --creation-exam-strong: 330 55% 48%;
+
+    --lavender: 250 50% 45%;
+    --highlight-orange: 24 95% 53%;
+
+    --gradient-hero: linear-gradient(180deg, hsl(40 30% 95%) 0%, hsl(40 30% 95%) 40%, hsl(45 100% 98%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(43 23% 94%) 0%, hsl(43 40% 95%) 100%);
+  }
+
+  .dark {
+    --background: 240 5% 11%;
+    --foreground: 40 10% 92%;
+    --card: 240 5% 14%;
+    --card-foreground: 40 10% 92%;
+    --popover: 240 5% 14%;
+    --popover-foreground: 40 10% 92%;
+    --primary: 40 10% 92%;
+    --primary-foreground: 240 5% 11%;
+    --secondary: 240 4% 18%;
+    --secondary-foreground: 40 10% 88%;
+    --muted: 240 4% 18%;
+    --muted-foreground: 40 5% 63%;
+    --accent: 40 10% 92%;
+    --accent-foreground: 240 5% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 4% 20%;
+    --input: 240 4% 20%;
+    --ring: 40 10% 70%;
+
+    --creation-quiz: 80 55% 65%;
+    --creation-flashcards: 220 50% 75%;
+    --creation-notes: 43 98% 70%;
+    --creation-exam: 330 55% 78%;
+
+    --creation-quiz-strong: 80 55% 55%;
+    --creation-flashcards-strong: 220 50% 68%;
+    --creation-notes-strong: 43 90% 62%;
+    --creation-exam-strong: 330 55% 70%;
+
+    --lavender: 250 50% 65%;
+    --highlight-orange: 24 95% 58%;
+
+    --gradient-hero: linear-gradient(180deg, hsl(240 5% 11%) 0%, hsl(240 5% 13%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(240 5% 14%) 0%, hsl(240 5% 16%) 100%);
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: 'DM Serif Text', Georgia, serif;
+  }
+}
+
+/* 3D Flip Card Styles */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}

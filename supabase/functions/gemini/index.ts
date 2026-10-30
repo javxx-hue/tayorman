@@ -1,0 +1,42 @@
+// Gemini proxy for the Mini App: the API key stays on the server and each
+// student has a daily limit (AI_DAILY_LIMIT, default 30).
+// Secrets: GEMINI_API_KEY, GEMINI_MODEL, AI_DAILY_LIMIT, ALLOWED_ORIGINS
+import { corsHeaders, json } from '../_shared/cors.ts';
+import { requireUser } from '../_shared/admin.ts';
+import { callGemini, consumeQuota, QuotaError, type Part } from '../_shared/gemini.ts';
+
+const MAX_BODY_BYTES = 8 * 1024 * 1024; // photos are sent inline as base64
+
+function validParts(parts: unknown): parts is Part[] {
+  if (!Array.isArray(parts) || parts.length === 0 || parts.length > 10) return false;
+  return parts.every((p) => {
+    if (typeof p?.text === 'string') return true;
+    if (typeof p?.inline_data?.data === 'string') return /^image\//.test(p.inline_data.mime_type ?? '');
+    // Only YouTube links: Gemini would otherwise fetch arbitrary URLs for us
+    if (typeof p?.file_data?.file_uri === 'string') return /^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/.test(p.file_data.file_uri);
+    return false;
+  });
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
+  if (req.method !== 'POST') return json(req, { error: 'Method not allowed' }, 405);
+  if (Number(req.headers.get('content-length') ?? '0') > MAX_BODY_BYTES) return json(req, { error: 'Request too large' }, 413);
+
+  const user = await requireUser(req);
+  if (!user) return json(req, { error: 'Not signed in' }, 401);
+
+  const body = await req.json().catch(() => null);
+  if (!validParts(body?.parts)) return json(req, { error: 'Invalid parts' }, 400);
+
+  try {
+    await consumeQuota(user.id);
+    const temperature = typeof body.temperature === 'number' ? Math.min(Math.max(body.temperature, 0), 1) : 0.4;
+    const text = await callGemini(body.parts, { json: !!body.json, temperature });
+    return json(req, { text });
+  } catch (e) {
+    if (e instanceof QuotaError) return json(req, { error: 'Daily AI limit reached' }, 429);
+    console.error('gemini failed', e);
+    return json(req, { error: 'AI request failed' }, 502);
+  }
+});
