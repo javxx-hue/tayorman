@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
-import { AuthProvider, useAuth } from './lib/auth';
+import { AuthProvider, useAuth, type SignInResult } from './lib/auth';
 import { DashboardPage } from './pages/Dashboard';
 import { UsersPage } from './pages/Users';
 import { AuditPage } from './pages/Audit';
@@ -14,42 +14,74 @@ const NAV: { to: string; label: string; adminOnly?: boolean }[] = [
 ];
 
 const BOT = import.meta.env.VITE_TELEGRAM_BOT || 'tayormanbot';
+const POLL_MS = 2000;
+const WAIT_MS = 5 * 60 * 1000; // the bot's confirmation is valid for 5 minutes
 
-// Telegram's own button; it hands the signed user data to onAuth
-const TelegramButton: React.FC<{ onAuth: (user: Record<string, unknown>) => void }> = ({ onAuth }) => {
-  const box = useRef<HTMLDivElement>(null);
-  const handler = useRef(onAuth);
-  handler.current = onAuth;
+const newNonce = () => Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
 
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    (window as unknown as { onTelegramAuth: (u: Record<string, unknown>) => void }).onTelegramAuth = (u) => handler.current(u);
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://telegram.org/js/telegram-widget.js?22';
-    script.setAttribute('data-telegram-login', BOT);
-    script.setAttribute('data-size', 'large');
-    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-    script.setAttribute('data-request-access', 'write');
-    el.appendChild(script);
-    return () => {
-      el.innerHTML = '';
-    };
-  }, []);
-
-  return <div ref={box} className="flex justify-center min-h-[40px]" />;
+const FAILED: Record<'denied' | 'gone' | 'error', string> = {
+  denied: "Bu Telegram hisobi uchun admin huquqi yo'q.",
+  gone: 'Tasdiq eskirdi. Qayta urinib ko\'ring.',
+  error: "Kirib bo'lmadi. Qayta urinib ko'ring.",
 };
 
 const SignedOut: React.FC = () => {
-  const { error, signInWithTelegram } = useAuth();
+  const { error, signInWithNonce } = useAuth();
+  const [nonce, setNonce] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const signIn = useRef(signInWithNonce);
+  signIn.current = signInWithNonce;
+
+  // Keeps asking until the admin has confirmed in the bot (or the time runs out)
+  useEffect(() => {
+    if (!nonce) return;
+    let stopped = false;
+    const startedAt = Date.now();
+    const tick = async () => {
+      if (stopped) return;
+      const result: SignInResult = await signIn.current(nonce);
+      if (stopped || result === 'ok') return;
+      if (result !== 'pending') {
+        setFailed(FAILED[result]);
+        return setNonce(null);
+      }
+      if (Date.now() - startedAt > WAIT_MS) {
+        setFailed("Vaqt tugadi. Qayta urinib ko'ring.");
+        return setNonce(null);
+      }
+      setTimeout(tick, POLL_MS);
+    };
+    tick();
+    return () => {
+      stopped = true;
+    };
+  }, [nonce]);
+
+  const start = () => {
+    const next = newNonce();
+    setFailed(null);
+    setNonce(next);
+    window.open(`https://t.me/${BOT}?start=a_${next}`, '_blank', 'noopener');
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center px-5">
       <div className="max-w-sm w-full rounded-2xl border border-border bg-card p-6 space-y-4 text-center">
         <h1 className="text-2xl font-serif font-bold">Admin</h1>
-        {error && <p className="text-sm text-rose-600" role="alert">{error}</p>}
-        <p className="text-sm text-muted-foreground">Telegram hisobingiz bilan kiring.</p>
-        <TelegramButton onAuth={signInWithTelegram} />
+        {(failed || error) && <p className="text-sm text-rose-600" role="alert">{failed ?? error}</p>}
+        {nonce ? (
+          <>
+            <p className="text-sm text-muted-foreground">Telegram'da bot ochildi. Botdagi kod bilan shu kod bir xilligini tekshiring va <b className="text-foreground">Tasdiqlash</b> ni bosing.</p>
+            <div className="text-3xl font-mono font-bold tracking-widest">{nonce.slice(0, 4).toUpperCase()}</div>
+            <p className="text-xs text-muted-foreground">Tasdiqlashni kutyapman...</p>
+            <a href={`https://t.me/${BOT}?start=a_${nonce}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">Bot ochilmadimi? Qayta ochish</a>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">Telegram orqali kiring. Bot tasdiqlash so'raydi.</p>
+            <button onClick={start} className="w-full px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90">Telegram orqali kirish</button>
+          </>
+        )}
         <p className="text-xs text-muted-foreground">Parol yo'q. Faqat administratorlar va moderatorlar kira oladi.</p>
       </div>
     </div>

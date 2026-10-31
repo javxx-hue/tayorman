@@ -1,5 +1,5 @@
 -- 0002: admin web panel, assignments, suggestions, audit, limits, moderators.
--- (Admin web sign-in uses the Telegram Login Widget, verified by the Edge Function: no tables needed.)
+-- (Admin site sign-in through the bot is in 0003_admin_login.sql.)
 -- Additive on top of 0001: safe to run once on the live database.
 -- Run in Supabase: SQL Editor -> paste -> Run.
 

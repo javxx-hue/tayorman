@@ -1,5 +1,5 @@
-// Sign-in uses the "Login with Telegram" widget. The signed data goes to the admin-login
-// function, which lets in only admins (ADMIN_TELEGRAM_IDS) and moderators.
+// Sign-in goes through the bot: the site opens t.me/<bot>?start=a_<nonce>, the admin confirms
+// there, and admin-login hands this site a session for that nonce (admins and moderators only).
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { configured, supabase } from './supabase';
 
@@ -21,11 +21,13 @@ const storedLoginAt = (): number | null => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
+export type SignInResult = 'ok' | 'pending' | 'denied' | 'gone' | 'error';
+
 interface AuthValue {
   status: Status;
   me: Me | null;
   error: string | null;
-  signInWithTelegram: (widget: Record<string, unknown>) => Promise<void>;
+  signInWithNonce: (nonce: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
 }
 const AuthContext = createContext<AuthValue | null>(null);
@@ -42,18 +44,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStatus('signed-out');
   }, []);
 
-  const signInWithTelegram = useCallback(async (widget: Record<string, unknown>) => {
-    setError(null);
-    const { data, error: fnError } = await supabase.functions.invoke('admin-login', { body: { widget } });
-    if (fnError || !data?.session) {
-      const denied = (fnError as { context?: Response } | null)?.context?.status === 403;
-      setError(denied ? "Bu Telegram hisobi uchun admin huquqi yo'q." : "Kirib bo'lmadi. Qayta urinib ko'ring.");
-      return;
+  const signInWithNonce = useCallback(async (nonce: string): Promise<SignInResult> => {
+    const { data, error: fnError } = await supabase.functions.invoke('admin-login', { body: { nonce } });
+    if (fnError) {
+      const status = (fnError as { context?: Response }).context?.status;
+      return status === 403 ? 'denied' : status === 410 ? 'gone' : 'error';
     }
+    if (!data?.session) return 'pending';
     await supabase.auth.setSession(data.session);
     localStorage.setItem(LOGIN_AT_KEY, String(Date.now()));
+    setError(null);
     setMe(data.profile as Me);
     setStatus('ready');
+    return 'ok';
   }, []);
 
   useEffect(() => {
@@ -101,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(timer);
   }, [status, signOut]);
 
-  return <AuthContext.Provider value={{ status, me, error, signInWithTelegram, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ status, me, error, signInWithNonce, signOut }}>{children}</AuthContext.Provider>;
 };
 
 export function useAuth(): AuthValue {

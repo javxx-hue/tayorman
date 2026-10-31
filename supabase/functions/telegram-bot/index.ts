@@ -1,5 +1,6 @@
 // Telegram bot webhook.
 //  /start [c_<code>]  welcome + Mini App button, optional community join
+//  /start a_<nonce>   admin site sign-in: shows a code and a Confirm button
 //  /reja              today's plan       /til      switch language
 //  /eslatma           reminders on/off   /yordam   help
 //  any other message  (text, file, photo) is passed to the admins as a request
@@ -11,6 +12,7 @@ import { admin } from '../_shared/admin.ts';
 import { ensureUser, joinCommunity, type TelegramUser } from '../_shared/users.ts';
 import { tg, sendMessage, openAppButton, downloadFile } from '../_shared/telegram.ts';
 import { submitRequest, TooManyRequests } from '../_shared/requests.ts';
+import { nonceCode, nonceFromStart, nonceHash } from '../_shared/loginNonce.ts';
 import { planLines } from '../_shared/plan.ts';
 import { bytesToBase64, callGemini, consumeQuota, QuotaError } from '../_shared/gemini.ts';
 
@@ -60,6 +62,13 @@ const T = {
     ru: 'Чтобы ответить голосом, откройте вопрос в приложении и нажмите «Ответить голосом».',
   },
   grading: { uz: '⏳ Javobingizni tinglayapman...', ru: '⏳ Слушаю ваш ответ...' },
+  staffOnly: { uz: "Bu bo'lim faqat administratorlar uchun.", ru: 'Этот раздел только для администраторов.' },
+  loginAsk: {
+    uz: (code: string) => `🔐 Admin saytga kirish\n\nSaytda ko'rsatilgan kod: ${code}\nKod bir xil bo'lsa, tasdiqlang. Siz saytni ochmagan bo'lsangiz, tasdiqlamang.`,
+    ru: (code: string) => `🔐 Вход на сайт администратора\n\nКод на сайте: ${code}\nЕсли код совпадает, подтвердите. Если вы не открывали сайт, не подтверждайте.`,
+  },
+  loginConfirm: { uz: '✅ Tasdiqlash', ru: '✅ Подтвердить' },
+  loginDone: { uz: '✅ Tasdiqlandi. Saytga qayting, u o\'zi ochiladi.', ru: '✅ Подтверждено. Вернитесь на сайт, он откроется сам.' },
   openQuestion: { uz: 'Savolni ochish', ru: 'Открыть вопрос' },
 };
 
@@ -82,6 +91,14 @@ async function onCommand(chatId: number, text: string, user: TelegramUser) {
 
   switch (command.replace(/@\w+$/, '')) {
     case '/start': {
+      const nonce = nonceFromStart(arg);
+      if (nonce) {
+        // Only admins and moderators get a Confirm button; everyone else just sees a plain refusal
+        if (!['admin', 'moderator'].includes(profile.role)) return void (await sendMessage(chatId, t('staffOnly', lang)));
+        return void (await sendMessage(chatId, t('loginAsk', lang)(nonceCode(nonce)), {
+          reply_markup: { inline_keyboard: [[{ text: t('loginConfirm', lang), callback_data: `al:${nonce}` }]] },
+        }));
+      }
       await sendMessage(chatId, t('welcome', lang)(user.first_name ?? ''), appKeyboard(lang));
       const code = arg?.match(/^c_([a-f0-9]{12})$/)?.[1];
       if (code) {
@@ -128,6 +145,23 @@ async function onRequest(chatId: number, user: TelegramUser, m: { message_id: nu
     console.error('request failed', e);
     await sendMessage(chatId, t('failed', lang));
   }
+}
+
+// ---------------------------------------------------------------- admin site sign-in
+async function onLoginConfirm(query: { id: string; data: string; from: TelegramUser; message?: { chat: { id: number }; message_id: number } }) {
+  const profile = await profileOf(query.from);
+  const lang = profile.language;
+  await tg('answerCallbackQuery', { callback_query_id: query.id });
+  const nonce = nonceFromStart(`a_${query.data.slice(3)}`);
+  if (!nonce || !['admin', 'moderator'].includes(profile.role)) return;
+
+  await admin.from('admin_login_requests').upsert({ nonce_hash: await nonceHash(nonce), user_id: profile.id }, { onConflict: 'nonce_hash', ignoreDuplicates: true });
+  // Old rows are of no use to anyone
+  await admin.from('admin_login_requests').delete().lt('approved_at', new Date(Date.now() - 24 * 3600 * 1000).toISOString());
+
+  const chatId = query.message?.chat.id ?? query.from.id;
+  if (query.message) await tg('editMessageText', { chat_id: chatId, message_id: query.message.message_id, text: t('loginDone', lang) });
+  else await sendMessage(chatId, t('loginDone', lang));
 }
 
 // ---------------------------------------------------------------- voice answers
@@ -206,7 +240,9 @@ Deno.serve(async (req) => {
   const update = await req.json().catch(() => null);
 
   try {
-    if (update?.message?.chat?.type === 'private' && update.message.from) {
+    if (typeof update?.callback_query?.data === 'string' && update.callback_query.data.startsWith('al:')) {
+      await onLoginConfirm(update.callback_query);
+    } else if (update?.message?.chat?.type === 'private' && update.message.from) {
       const m = update.message;
       const chatId: number = m.chat.id;
       if (typeof m.text === 'string' && m.text.startsWith('/')) await onCommand(chatId, m.text, m.from);

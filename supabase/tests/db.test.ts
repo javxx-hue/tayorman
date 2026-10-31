@@ -53,6 +53,7 @@ beforeAll(async () => {
   await db.exec(SUPABASE_STUBS);
   await db.exec(sql('0001_init.sql'));
   await db.exec(sql('0002_admin.sql'));
+  await db.exec(sql('0003_admin_login.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');
@@ -77,6 +78,23 @@ describe('migrations', () => {
     for (const n of ['assignments', 'assignment_progress', 'suggestions', 'issue_reports', 'audit_log', 'app_settings', 'community_moderators']) {
       expect(names).toContain(n);
     }
+  });
+});
+
+describe('admin site sign-in table', () => {
+  const HASH = 'a'.repeat(64);
+
+  it('is closed to everyone except the service role', async () => {
+    await db.exec(`insert into public.admin_login_requests (nonce_hash, user_id) values ('${HASH}', '${U.admin}')`);
+    for (const uid of [U.admin, U.mod, U.s1, null]) {
+      await expect(as(uid, () => rows('select * from public.admin_login_requests'))).rejects.toThrow(/permission denied/i);
+      await expect(as(uid, () => db.exec(`insert into public.admin_login_requests (nonce_hash, user_id) values ('${'b'.repeat(64)}', '${U.s1}')`))).rejects.toThrow(/permission denied/i);
+    }
+  });
+
+  it('accepts only SHA-256 hex hashes and one row per nonce', async () => {
+    await expect(db.exec(`insert into public.admin_login_requests (nonce_hash, user_id) values ('plain-nonce', '${U.admin}')`)).rejects.toThrow();
+    await expect(db.exec(`insert into public.admin_login_requests (nonce_hash, user_id) values ('${HASH}', '${U.admin}')`)).rejects.toThrow(/duplicate|unique/i);
   });
 });
 

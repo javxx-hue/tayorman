@@ -77,14 +77,14 @@ $$);
 
 ## Admin sayti
 
-Alohida veb sahifa (`admin/`), talabalar ilovasidan butunlay ajratilgan. Kirish: saytdagi "Telegram orqali kirish" tugmasi (parol yo'q). BotFather'da `/setdomain` bilan admin sayti domenini botga ulang. Faqat `ADMIN_TELEGRAM_IDS` dagilar (admin) va ular tayinlagan moderatorlar kira oladi. Sessiya 8 soat.
+Alohida veb sahifa (`admin/`), talabalar ilovasidan butunlay ajratilgan. Kirish: saytdagi "Telegram orqali kirish" tugmasi botni ochadi, bot kodni ko'rsatib "Tasdiqlash" tugmasini yuboradi (parol yo'q, `/setdomain` kerak emas). Faqat `ADMIN_TELEGRAM_IDS` dagilar (admin) va ular tayinlagan moderatorlar kira oladi. Sessiya 8 soat.
 
 ```bash
 npm run dev:admin        # http://localhost:5174
 node scripts/deploy-admin.mjs   # build + alohida Vercel loyihasi (tayyorman-admin)
 ```
 
-Sozlash: baza uchun `supabase/migrations/0002_admin.sql` ni 0001 dan keyin SQL Editor'da ishga tushiring; `ALLOWED_ORIGINS` ga admin sayti manzilini qo'shing; `admin-login` funksiyasini `--no-verify-jwt` bilan joylang. `AI_DAILY_LIMIT` siri endi ishlatilmaydi: AI limiti admin saytida (foydalanuvchi > guruh > umumiy).
+Sozlash: baza uchun `supabase/migrations/0002_admin.sql`, so'ng `0003_admin_login.sql` ni SQL Editor'da ishga tushiring; `ALLOWED_ORIGINS` ga admin sayti manzilini qo'shing; `admin-login` funksiyasini `--no-verify-jwt` bilan joylang. `AI_DAILY_LIMIT` siri endi ishlatilmaydi: AI limiti admin saytida (foydalanuvchi > guruh > umumiy).
 
 Reja va bosqichlar: [docs/ADMIN_PLAN.md](docs/ADMIN_PLAN.md).
 
