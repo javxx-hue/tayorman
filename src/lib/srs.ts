@@ -74,7 +74,7 @@ export function nextDueDate(cards: Flashcard[]): Date | null {
 }
 
 // A card answered again/hard comes back within minutes, so it stays in the current session
-export const SESSION_REQUEUE_MS = 20 * 60 * 1000;
+const SESSION_REQUEUE_MS = 20 * 60 * 1000;
 
 export function shouldRequeue(card: Flashcard, now: Date = new Date()): boolean {
   return !!card.srs && new Date(card.srs.due).getTime() - now.getTime() <= SESSION_REQUEUE_MS;

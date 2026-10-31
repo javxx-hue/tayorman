@@ -6,7 +6,7 @@ Sessiya va oraliq nazoratlarga tayyorlanish uchun **Telegram bot + Mini App**. H
 
 **Bot (chat):**
 - `/start` — salomlashish va Mini App tugmasi; `t.me/<bot>?start=c_<kod>` havolasi orqali guruhga qo'shilish.
-- PDF, PPTX, DOCX, TXT yoki konspekt rasmini yuboring → matn o'qiladi (PDF va rasmni Gemini), «qaysi fanga?» tugmalari chiqadi.
+- Har qanday matn, fayl yoki rasm adminga so'rov bo'lib boradi (talaba o'zi fan yoki material yaratmaydi). Admin javobi botga keladi.
 - Ovozli javob: ilovada savolni oching → «Botda ovoz bilan» → botga ovozli xabar yuboring, AI tinglab baholaydi.
 - `/reja` (bugungi reja), `/til` (o'zbek/rus), `/eslatma`. Har kuni 08:00 da reja avtomatik keladi.
 
@@ -103,4 +103,4 @@ Mini App faqat Telegram ichida to'liq ishlaydi; oddiy brauzerda production build
 - Bot nomi va brend hozircha vaqtincha «Tayyorman».
 - To'lov yo'q: barcha rejimlar bepul. Keyin tarif qo'shish uchun `profiles` jadvaliga maydon qo'shiladi.
 - Bir martalik xabar yuborish (`admin-broadcast`) bitta so'rovda 2500 tagacha foydalanuvchiga ishlaydi; kattaroq auditoriya uchun bo'laklash kerak bo'ladi.
-- Bot fayllarni 20 MB gacha qabul qiladi (Telegram cheklovi).
+- Ovozli javob 20 MB gacha (Telegram cheklovi).

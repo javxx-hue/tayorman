@@ -76,7 +76,7 @@ async function extractImage(file: File): Promise<string> {
 }
 
 // Gemini watches public YouTube videos directly, so no transcript scraping is needed
-export async function extractYouTube(url: string): Promise<string> {
+async function extractYouTube(url: string): Promise<string> {
   const id = extractYouTubeId(url);
   if (!id) throw new GenerationError('EMPTY_SOURCE', 'Not a YouTube link.');
   return geminiGenerate(
@@ -95,7 +95,7 @@ export async function extractYouTube(url: string): Promise<string> {
 
 export const ACCEPTED_FILES = '.pdf,.pptx,.docx,.txt,.md,image/*';
 
-export function kindForFile(file: File): MaterialKind | null {
+function kindForFile(file: File): MaterialKind | null {
   const name = file.name.toLowerCase();
   if (name.endsWith('.pdf')) return 'pdf';
   if (name.endsWith('.pptx')) return 'pptx';

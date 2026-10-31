@@ -1,8 +1,9 @@
 // Admin library: subjects and study sets the admin publishes to an audience.
-// Students copy an item into their own data; their progress stays private.
+// Students create nothing: published items arrive in their app on their own and stay up to date.
+// Their progress stays private and survives an update.
 import { StudySet, Subject } from '../types';
 import { supabase } from './supabase';
-import { saveStudySet, saveSubject, newId } from './storage';
+import { getStudySets, getSubjects, saveStudySet, saveSubject, newId } from './storage';
 
 export interface LibraryItem {
   id: string;
@@ -71,17 +72,54 @@ export async function unpublish(id: string): Promise<void> {
   if (error) throw error;
 }
 
-// Copies a library item into the student's own subjects / sets; returns the new id
-export function addToMine(item: LibraryItem): string {
+// Puts one library item into the student's data: a new copy, or a refresh of the existing
+// copy when the admin changed it. Attempts, scores and card schedules are kept.
+export function deliver(item: LibraryItem, subjects: Subject[], sets: StudySet[]): boolean {
   const now = Date.now();
   if (item.kind === 'subject') {
-    const s = item.data as Subject;
-    const copy: Subject = { ...s, id: newId('sub'), libraryId: item.id, createdAt: now, updatedAt: now };
-    saveSubject(copy);
-    return copy.id;
+    const incoming = item.data as Subject;
+    const own = subjects.find((s) => s.libraryId === item.id);
+    if (own?.libraryUpdatedAt === item.updated_at) return false;
+    saveSubject({
+      ...incoming,
+      id: own?.id ?? newId('sub'),
+      libraryId: item.id,
+      libraryUpdatedAt: item.updated_at,
+      createdAt: own?.createdAt ?? now,
+      updatedAt: now,
+      questions: incoming.questions.map((q) => {
+        const old = own?.questions.find((o) => o.id === q.id);
+        return old ? { ...q, attempts: old.attempts } : q;
+      }),
+    });
+    return true;
   }
-  const set = item.data as StudySet;
-  const copy: StudySet = { ...set, id: newId('set'), libraryId: item.id, createdAt: now, updatedAt: now };
-  saveStudySet(copy);
-  return copy.id;
+  const incoming = item.data as StudySet;
+  const own = sets.find((s) => s.libraryId === item.id);
+  if (own?.libraryUpdatedAt === item.updated_at) return false;
+  saveStudySet({
+    ...incoming,
+    id: own?.id ?? newId('set'),
+    libraryId: item.id,
+    libraryUpdatedAt: item.updated_at,
+    createdAt: own?.createdAt ?? now,
+    updatedAt: now,
+    lastScore: own?.lastScore,
+    completedAt: own?.completedAt,
+    flashcards: incoming.flashcards?.map((c) => {
+      const old = own?.flashcards?.find((o) => o.id === c.id);
+      return old ? { ...c, srs: old.srs, rating: old.rating } : c;
+    }),
+  });
+  return true;
+}
+
+// Fetches everything published for this student and delivers it. Returns how many changed.
+export async function deliverLibrary(): Promise<number> {
+  const items = (await fetchLibrary()).filter((i) => i.published);
+  let changed = 0;
+  for (const item of items) {
+    if (deliver(item, getSubjects(), getStudySets())) changed++;
+  }
+  return changed;
 }

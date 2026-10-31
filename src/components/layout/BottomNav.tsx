@@ -1,19 +1,19 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, BookOpen, Library, User, Shield } from 'lucide-react';
+import { Home, BookOpen, MessageSquarePlus, User, Shield } from 'lucide-react';
 import { Language, tr } from '../../lib/i18n';
 import { useAuth } from '../../lib/auth';
 import { haptic } from '../../lib/telegram';
 
 // Tab roots hide Telegram's back button; every other page shows it
-export const TAB_ROOTS = ['/', '/subjects', '/library', '/profile', '/admin'];
+export const TAB_ROOTS = ['/', '/subjects', '/request', '/profile', '/admin'];
 
 export const BottomNav: React.FC<{ lang: Language }> = ({ lang }) => {
   const { isAdmin } = useAuth();
   const tabs = [
     { to: '/', icon: Home, label: tr(lang, 'Bugun', 'Сегодня') },
     { to: '/subjects', icon: BookOpen, label: tr(lang, 'Fanlar', 'Предметы') },
-    { to: '/library', icon: Library, label: tr(lang, 'Kutubxona', 'Библиотека') },
+    { to: '/request', icon: MessageSquarePlus, label: tr(lang, "So'rov", 'Запрос') },
     { to: '/profile', icon: User, label: tr(lang, 'Profil', 'Профиль') },
     ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),
   ];

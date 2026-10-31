@@ -9,6 +9,7 @@ import { StudySet, Subject, UserStats } from './types';
 import { isMastered } from './lib/srs';
 import { useAuth } from './lib/auth';
 import { startSync } from './lib/sync';
+import { deliverLibrary } from './lib/library';
 import { track } from './lib/track';
 import { startTelegram, applyTelegramTheme, useTelegramBackButton, BOT_USERNAME } from './lib/telegram';
 
@@ -17,7 +18,7 @@ const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m
 const SubjectsPage = lazy(() => import('./pages/SubjectsPage').then((m) => ({ default: m.SubjectsPage })));
 const SubjectPage = lazy(() => import('./pages/SubjectPage').then((m) => ({ default: m.SubjectPage })));
 const QuestionPracticePage = lazy(() => import('./pages/QuestionPracticePage').then((m) => ({ default: m.QuestionPracticePage })));
-const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
+const RequestPage = lazy(() => import('./pages/RequestPage').then((m) => ({ default: m.RequestPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
@@ -68,7 +69,7 @@ const Centered: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 export default function App() {
-  const { status, lang, online, profile, joinedCommunity } = useAuth();
+  const { status, lang, online, profile, joinedCommunity, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -105,6 +106,12 @@ export default function App() {
       if (s === 'error') console.warn('Cloud sync failed; data is still saved on this device.');
     });
   }, [online, profile?.id]);
+
+  // Students create nothing: whatever the admin published for them arrives (and updates) by itself
+  useEffect(() => {
+    if (!online || profile?.role !== 'student') return;
+    deliverLibrary().catch((e) => console.warn('Library delivery failed', e));
+  }, [online, profile?.id, profile?.role]);
 
   useEffect(() => {
     if (joinedCommunity) toast.success(tr(lang, `«${joinedCommunity}» guruhiga qo'shildingiz`, `Вы в группе «${joinedCommunity}»`));
@@ -184,8 +191,9 @@ export default function App() {
             <Route path="/subjects/:id" element={<SubjectPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id/q/:qid" element={<QuestionPracticePage subjects={subjects} lang={lang} />} />
             <Route path="/study/:id" element={<StudyRoute studySets={studySets} lang={lang} />} />
-            <Route path="/study/:id/edit" element={<SetEditorPage studySets={studySets} lang={lang} />} />
-            <Route path="/library" element={<LibraryPage subjects={subjects} studySets={studySets} lang={lang} />} />
+            <Route path="/study/:id/edit" element={isAdmin ? <SetEditorPage studySets={studySets} lang={lang} /> : <Navigate to="/" replace />} />
+            <Route path="/request" element={<RequestPage lang={lang} />} />
+            <Route path="/library" element={<Navigate to="/request" replace />} />
             <Route path="/profile" element={<ProfilePage lang={lang} />} />
             <Route path="/admin" element={<AdminPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="*" element={<Navigate to="/" replace />} />

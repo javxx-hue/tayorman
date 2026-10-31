@@ -8,6 +8,7 @@ import { Language } from '../lib/i18n';
 import { ExamFormat, StudySet, Subject } from '../types';
 import { saveSubject, newId, localDateKey } from '../lib/storage';
 import { track } from '../lib/track';
+import { useAuth } from '../lib/auth';
 import { daysUntil, subjectReadiness } from '../lib/prep';
 
 export const FORMAT_LABELS: Record<ExamFormat, { uz: string; ru: string }> = {
@@ -100,6 +101,7 @@ interface SubjectsPageProps {
 export const SubjectsPage: React.FC<SubjectsPageProps> = ({ subjects, studySets, lang }) => {
   const isUz = lang === 'uz';
   const navigate = useNavigate();
+  const { isAdmin } = useAuth();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const sorted = [...subjects].sort((a, b) => a.examDate.localeCompare(b.examDate));
 
@@ -109,28 +111,48 @@ export const SubjectsPage: React.FC<SubjectsPageProps> = ({ subjects, studySets,
         <div>
           <h1 className="text-3xl sm:text-4xl font-serif font-bold text-foreground">{isUz ? 'Mening fanlarim' : 'Мои предметы'}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isUz
-              ? 'Har bir fanga ma\'ruzalar va imtihon savollarini yuklang. Reja va tayyorlik shu yerda kuzatiladi.'
-              : 'Добавьте лекции и экзаменационные вопросы по каждому предмету, чтобы получить план и следить за готовностью.'}
+            {isAdmin
+              ? isUz
+                ? 'Har bir fanga ma\'ruzalar va imtihon savollarini yuklang, so\'ng kutubxonaga chiqaring.'
+                : 'Добавьте лекции и вопросы по каждому предмету, затем опубликуйте в библиотеке.'
+              : isUz
+                ? 'Fanlaringizni administrator biriktiradi. Ular shu yerda o\'zi paydo bo\'ladi.'
+                : 'Предметы назначает администратор. Они появятся здесь сами.'}
           </p>
         </div>
-        <Button variant="primary" size="md" icon={<Plus size={16} />} onClick={() => setIsFormOpen(true)}>
-          {isUz ? 'Yangi fan' : 'Новый предмет'}
-        </Button>
+        {isAdmin ? (
+          <Button variant="primary" size="md" icon={<Plus size={16} />} onClick={() => setIsFormOpen(true)}>
+            {isUz ? 'Yangi fan' : 'Новый предмет'}
+          </Button>
+        ) : (
+          <Button variant="outline" size="md" onClick={() => navigate('/request')}>
+            {isUz ? 'Adminga yozish' : 'Написать админу'}
+          </Button>
+        )}
       </div>
 
       {sorted.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-border p-10 text-center bg-card">
           <BookOpen size={36} className="mx-auto text-muted-foreground mb-3" />
-          <h3 className="text-lg font-serif font-bold text-foreground mb-1">{isUz ? 'Hali fan qo\'shilmagan' : 'Предметов пока нет'}</h3>
+          <h3 className="text-lg font-serif font-bold text-foreground mb-1">{isUz ? 'Hali fan biriktirilmagan' : 'Предметов пока нет'}</h3>
           <p className="text-sm text-muted-foreground mb-5 max-w-md mx-auto">
-            {isUz
-              ? 'Sessiyadagi birinchi fanni qo\'shing: nomi, imtihon sanasi va shakli. Keyin ma\'ruzalar va savollar ro\'yxatini yuklaysiz.'
-              : 'Добавьте первый экзамен: название, дату и форму. Затем загрузите лекции и список вопросов.'}
+            {isAdmin
+              ? isUz
+                ? 'Birinchi fanni qo\'shing: nomi, imtihon sanasi va shakli.'
+                : 'Добавьте первый предмет: название, дату и форму экзамена.'
+              : isUz
+                ? 'Administrator fanlarni sizga biriktirganda ular shu yerda paydo bo\'ladi. Kerakli fanni so\'rab yozing.'
+                : 'Когда администратор назначит вам предметы, они появятся здесь. Напишите, какой предмет нужен.'}
           </p>
-          <Button variant="primary" size="md" icon={<Plus size={16} />} onClick={() => setIsFormOpen(true)}>
-            {isUz ? 'Fan qo\'shish' : 'Добавить предмет'}
-          </Button>
+          {isAdmin ? (
+            <Button variant="primary" size="md" icon={<Plus size={16} />} onClick={() => setIsFormOpen(true)}>
+              {isUz ? 'Fan qo\'shish' : 'Добавить предмет'}
+            </Button>
+          ) : (
+            <Button variant="primary" size="md" onClick={() => navigate('/request')}>
+              {isUz ? 'Fan so\'rash' : 'Запросить предмет'}
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

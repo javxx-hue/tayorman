@@ -9,7 +9,7 @@ type Subject = { name: string; examDate: string; questions: Question[] };
 type Card = { srs?: { due: string; state: number } };
 type StudySet = { flashcards?: Card[] };
 
-export function tashkentToday(): string {
+function tashkentToday(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Tashkent' }); // YYYY-MM-DD
 }
 

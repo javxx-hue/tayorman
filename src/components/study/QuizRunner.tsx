@@ -4,7 +4,6 @@ import { Button } from '../ui/Button';
 import { Check, X, Lightbulb, ArrowRight, RotateCcw, Trophy, Award, Sparkles, ChevronRight, HelpCircle, Clock, Volume2 } from 'lucide-react';
 import { Language, getTranslations } from '../../lib/i18n';
 import { recordQuizCompletion } from '../../lib/storage';
-import { toast } from '../ui/Toast';
 
 interface QuizRunnerProps {
   set: StudySet;

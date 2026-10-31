@@ -60,6 +60,7 @@ export interface StudySet {
   notes?: StudyNote;
   subjectId?: string; // set generated inside a subject
   libraryId?: string; // copied from the admin library
+  libraryUpdatedAt?: string; // library version this copy was last refreshed from
   lastScore?: number;
   completedAt?: number;
 }
@@ -127,4 +128,5 @@ export interface Subject {
   materials: Material[];
   questions: ExamQuestion[];
   libraryId?: string; // copied from the admin library
+  libraryUpdatedAt?: string; // library version this copy was last refreshed from
 }

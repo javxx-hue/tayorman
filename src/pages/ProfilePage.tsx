@@ -106,8 +106,8 @@ export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
           <span>
             {tr(
               lang,
-              `Ma'ruza fayllarini (PDF, PPTX, rasm) @${BOT_USERNAME} chatiga yuboring, ular fanga qo'shiladi. Buyruqlar: /reja, /til, /eslatma.`,
-              `Присылайте файлы лекций (PDF, PPTX, фото) в чат @${BOT_USERNAME}, они добавятся к предмету. Команды: /reja, /til, /eslatma.`
+              `Fan, savol yoki material kerak bo'lsa, @${BOT_USERNAME} chatiga yozing (fayl yoki rasm ham mumkin): so'rov adminga boradi. Buyruqlar: /reja, /til, /eslatma.`,
+              `Нужен предмет, вопросы или материалы — напишите в чат @${BOT_USERNAME} (можно файл или фото), запрос уйдёт администратору. Команды: /reja, /til, /eslatma.`
             )}
           </span>
         </div>

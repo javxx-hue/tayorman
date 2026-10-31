@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { parseQuestionList, planSubject, scoreToGrade, subjectReadiness, daysUntil, todayOverview } from './prep';
 import { buildMaterialContext, officeXmlToText } from './materials';

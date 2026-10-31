@@ -8,7 +8,7 @@ export const admin: SupabaseClient = createClient(
 );
 
 // Client acting as the caller (their JWT), so RLS and auth.uid() apply
-export function userClient(req: Request): SupabaseClient {
+function userClient(req: Request): SupabaseClient {
   return createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
     global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } },
     auth: { persistSession: false, autoRefreshToken: false },

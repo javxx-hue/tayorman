@@ -4,9 +4,11 @@ import { AuthProvider, useAuth } from './lib/auth';
 import { DashboardPage } from './pages/Dashboard';
 import { UsersPage } from './pages/Users';
 import { AuditPage } from './pages/Audit';
+import { RequestsPage } from './pages/Requests';
 
 const NAV: { to: string; label: string; adminOnly?: boolean }[] = [
   { to: '/', label: 'Umumiy ko\'rinish', adminOnly: true },
+  { to: '/requests', label: "So'rovlar", adminOnly: true },
   { to: '/users', label: 'Foydalanuvchilar' },
   { to: '/audit', label: 'Jurnal', adminOnly: true },
 ];
@@ -82,6 +84,7 @@ const Shell: React.FC = () => {
       <main className="flex-1 min-w-0 p-4 sm:p-6 max-w-6xl w-full">
         <Routes>
           <Route path="/" element={isAdmin ? <DashboardPage /> : <Navigate to={home} replace />} />
+          <Route path="/requests" element={isAdmin ? <RequestsPage /> : <Navigate to={home} replace />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/audit" element={isAdmin ? <AuditPage /> : <Navigate to={home} replace />} />
           <Route path="*" element={<Navigate to={home} replace />} />

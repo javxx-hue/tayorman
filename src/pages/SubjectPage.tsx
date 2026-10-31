@@ -14,6 +14,7 @@ import { ACCEPTED_FILES, buildMaterialContext, materialFromFile, materialFromYou
 import { generateModelAnswer, planSubject, questionScore, questionsFromText, scoreToGrade, subjectReadiness, daysUntil, PASS_SCORE } from '../lib/prep';
 import { describeGenerationError, generateStudySet } from '../lib/ai';
 import { getYouTubeInfo } from '../lib/youtubeParser';
+import { useAuth } from '../lib/auth';
 import { SubjectForm, FORMAT_LABELS, daysLeftLabel, readinessColor } from './SubjectsPage';
 
 type Tab = 'plan' | 'questions' | 'materials' | 'practice';
@@ -45,6 +46,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
   const { id } = useParams();
   const navigate = useNavigate();
   const isUz = lang === 'uz';
+  const { isAdmin } = useAuth(); // only admins edit; students study what was given to them
   const subject = subjects.find((s) => s.id === id);
 
   const [tab, setTab] = useState<Tab>('plan');
@@ -199,8 +201,8 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'plan', label: isUz ? 'Bugun' : 'Сегодня' },
     { key: 'questions', label: isUz ? 'Savollar' : 'Вопросы', count: subject.questions.length },
-    { key: 'materials', label: isUz ? 'Materiallar' : 'Материалы', count: subject.materials.length },
-    { key: 'practice', label: isUz ? 'Test va kartalar' : 'Тесты и карточки', count: ownSets.length },
+    ...(isAdmin ? [{ key: 'materials' as const, label: isUz ? 'Materiallar' : 'Материалы', count: subject.materials.length }] : []),
+    { key: 'practice', label: isUz ? 'Mashq' : 'Практика', count: ownSets.length },
   ];
 
   const textareaClass =
@@ -222,10 +224,12 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
               <span>{FORMAT_LABELS[subject.examFormat][lang]}</span>
             </div>
           </div>
-          <div className="flex gap-2 shrink-0">
-            <Button variant="outline" size="sm" icon={<Pencil size={14} />} onClick={() => setIsEditOpen(true)}>{isUz ? 'Tahrirlash' : 'Изменить'}</Button>
-            <Button variant="ghost" size="sm" icon={<Trash2 size={14} />} onClick={handleDelete} aria-label={isUz ? 'O\'chirish' : 'Удалить'} />
-          </div>
+          {isAdmin && (
+            <div className="flex gap-2 shrink-0">
+              <Button variant="outline" size="sm" icon={<Pencil size={14} />} onClick={() => setIsEditOpen(true)}>{isUz ? 'Tahrirlash' : 'Изменить'}</Button>
+              <Button variant="ghost" size="sm" icon={<Trash2 size={14} />} onClick={handleDelete} aria-label={isUz ? 'O\'chirish' : 'Удалить'} />
+            </div>
+          )}
         </div>
         <div className="mt-5">
           <div className="flex justify-between text-xs mb-1">
@@ -262,7 +266,15 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
       {/* ---------------- Today ---------------- */}
       {tab === 'plan' && (
         <div className="space-y-4">
-          {subject.materials.length === 0 || subject.questions.length === 0 ? (
+          {!isAdmin && subject.questions.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
+              <h3 className="font-serif font-bold text-lg text-foreground">{isUz ? 'Savollar tayyorlanmoqda' : 'Вопросы готовятся'}</h3>
+              <p className="text-sm text-muted-foreground">
+                {isUz ? 'Administrator bu fan uchun savollarni tez orada qo\'shadi. Shoshilsangiz, so\'rov yuboring.' : 'Администратор скоро добавит вопросы по этому предмету. Если срочно, отправьте запрос.'}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => navigate('/request')}>{isUz ? 'Adminga yozish' : 'Написать админу'}</Button>
+            </div>
+          ) : isAdmin && (subject.materials.length === 0 || subject.questions.length === 0) ? (
             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
               <h3 className="font-serif font-bold text-lg text-foreground">{isUz ? 'Boshlash uchun 2 qadam' : '2 шага, чтобы начать'}</h3>
               <button onClick={() => setTab('materials')} className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-secondary/50">
@@ -275,7 +287,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
               </button>
             </div>
           ) : days < 0 ? (
-            <p className="text-sm text-muted-foreground">{isUz ? 'Bu fan imtihoni o\'tib ketgan. Sanani tahrirlang.' : 'Этот экзамен уже прошёл. Измените дату.'}</p>
+            <p className="text-sm text-muted-foreground">{isAdmin ? (isUz ? 'Bu fan imtihoni o\'tib ketgan. Sanani tahrirlang.' : 'Этот экзамен уже прошёл. Измените дату.') : (isUz ? 'Bu fan imtihoni o\'tib ketgan.' : 'Экзамен по этому предмету уже прошёл.')}</p>
           ) : (
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
@@ -319,6 +331,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
       {/* ---------------- Questions ---------------- */}
       {tab === 'questions' && (
         <div className="space-y-5">
+          {isAdmin && (
           <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
             <label className="block text-sm font-semibold text-foreground">{isUz ? 'Imtihon savollari ro\'yxati' : 'Список экзаменационных вопросов'}</label>
             <textarea
@@ -334,12 +347,13 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
               </Button>
             </div>
           </div>
+          )}
 
           {subject.questions.length > 0 && (
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <h3 className="font-semibold text-foreground">{subject.questions.length} {isUz ? 'ta savol' : 'вопросов'}</h3>
-                {subject.questions.some((q) => !q.modelAnswer) && (
+                {isAdmin && subject.questions.some((q) => !q.modelAnswer) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -365,9 +379,11 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
                       ) : q.modelAnswer ? (
                         <span className="text-[11px] text-emerald-700 dark:text-emerald-300">{isUz ? 'javob tayyor' : 'ответ готов'}</span>
                       ) : null}
-                      <button onClick={() => removeQuestion(q.id)} className="p-1 text-muted-foreground hover:text-rose-600" aria-label={isUz ? 'O\'chirish' : 'Удалить'}>
-                        <Trash2 size={14} />
-                      </button>
+                      {isAdmin && (
+                        <button onClick={() => removeQuestion(q.id)} className="p-1 text-muted-foreground hover:text-rose-600" aria-label={isUz ? 'O\'chirish' : 'Удалить'}>
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </li>
                   );
                 })}
@@ -378,7 +394,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
       )}
 
       {/* ---------------- Materials ---------------- */}
-      {tab === 'materials' && (
+      {tab === 'materials' && isAdmin && (
         <div className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="rounded-2xl border border-dashed border-border bg-card p-5 flex flex-col items-center justify-center text-center gap-3">
@@ -431,6 +447,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
       {/* ---------------- Quizzes & cards ---------------- */}
       {tab === 'practice' && (
         <div className="space-y-5">
+          {isAdmin && (<>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
               { type: 'quiz' as const, count: 15, icon: <HelpCircle size={18} />, label: isUz ? 'Test (15 savol)' : 'Тест (15 вопросов)' },
@@ -448,7 +465,11 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">{isUz ? 'Barcha materiallaringiz asosida yaratiladi.' : 'Создаётся по всем вашим материалам.'}</p>
+          <p className="text-xs text-muted-foreground">{isUz ? 'Barcha materiallar asosida yaratiladi.' : 'Создаётся по всем материалам.'}</p>
+          </>)}
+          {!isAdmin && ownSets.length === 0 && (
+            <p className="text-sm text-muted-foreground">{isUz ? 'Testlar va kartalarni administrator qo\'shadi. Ular shu yerda paydo bo\'ladi.' : 'Тесты и карточки добавляет администратор. Они появятся здесь.'}</p>
+          )}
           {ownSets.length > 0 && (
             <ul className="space-y-2">
               {ownSets.map((s) => (
@@ -457,7 +478,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
                     <span className="text-sm text-foreground truncate">{s.title} · {s.type === 'quiz' ? 'Test' : s.type === 'exam' ? (isUz ? 'Imtihon' : 'Экзамен') : (isUz ? 'Kartalar' : 'Карточки')}</span>
                     <span className="text-xs text-muted-foreground shrink-0">{typeof s.lastScore === 'number' ? `${s.lastScore}%` : `${s.itemCount}`}</span>
                   </button>
-                  {(s.type === 'quiz' || s.type === 'exam' || s.type === 'flashcards') && (
+                  {isAdmin && (s.type === 'quiz' || s.type === 'exam' || s.type === 'flashcards') && (
                     <button onClick={() => navigate(`/study/${s.id}/edit`)} aria-label={isUz ? 'Tahrirlash' : 'Изменить'} className="px-3 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground">
                       <Pencil size={14} />
                     </button>

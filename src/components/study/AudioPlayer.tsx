@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Pause, Square, Volume2, Headphones } from 'lucide-react';
+import { Play, Pause, Square, Headphones } from 'lucide-react';
 import { Language } from '../../lib/i18n';
 
 interface AudioPlayerProps {

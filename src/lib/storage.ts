@@ -1,4 +1,4 @@
-import { StudySet, UserStats, Language, Subject } from '../types';
+import { StudySet, UserStats, Subject } from '../types';
 
 const STORAGE_KEYS = {
   SETS: 'tayyorman_study_sets',
@@ -41,14 +41,6 @@ export function initStorage(): void {
   if (localStorage.getItem(STORAGE_KEYS.STATS) === null) {
     localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(defaultStats));
   }
-}
-
-// Reset to a brand new clean account
-export function resetToFreshState(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify([]));
-  localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(defaultStats));
-  notifyListeners();
 }
 
 // Study Sets
@@ -108,12 +100,6 @@ export function saveStudySet(set: StudySet, opts: { fromSync?: boolean } = {}): 
   notifyListeners();
 }
 
-export function deleteStudySet(id: string, opts: { fromSync?: boolean } = {}): void {
-  writeJson(STORAGE_KEYS.SETS, getStudySets().filter((s) => s.id !== id));
-  if (!opts.fromSync) changeHooks.forEach((fn) => fn({ kind: 'set', op: 'delete', id }));
-  notifyListeners();
-}
-
 // Subjects (fan): materials + exam question list
 export function getSubjects(): Subject[] {
   if (typeof window === 'undefined') return [];
@@ -144,11 +130,6 @@ export function deleteSubject(id: string, opts: { fromSync?: boolean } = {}): vo
 
 export function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-export function getStudySetById(id: string): StudySet | undefined {
-  const sets = getStudySets();
-  return sets.find((s) => s.id === id);
 }
 
 // User Stats & Streak
@@ -204,83 +185,3 @@ export function recordStudyActivity(): void {
   notifyListeners();
 }
 
-// Language
-export function getSavedLanguage(): Language {
-  if (typeof window === 'undefined') return 'uz';
-  return (localStorage.getItem(STORAGE_KEYS.LANG) as Language) || 'uz';
-}
-
-export function setSavedLanguage(lang: Language): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.LANG, lang);
-  notifyListeners();
-}
-
-// Theme
-export function getSavedTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light';
-  return (localStorage.getItem(STORAGE_KEYS.THEME) as 'light' | 'dark') || 'light';
-}
-
-export function setSavedTheme(theme: 'light' | 'dark'): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.THEME, theme);
-  if (theme === 'dark') {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-  notifyListeners();
-}
-
-// -------------------------------------------------------------
-// Data Export & Import Helpers
-// -------------------------------------------------------------
-export function exportSetsToJson(): void {
-  const sets = getStudySets();
-  const blob = new Blob([JSON.stringify(sets, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `quizpilot-study-sets-${new Date().toISOString().split('T')[0]}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-export function importSetsFromJson(jsonContent: string): { success: boolean; count: number } {
-  try {
-    const parsed = JSON.parse(jsonContent);
-    if (!Array.isArray(parsed)) return { success: false, count: 0 };
-
-    const current = getStudySets();
-    const currentIds = new Set(current.map((s) => s.id));
-    
-    // Add new sets
-    const newSets = parsed.filter((s) => s.id && !currentIds.has(s.id));
-    const merged = [...newSets, ...current];
-    localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify(merged));
-    notifyListeners();
-    return { success: true, count: newSets.length };
-  } catch {
-    return { success: false, count: 0 };
-  }
-}
-
-export function exportFlashcardsToCsv(set: StudySet): void {
-  if (!set.flashcards || set.flashcards.length === 0) return;
-  
-  const rows = set.flashcards.map((fc) => {
-    const front = `"${(fc.front || '').replace(/"/g, '""')}"`;
-    const back = `"${(fc.back || '').replace(/"/g, '""')}"`;
-    return `${front},${back}`;
-  });
-
-  const csvContent = 'Front,Back\n' + rows.join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${set.title.replace(/\s+/g, '-').toLowerCase()}-anki-cards.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}

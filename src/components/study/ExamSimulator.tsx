@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StudySet, QuizQuestion } from '../../types';
 import { Button } from '../ui/Button';
-import { Timer, Flag, Check, AlertTriangle, Trophy, Award, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { Timer, Flag, Check, AlertTriangle, Trophy, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { Language, getTranslations } from '../../lib/i18n';
 import { recordQuizCompletion } from '../../lib/storage';
 

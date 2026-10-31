@@ -34,11 +34,11 @@ export const TodayPlan: React.FC<TodayPlanProps> = ({ subjects, studySets, lang 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             {isUz
-              ? 'Sessiyadagi fanlaringizni qo\'shing: imtihon sanasi va savollar asosida har kuni nimani o\'qishni aytib turamiz.'
-              : 'Добавьте свои экзамены, и мы будем подсказывать, что учить каждый день.'}
+              ? 'Fanlaringizni administrator biriktiradi, shundan keyin har kuni nimani o\'qishni aytib turamiz. Kerakli fanni so\'rab yozing.'
+              : 'Предметы назначает администратор, после этого мы будем подсказывать, что учить каждый день. Напишите, какой предмет нужен.'}
           </p>
-          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => navigate('/subjects')}>
-            {isUz ? 'Fan qo\'shish' : 'Добавить предмет'}
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => navigate('/request')}>
+            {isUz ? 'Fan so\'rash' : 'Запросить предмет'}
           </Button>
         </div>
       ) : (

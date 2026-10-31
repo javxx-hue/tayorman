@@ -77,11 +77,6 @@ export async function sessionFor(tg: TelegramUser) {
   return data.session;
 }
 
-export async function userIdForTelegram(telegramId: number): Promise<string | null> {
-  const { data } = await admin.from('profiles').select('id').eq('telegram_id', telegramId).maybeSingle();
-  return data?.id ?? null;
-}
-
 export async function joinCommunity(userId: string, inviteCode: string): Promise<string | null> {
   const { data: community } = await admin.from('communities').select('id, name').eq('invite_code', inviteCode).eq('invite_enabled', true).maybeSingle();
   if (!community) return null;

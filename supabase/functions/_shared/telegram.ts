@@ -18,7 +18,7 @@ export async function tg<T = unknown>(method: string, body: Record<string, unkno
   return json.result as T;
 }
 
-export const appUrl = () => Deno.env.get('APP_URL') ?? '';
+const appUrl = () => Deno.env.get('APP_URL') ?? '';
 
 // Inline button that opens the Mini App (optionally at a path)
 export function openAppButton(text: string, path = '') {
