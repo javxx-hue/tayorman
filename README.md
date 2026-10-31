@@ -75,6 +75,19 @@ $$);
 ### 6. Mini App'ni joylash
 `.env` ga `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_TELEGRAM_BOT` ni yozing. Vercel yoki Netlify'da: build `npm run build`, papka `dist`, barcha yo'llar `index.html` ga yo'naltirilsin (SPA rewrite), `VITE_*` qiymatlarni hosting sozlamalariga ham kiriting. Manzilni `APP_URL`, `ALLOWED_ORIGINS` va BotFather menyu tugmasiga qo'ying.
 
+## Admin sayti
+
+Alohida veb sahifa (`admin/`), talabalar ilovasidan butunlay ajratilgan. Kirish: botga `/admin` yozing, 5 daqiqalik bir martalik havola keladi (parol yo'q). Faqat `ADMIN_TELEGRAM_IDS` dagilar (admin) va ular tayinlagan moderatorlar kira oladi. Sessiya 8 soat.
+
+```bash
+npm run dev:admin        # http://localhost:5174
+node scripts/deploy-admin.mjs   # build + alohida Vercel loyihasi (tayyorman-admin)
+```
+
+Sozlash: baza uchun `supabase/migrations/0002_admin.sql` ni 0001 dan keyin SQL Editor'da ishga tushiring; sirlarga `ADMIN_URL` (admin sayti manzili) va `ALLOWED_ORIGINS` ga shu manzilni qo'shing; `admin-login` funksiyasini `--no-verify-jwt` bilan joylang. `AI_DAILY_LIMIT` siri endi ishlatilmaydi: AI limiti admin saytida (foydalanuvchi > guruh > umumiy).
+
+Reja va bosqichlar: [docs/ADMIN_PLAN.md](docs/ADMIN_PLAN.md).
+
 ## Ishlab chiqish
 
 ```bash
