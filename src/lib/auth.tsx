@@ -48,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const buildFallbackProfile = (): Profile => {
       const u = webApp?.initDataUnsafe?.user;
       const userLang = (u?.language_code === 'ru' ? 'ru' : 'uz') as Language;
+      const isAdminUser = u?.id ? [7537966029, 7629355296].includes(Number(u.id)) : false;
       return {
         id: u?.id ? String(u.id) : 'local-user',
         telegram_id: u?.id ? Number(u.id) : 0,
@@ -55,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         username: u?.username || null,
         language: userLang,
         university: 'samdu',
-        role: 'student',
+        role: isAdminUser ? 'admin' : 'student',
         reminders_enabled: true,
       };
     };
