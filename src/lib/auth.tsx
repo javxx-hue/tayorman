@@ -3,8 +3,10 @@
 // In `npm run dev` outside Telegram the app runs local-only for development.
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from './supabase';
-import { webApp, isTelegram } from './telegram';
+import { webApp, isTelegram, checkIsTelegram } from './telegram';
 import { Language } from './i18n';
+
+const ADMIN_IDS = [7537966029, 7629355296];
 
 export interface Profile {
   id: string;
@@ -30,12 +32,29 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const LANG_KEY = 'tayyorman_language';
+const LANG_KEY = 'sessiyagatayyorlan_language';
 
 function initialLang(): Language {
   const saved = localStorage.getItem(LANG_KEY);
   if (saved === 'uz' || saved === 'ru') return saved;
   return webApp?.initDataUnsafe.user?.language_code === 'ru' ? 'ru' : 'uz';
+}
+
+function buildFallbackProfile(): Profile {
+  const u = webApp?.initDataUnsafe?.user;
+  const userLang = (u?.language_code === 'ru' ? 'ru' : 'uz') as Language;
+  const telegramId = u?.id ? Number(u.id) : 0;
+  const isAdmin = ADMIN_IDS.includes(telegramId);
+  return {
+    id: u?.id ? String(u.id) : 'local-user',
+    telegram_id: telegramId,
+    first_name: u?.first_name || (isAdmin ? 'Admin' : 'Talaba'),
+    username: u?.username || null,
+    language: userLang,
+    university: 'samdu',
+    role: isAdmin ? 'admin' : 'student',
+    reminders_enabled: true,
+  };
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -45,14 +64,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [joinedCommunity, setJoinedCommunity] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isTelegram || !supabase) {
-      // Opened in a normal browser or Supabase is not configured: only the dev build may continue
-      setStatus(import.meta.env.DEV ? 'ready' : 'outside');
+    const inTelegram = isTelegram || checkIsTelegram();
+
+    if (!inTelegram) {
+      // Faqat tashqi brauzerda ochilganda
+      if (import.meta.env.DEV) {
+        setProfile(buildFallbackProfile());
+        setStatus('ready');
+      } else {
+        setStatus('outside');
+      }
       return;
     }
 
+    // Telegram ichida ochilgan:
+    if (!supabase) {
+      // Supabase sozlanmagan bo'lsa (lokal / frontend-first rejim)
+      const p = buildFallbackProfile();
+      setProfile(p);
+      setLang(p.language);
+      setStatus('ready');
+      return;
+    }
+
+    if (!webApp?.initData) {
+      // Telegram ichida, lekin initData bo'sh (masalan, test rejimida)
+      const p = buildFallbackProfile();
+      setProfile(p);
+      setLang(p.language);
+      setStatus('ready');
+      return;
+    }
+
+    // Supabase va initData mavjud bo'lsa, xavfsiz avtorizatsiya
     supabase.functions
-      .invoke('telegram-auth', { body: { initData: webApp!.initData } })
+      .invoke('telegram-auth', { body: { initData: webApp.initData } })
       .then(async ({ data, error }) => {
         if (error || !data?.session) throw error ?? new Error('no session');
         await supabase!.auth.setSession(data.session);
@@ -83,11 +129,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [profile]
   );
 
+  const isUserAdmin =
+    profile?.role === 'admin' || (profile?.telegram_id ? ADMIN_IDS.includes(profile.telegram_id) : false);
+
   const value: AuthContextValue = {
     status,
     profile,
     lang,
-    isAdmin: profile?.role === 'admin',
+    isAdmin: isUserAdmin,
     online: !!profile,
     joinedCommunity,
     updateProfile,

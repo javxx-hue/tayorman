@@ -3,13 +3,16 @@ import { Copy, Loader2, Megaphone, Plus, Trash2, Eye, EyeOff } from 'lucide-reac
 import { Button } from '../components/ui/Button';
 import { toast } from '../components/ui/Toast';
 import { Language, tr } from '../lib/i18n';
-import { StudySet, Subject } from '../types';
+import { StudySet, Subject, QuizQuestion } from '../types';
 import { supabase } from '../lib/supabase';
 import { LibraryItem, fetchLibrary, publishToLibrary, unpublish } from '../lib/library';
 import { BOT_USERNAME, inviteLink } from '../lib/telegram';
 import { useAuth } from '../lib/auth';
+import { saveStudySet, saveSubject, newId } from '../lib/storage';
+import { parseExamQuestionsFromText } from '../lib/testParser';
+import { materialFromFile } from '../lib/materials';
 
-type Tab = 'stats' | 'groups' | 'library' | 'broadcast';
+type Tab = 'stats' | 'import' | 'groups' | 'library' | 'broadcast';
 interface Community { id: string; name: string; kind: string; invite_code: string }
 interface Stats {
   users_total: number; users_samdu: number; users_new_7d: number; active_today: number; active_7d: number;
@@ -64,6 +67,98 @@ export const AdminPage: React.FC<{ subjects: Subject[]; studySets: StudySet[]; l
   const [text, setText] = useState('');
   const [bcAll, setBcAll] = useState(true);
   const [bcIds, setBcIds] = useState<string[]>([]);
+
+  // bulk test import
+  const [importSubjectId, setImportSubjectId] = useState('');
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [importTitle, setImportTitle] = useState('');
+  const [rawText, setRawText] = useState('');
+  const [parsedQuestions, setParsedQuestions] = useState<QuizQuestion[]>([]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    try {
+      if (file.name.endsWith('.txt') || file.name.endsWith('.json')) {
+        const t = await file.text();
+        setRawText(t);
+        const qs = parseExamQuestionsFromText(t);
+        setParsedQuestions(qs);
+        if (!importTitle) setImportTitle(file.name.replace(/\.[^/.]+$/, ''));
+        toast.success(tr(lang, `${qs.length} ta savol topildi`, `Найдено ${qs.length} вопросов`));
+      } else {
+        const mat = await materialFromFile(file);
+        setRawText(mat.text);
+        const qs = parseExamQuestionsFromText(mat.text);
+        setParsedQuestions(qs);
+        if (!importTitle) setImportTitle(file.name.replace(/\.[^/.]+$/, ''));
+        toast.success(tr(lang, `${qs.length} ta savol topildi`, `Найдено ${qs.length} вопросов`));
+      }
+    } catch {
+      toast.error(tr(lang, 'Faylni o\'qishda xatolik', 'Ошибка чтения файла'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleParse = () => {
+    const qs = parseExamQuestionsFromText(rawText);
+    setParsedQuestions(qs);
+    if (qs.length === 0) {
+      toast.error(tr(lang, 'Savollar topilmadi. Formatni tekshiring.', 'Вопросы не найдены.'));
+    } else {
+      toast.success(tr(lang, `${qs.length} ta savol topildi`, `Найдено ${qs.length} вопросов`));
+    }
+  };
+
+  const handleSaveImportedSet = () => {
+    if (parsedQuestions.length === 0) {
+      toast.error(tr(lang, 'Avval savollarni tahlil qiling', 'Сначала проанализируйте вопросы'));
+      return;
+    }
+    let targetSubjectId = importSubjectId;
+    if (targetSubjectId === '__new__') {
+      if (!newSubjectName.trim()) {
+        toast.error(tr(lang, 'Yangi fan nomini kiriting', 'Введите название предмета'));
+        return;
+      }
+      const newSub: Subject = {
+        id: newId('subj'),
+        name: newSubjectName.trim(),
+        examDate: '',
+        examFormat: 'test',
+        materials: [],
+        questions: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      saveSubject(newSub);
+      targetSubjectId = newSub.id;
+    }
+
+    const title = importTitle.trim() || `Test to'plami (${parsedQuestions.length} ta)`;
+    const newSet: StudySet = {
+      id: newId('set'),
+      title,
+      type: 'exam',
+      description: `${parsedQuestions.length} ta test savolidan iborat imtihon simulyatori.`,
+      createdAt: Date.now(),
+      itemCount: parsedQuestions.length,
+      difficulty: 'medium',
+      sourceType: 'text',
+      questions: parsedQuestions,
+      subjectId: targetSubjectId || undefined,
+    };
+
+    saveStudySet(newSet);
+    toast.success(tr(lang, "To'plam muvaffaqiyatli saqlandi!", 'Набор успешно сохранен!'));
+    setRawText('');
+    setParsedQuestions([]);
+    setImportTitle('');
+    setNewSubjectName('');
+    setImportSubjectId('');
+  };
 
   const reload = useCallback(async () => {
     if (!supabase) return;
@@ -156,6 +251,7 @@ export const AdminPage: React.FC<{ subjects: Subject[]; studySets: StudySet[]; l
 
   const tabs: [Tab, string][] = [
     ['stats', tr(lang, 'Statistika', 'Статистика')],
+    ['import', tr(lang, 'Test yuklash', 'Импорт тестов')],
     ['groups', tr(lang, 'Guruhlar', 'Группы')],
     ['library', tr(lang, 'Kutubxona', 'Библиотека')],
     ['broadcast', tr(lang, 'Xabar', 'Рассылка')],
@@ -213,8 +309,181 @@ export const AdminPage: React.FC<{ subjects: Subject[]; studySets: StudySet[]; l
             )}
           </div>
         ) : (
-          <Loader2 className="mx-auto animate-spin text-muted-foreground" />
+          <div className="space-y-3">
+            <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 text-xs text-foreground">
+              {tr(
+                lang,
+                'Lokal boshqaruv rejimi faol. Baza to\'liq serverda saqlanmoqda.',
+                'Локальный режим управления активен. База сохраняется на сервере.'
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className={card}>
+                <div className="text-2xl font-bold text-foreground">{subjects.length}</div>
+                <div className="text-xs text-muted-foreground">{tr(lang, 'Mavjud fanlar', 'Предметы')}</div>
+              </div>
+              <div className={card}>
+                <div className="text-2xl font-bold text-foreground">{studySets.length}</div>
+                <div className="text-xs text-muted-foreground">{tr(lang, "To'plamlar (test/bilet)", 'Наборы')}</div>
+              </div>
+              <div className={card}>
+                <div className="text-2xl font-bold text-foreground">
+                  {studySets.reduce((sum, s) => sum + (s.questions?.length ?? 0), 0)}
+                </div>
+                <div className="text-xs text-muted-foreground">{tr(lang, 'Jami test savollari', 'Всего вопросов')}</div>
+              </div>
+              <div className={card}>
+                <div className="text-2xl font-bold text-foreground">
+                  {studySets.reduce((sum, s) => sum + (s.flashcards?.length ?? 0), 0)}
+                </div>
+                <div className="text-xs text-muted-foreground">{tr(lang, 'Kartochkalar (biletlar)', 'Карточки')}</div>
+              </div>
+            </div>
+          </div>
         ))}
+
+      {tab === 'import' && (
+        <div className="space-y-4">
+          <div className={card}>
+            <h2 className="text-base font-serif font-bold text-foreground mb-1">
+              {tr(lang, 'Ommaviy test yuklash (Word / TXT / Hemis)', 'Массовый импорт тестов')}
+            </h2>
+            <p className="text-xs text-muted-foreground mb-4">
+              {tr(
+                lang,
+                "Faylni yuklang yoki test matnini nusxalab qo'ying. Standart format: Savol, so'ng +To'g'ri javob va 3 ta noto'g'ri javob.",
+                'Загрузите файл или вставьте текст тестов. Стандарт: Вопрос, затем +Правильный ответ и 3 дистрактора.'
+              )}
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  {tr(lang, 'Fanni tanlang', 'Выберите предмет')}
+                </label>
+                <select
+                  className={input}
+                  value={importSubjectId}
+                  onChange={(e) => setImportSubjectId(e.target.value)}
+                >
+                  <option value="">{tr(lang, '— Fanni tanlang —', '— Выберите предмет —')}</option>
+                  {subjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.examFormat})
+                    </option>
+                  ))}
+                  <option value="__new__">{tr(lang, '+ Yangi fan yaratish', '+ Создать новый предмет')}</option>
+                </select>
+              </div>
+
+              {importSubjectId === '__new__' && (
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    {tr(lang, 'Yangi fan nomi', 'Название нового предмета')}
+                  </label>
+                  <input
+                    type="text"
+                    className={input}
+                    placeholder="Masalan: Oliy matematika"
+                    value={newSubjectName}
+                    onChange={(e) => setNewSubjectName(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  {tr(lang, "To'plam nomi (Test nomi)", 'Название теста')}
+                </label>
+                <input
+                  type="text"
+                  className={input}
+                  placeholder="Masalan: 1-Oraliq nazorat testlari (50 ta)"
+                  value={importTitle}
+                  onChange={(e) => setImportTitle(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  {tr(lang, 'Fayl yuklash (.docx, .txt, .pdf, .json)', 'Загрузить файл')}
+                </label>
+                <input
+                  type="file"
+                  accept=".docx,.txt,.pdf,.json"
+                  className="block w-full text-xs text-muted-foreground file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:opacity-90"
+                  onChange={handleFileUpload}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  {tr(lang, "Yoki test matnini bu yerga qo'ying", 'Или вставьте текст сюда')}
+                </label>
+                <textarea
+                  rows={6}
+                  className={`${input} font-mono text-xs`}
+                  placeholder="1. Savol matni?&#10;+To'g'ri variant&#10;Noto'g'ri variant 1&#10;Noto'g'ri variant 2&#10;Noto'g'ri variant 3"
+                  value={rawText}
+                  onChange={(e) => setRawText(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleParse}
+                  disabled={!rawText.trim()}
+                >
+                  {tr(lang, 'Tahlil qilish (Tekshirish)', 'Анализировать')}
+                </Button>
+                {parsedQuestions.length > 0 && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleSaveImportedSet}
+                    disabled={busy}
+                  >
+                    {tr(lang, `Saqlash (${parsedQuestions.length} ta savol)`, `Сохранить (${parsedQuestions.length})`)}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {parsedQuestions.length > 0 && (
+            <div className={card}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground">
+                  {tr(lang, 'Tahlil qilingan savollar', 'Распознанные вопросы')} ({parsedQuestions.length})
+                </h3>
+              </div>
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                {parsedQuestions.map((q, idx) => (
+                  <div key={idx} className="p-3 rounded-xl bg-background border border-border text-xs space-y-1.5">
+                    <p className="font-semibold text-foreground">{idx + 1}. {q.question}</p>
+                    <div className="space-y-1 pl-2">
+                      {q.options.map((opt, oIdx) => (
+                        <div
+                          key={oIdx}
+                          className={`flex items-center gap-1.5 py-0.5 px-2 rounded ${
+                            oIdx === q.correctAnswer
+                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold'
+                              : 'text-muted-foreground'
+                          }`}
+                        >
+                          {oIdx === q.correctAnswer ? '✓' : '•'} {opt}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {tab === 'groups' && (
         <div className="space-y-3">

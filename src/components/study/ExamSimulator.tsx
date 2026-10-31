@@ -14,8 +14,11 @@ interface ExamSimulatorProps {
 
 export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinish, onRetake }) => {
   const t = getTranslations(lang).exam;
-  const questions: QuizQuestion[] = set.questions || [];
-  const totalQ = questions.length;
+  const [reviewMistakesMode, setReviewMistakesMode] = useState(false);
+  const [activeWeakQuestions, setActiveWeakQuestions] = useState<QuizQuestion[]>([]);
+
+  const activeQuestions: QuizQuestion[] = reviewMistakesMode ? activeWeakQuestions : (set.questions || []);
+  const totalQ = activeQuestions.length;
 
   // 15 seconds per question default timer
   const initialSeconds = Math.max(120, totalQ * 60);
@@ -66,7 +69,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
 
     // Calculate score
     let correctCount = 0;
-    questions.forEach((q, i) => {
+    activeQuestions.forEach((q, i) => {
       if (userAnswers[i] === q.correctAnswer) {
         correctCount += 1;
       }
@@ -75,13 +78,13 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
     recordQuizCompletion(finalPct, totalQ, set);
   };
 
-  const currentQ = questions[currentIdx];
+  const currentQ = activeQuestions[currentIdx];
 
   // Diagnostic Results Screen
   if (isSubmitted) {
     let correctCount = 0;
     const weakQuestions: QuizQuestion[] = [];
-    questions.forEach((q, i) => {
+    activeQuestions.forEach((q, i) => {
       if (userAnswers[i] === q.correctAnswer) {
         correctCount += 1;
       } else {
@@ -155,6 +158,25 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
 
         {/* Bottom Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4 border-t border-border">
+          {weakQuestions.length > 0 && (
+            <Button
+              variant="secondary"
+              size="md"
+              className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 font-semibold"
+              onClick={() => {
+                setActiveWeakQuestions(weakQuestions);
+                setReviewMistakesMode(true);
+                setCurrentIdx(0);
+                setUserAnswers({});
+                setFlaggedQuestions({});
+                setSecondsRemaining(Math.max(120, weakQuestions.length * 60));
+                setIsSubmitted(false);
+              }}
+              icon={<RotateCcw size={16} />}
+            >
+              Xatolar ustida ishlash ({weakQuestions.length})
+            </Button>
+          )}
           <Button variant="outline" size="md" onClick={onRetake} icon={<RotateCcw size={16} />}>
             Qaytadan topshirish
           </Button>
@@ -174,9 +196,16 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
       {/* Top Exam Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-card border border-border shadow-soft mb-6">
         <div>
-          <h2 className="text-xl font-serif font-bold text-foreground">
-            {set.title}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-serif font-bold text-foreground">
+              {set.title}
+            </h2>
+            {reviewMistakesMode && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-600 dark:text-rose-400 uppercase">
+                Xatolar tahlili
+              </span>
+            )}
+          </div>
           <span className="text-xs text-muted-foreground">
             {answeredCount} / {totalQ} javob berildi
           </span>
@@ -280,7 +309,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
           </h4>
 
           <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-            {questions.map((_, idx) => {
+            {activeQuestions.map((_, idx) => {
               const isAnswered = typeof userAnswers[idx] === 'number';
               const isFlagged = flaggedQuestions[idx];
               const isCurrent = currentIdx === idx;

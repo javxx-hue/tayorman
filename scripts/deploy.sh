@@ -14,7 +14,7 @@ scp nginx/spa.conf big:/home/ubuntu/sessiyagatayyorlan/nginx/spa.conf
 scp scripts/bot.mjs big:/home/ubuntu/sessiyagatayyorlan/bot.mjs
 
 echo ">>> 3. Serverdagi konteynerlar yangilanmoqda..."
-ssh big "cd /home/ubuntu/sessiyagatayyorlan && docker compose restart && docker exec mb-caddy caddy reload --config /etc/caddy/Caddyfile"
+ssh big "cd /home/ubuntu/sessiyagatayyorlan && docker compose up -d && docker exec mb-caddy caddy reload --config /etc/caddy/Caddyfile"
 
 echo ">>> 4. Jonli domen tekshirilmoqda..."
 curl -f -I https://st.uzbek-talim.uz | head -n 5

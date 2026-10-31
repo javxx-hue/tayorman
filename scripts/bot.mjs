@@ -56,6 +56,10 @@ function api(method, body = {}) {
         });
       }
     );
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(null);
+    });
     req.on('error', (err) => {
       console.error(`Telegram API xatosi (${method}):`, err.message);
       resolve(null);

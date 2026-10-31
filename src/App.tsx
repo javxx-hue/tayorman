@@ -26,7 +26,7 @@ const FlashcardPlayer = lazy(() => import('./components/study/FlashcardPlayer').
 const NotesViewer = lazy(() => import('./components/study/NotesViewer').then((m) => ({ default: m.NotesViewer })));
 const ExamSimulator = lazy(() => import('./components/study/ExamSimulator').then((m) => ({ default: m.ExamSimulator })));
 
-const ONBOARDED_KEY = 'tayyorman_onboarded';
+const ONBOARDED_KEY = 'sessiyagatayyorlan_onboarded';
 
 // Renders the runner for /study/:id
 const StudyRoute: React.FC<{ studySets: StudySet[]; lang: Language }> = ({ studySets, lang }) => {
@@ -123,7 +123,7 @@ export default function App() {
   if (status === 'outside' && !forceDemo) {
     return (
       <Centered>
-        <h1 className="text-2xl font-serif font-bold">Tayyorman</h1>
+        <h1 className="text-2xl font-serif font-bold">Sessiyaga tayyorlan</h1>
         <p className="text-sm text-muted-foreground">
           {tr(lang, 'Ilova Telegram ichida ishlaydi. Botni oching va «Ochish» tugmasini bosing.', 'Приложение работает внутри Telegram. Откройте бота и нажмите «Открыть».')}
         </p>

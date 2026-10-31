@@ -43,9 +43,19 @@ declare global {
 }
 
 export const webApp: WebApp | undefined =
-  typeof window !== 'undefined' && window.Telegram?.WebApp?.initData ? window.Telegram.WebApp : undefined;
+  typeof window !== 'undefined' && window.Telegram?.WebApp ? window.Telegram.WebApp : undefined;
 
-export const isTelegram = !!webApp;
+export function checkIsTelegram(): boolean {
+  if (typeof window === 'undefined') return false;
+  const wa = window.Telegram?.WebApp;
+  if (!wa) return false;
+  if (wa.initData && wa.initData.length > 0) return true;
+  if (window.location.hash.includes('tgWebAppData')) return true;
+  if (wa.platform && wa.platform !== 'unknown') return true;
+  return false;
+}
+
+export const isTelegram = checkIsTelegram();
 export const BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT ?? '';
 
 export function startTelegram(): void {

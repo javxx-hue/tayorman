@@ -1,11 +1,11 @@
 import { StudySet, UserStats, Language, Subject } from '../types';
 
 const STORAGE_KEYS = {
-  SETS: 'tayyorman_study_sets',
-  SUBJECTS: 'tayyorman_subjects',
-  STATS: 'tayyorman_user_stats',
-  LANG: 'tayyorman_language',
-  THEME: 'tayyorman_theme',
+  SETS: 'sessiyagatayyorlan_study_sets',
+  SUBJECTS: 'sessiyagatayyorlan_subjects',
+  STATS: 'sessiyagatayyorlan_user_stats',
+  LANG: 'sessiyagatayyorlan_language',
+  THEME: 'sessiyagatayyorlan_theme',
 };
 
 // Listeners for reactive updates
@@ -35,8 +35,101 @@ const defaultStats: UserStats = {
 export function initStorage(): void {
   if (typeof window === 'undefined') return;
   
+  // Migrate legacy keys if present
+  if (localStorage.getItem(STORAGE_KEYS.SETS) === null && localStorage.getItem('tayyorman_study_sets')) {
+    localStorage.setItem(STORAGE_KEYS.SETS, localStorage.getItem('tayyorman_study_sets')!);
+  }
+  if (localStorage.getItem(STORAGE_KEYS.SUBJECTS) === null && localStorage.getItem('tayyorman_subjects')) {
+    localStorage.setItem(STORAGE_KEYS.SUBJECTS, localStorage.getItem('tayyorman_subjects')!);
+  }
+  if (localStorage.getItem(STORAGE_KEYS.STATS) === null && localStorage.getItem('tayyorman_user_stats')) {
+    localStorage.setItem(STORAGE_KEYS.STATS, localStorage.getItem('tayyorman_user_stats')!);
+  }
+  if (localStorage.getItem(STORAGE_KEYS.LANG) === null && localStorage.getItem('tayyorman_language')) {
+    localStorage.setItem(STORAGE_KEYS.LANG, localStorage.getItem('tayyorman_language')!);
+  }
+
+const STARTER_SUBJECT_ID = 'starter-subject-matem';
+
+const starterSubject: Subject = {
+  id: STARTER_SUBJECT_ID,
+  name: 'Oliy matematika (Namunaviy)',
+  examDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+  examFormat: 'test',
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+  materials: [],
+  questions: [
+    {
+      id: 'q-demo-1',
+      text: "Funksiyaning hosilasi ta'rifi nima?",
+      attempts: [],
+    },
+    {
+      id: 'q-demo-2',
+      text: 'Matritsaning determinanti qanday hisoblanadi?',
+      attempts: [],
+    },
+  ],
+};
+
+const starterSet: StudySet = {
+  id: 'starter-set-matem',
+  title: 'Oliy matematika: 1-Oraliq testlari',
+  type: 'exam',
+  description: 'Namuna: Hosilalar, integrallar va chiziqli algebra testlari.',
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+  itemCount: 4,
+  difficulty: 'medium',
+  sourceType: 'text',
+  subjectId: STARTER_SUBJECT_ID,
+  questions: [
+    {
+      id: 'q-mat-1',
+      question: 'y = x^2 funksiyasining hosilasi nimaga teng?',
+      options: ['2x', 'x', 'x^3', '2'],
+      correctAnswer: 0,
+      hint: "Daraja qoidasini qo'llang: (x^n)' = n*x^(n-1)",
+      explanation: "To'g'ri javob: 2x. (x^2)' = 2*x^(2-1) = 2x.",
+    },
+    {
+      id: 'q-mat-2',
+      question: "Qanday matritsaning teskarisi (A^(-1)) mavjud bo'ladi?",
+      options: [
+        "Determinanti nolga teng bo'lmagan kvadrat matritsa",
+        "Ixtiyoriy to'g'ri burchakli matritsa",
+        'Faqat birlik matritsa',
+        'Barcha elementlari musbat matritsa',
+      ],
+      correctAnswer: 0,
+      hint: 'det(A) != 0 shartini eslang.',
+      explanation: "To'g'ri javob: det(A) != 0 bo'lgan kvadrat matritsaning teskari matritsasi mavjud.",
+    },
+    {
+      id: 'q-mat-3',
+      question: 'Integral ∫ 2x dx nimaga teng?',
+      options: ['x^2 + C', '2x^2 + C', 'x + C', '2 + C'],
+      correctAnswer: 0,
+      hint: "Hosilaning teskari amali.",
+      explanation: "To'g'ri javob: x^2 + C. Chunki (x^2 + C)' = 2x.",
+    },
+    {
+      id: 'q-mat-4',
+      question: "Ikkita vektorning skalyar ko'paytmasi nolga teng bo'lsa, bu vektorlar qanday joylashgan?",
+      options: ["O'zaro perpendikulyar (ortogonal)", 'Parallel', 'Ustma-ust tushadi', "Qarama-qarshi yo'nalgan"],
+      correctAnswer: 0,
+      hint: 'cos(90°) = 0.',
+      explanation: "To'g'ri javob: a * b = |a|*|b|*cos(α) = 0 bo'lsa, α = 90°, ya'ni vektorlar o'zaro perpendikulyar.",
+    },
+  ],
+};
+
+  if (localStorage.getItem(STORAGE_KEYS.SUBJECTS) === null) {
+    localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify([starterSubject]));
+  }
   if (localStorage.getItem(STORAGE_KEYS.SETS) === null) {
-    localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify([]));
+    localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify([starterSet]));
   }
   if (localStorage.getItem(STORAGE_KEYS.STATS) === null) {
     localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(defaultStats));
@@ -242,7 +335,7 @@ export function exportSetsToJson(): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `quizpilot-study-sets-${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `sessiyagatayyorlan-study-sets-${new Date().toISOString().split('T')[0]}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

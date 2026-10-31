@@ -15,7 +15,7 @@ async function hmacHex(key: string, msg: string): Promise<string> {
   return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-const emailFor = (telegramId: number) => `tg${telegramId}@users.tayyorman.app`;
+const emailFor = (telegramId: number) => `tg${telegramId}@users.sessiyagatayyorlan.app`;
 
 async function passwordFor(telegramId: number): Promise<string> {
   const secret = Deno.env.get('AUTH_SECRET');
