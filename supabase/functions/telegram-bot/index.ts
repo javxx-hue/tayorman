@@ -13,6 +13,9 @@ import { tg, sendMessage, openAppButton, downloadFile } from '../_shared/telegra
 import { planLines } from '../_shared/plan.ts';
 import { kindOf, needsAi, extractText } from '../_shared/extract.ts';
 import { bytesToBase64, callGemini, consumeQuota, QuotaError } from '../_shared/gemini.ts';
+import { createLoginCode } from '../_shared/adminLogin.ts';
+
+class BlockedError extends Error {}
 
 type Lang = 'uz' | 'ru';
 const MAX_FILE_BYTES = 20 * 1024 * 1024; // Bot API download limit
@@ -54,6 +57,17 @@ const T = {
     ru: 'Сначала создайте предмет в приложении, затем пришлите файл снова.',
   },
   cancel: { uz: '✖️ Bekor qilish', ru: '✖️ Отмена' },
+  blocked: {
+    uz: "Hisobingiz cheklangan. Savol bo'lsa, administratorga murojaat qiling.",
+    ru: 'Ваш аккаунт ограничен. По вопросам обратитесь к администратору.',
+  },
+  notStaff: { uz: 'Bu buyruq faqat administratorlar uchun.', ru: 'Эта команда только для администраторов.' },
+  adminLink: {
+    uz: '🔐 Admin saytiga kirish havolasi. U 5 daqiqa amal qiladi va faqat bir marta ishlaydi. Hech kimga yubormang.',
+    ru: '🔐 Ссылка для входа на админ-сайт. Действует 5 минут и срабатывает один раз. Никому не пересылайте.',
+  },
+  adminOpen: { uz: '🔓 Admin saytini ochish', ru: '🔓 Открыть админ-сайт' },
+  adminNotSet: { uz: 'Admin sayti manzili (ADMIN_URL) sozlanmagan.', ru: 'Адрес админ-сайта (ADMIN_URL) не настроен.' },
   cancelled: { uz: 'Bekor qilindi.', ru: 'Отменено.' },
   added: { uz: (s: string) => `✅ Material «${s}» faniga qo'shildi.`, ru: (s: string) => `✅ Материал добавлен к предмету «${s}».` },
   expired: { uz: 'Bu so\'rov eskirgan. Faylni qayta yuboring.', ru: 'Запрос устарел. Пришлите файл снова.' },
@@ -67,10 +81,11 @@ const T = {
 
 const t = <K extends keyof typeof T>(key: K, lang: Lang) => T[key][lang];
 
-async function profileOf(tgUser: TelegramUser): Promise<{ id: string; language: Lang; reminders_enabled: boolean }> {
+async function profileOf(tgUser: TelegramUser): Promise<{ id: string; language: Lang; reminders_enabled: boolean; role: string }> {
   const id = await ensureUser(tgUser);
-  const { data } = await admin.from('profiles').select('id, language, reminders_enabled').eq('id', id).single();
-  return data as { id: string; language: Lang; reminders_enabled: boolean };
+  const { data } = await admin.from('profiles').select('id, language, reminders_enabled, role, blocked').eq('id', id).single();
+  if (data?.blocked) throw new BlockedError();
+  return data as { id: string; language: Lang; reminders_enabled: boolean; role: string };
 }
 
 const appKeyboard = (lang: Lang, path = '') => ({ reply_markup: { inline_keyboard: [[openAppButton(t('open', lang), path)]] } });
@@ -100,6 +115,25 @@ async function onCommand(chatId: number, text: string, user: TelegramUser) {
       const next: Lang = lang === 'uz' ? 'ru' : 'uz';
       await admin.from('profiles').update({ language: next }).eq('id', profile.id);
       await sendMessage(chatId, t('lang', next));
+      return;
+    }
+    case '/admin': {
+      // Same answer for everyone else, so the command does not reveal who the admins are
+      if (profile.role !== 'admin' && profile.role !== 'moderator') {
+        await sendMessage(chatId, t('notStaff', lang));
+        return;
+      }
+      const base = Deno.env.get('ADMIN_URL');
+      if (!base) {
+        await sendMessage(chatId, t('adminNotSet', lang));
+        return;
+      }
+      const code = await createLoginCode(profile.id);
+      // The code travels in the URL fragment: it is never sent to a server or logged
+      await sendMessage(chatId, t('adminLink', lang), {
+        reply_markup: { inline_keyboard: [[{ text: t('adminOpen', lang), url: `${base.replace(/\/+$/, '')}/#code=${code}` }]] },
+        protect_content: true,
+      });
       return;
     }
     case '/eslatma': {
@@ -276,7 +310,13 @@ Deno.serve(async (req) => {
     }
   } catch (e) {
     // Always 200 so Telegram does not retry the same update forever
-    console.error('update failed', e);
+    if (e instanceof BlockedError) {
+      const who = update?.message?.from ?? update?.callback_query?.from;
+      const lang: Lang = who?.language_code === 'ru' ? 'ru' : 'uz';
+      if (who?.id) await sendMessage(who.id, t('blocked', lang));
+    } else {
+      console.error('update failed', e);
+    }
   }
   return new Response('ok');
 });

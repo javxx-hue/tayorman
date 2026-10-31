@@ -26,13 +26,13 @@ Deno.serve(async (req) => {
 
   let recipients: { telegram_id: number; language: string }[] = [];
   if (audienceAll) {
-    const { data } = await admin.from('profiles').select('telegram_id, language').limit(MAX_RECIPIENTS);
+    const { data } = await admin.from('profiles').select('telegram_id, language').eq('blocked', false).limit(MAX_RECIPIENTS);
     recipients = data ?? [];
   } else {
     const { data: members } = await admin.from('community_members').select('user_id').in('community_id', communityIds);
     const ids = [...new Set((members ?? []).map((m: { user_id: string }) => m.user_id))].slice(0, MAX_RECIPIENTS);
     if (ids.length) {
-      const { data } = await admin.from('profiles').select('telegram_id, language').in('id', ids);
+      const { data } = await admin.from('profiles').select('telegram_id, language').eq('blocked', false).in('id', ids);
       recipients = data ?? [];
     }
   }

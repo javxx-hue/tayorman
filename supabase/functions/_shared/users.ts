@@ -3,6 +3,7 @@
 // normal Supabase session through signInWithPassword.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { admin } from './admin.ts';
+import { parseAdminIds, resolveRole } from './roles.ts';
 
 import type { TelegramUser } from './types.ts';
 export type { TelegramUser };
@@ -23,20 +24,11 @@ async function passwordFor(telegramId: number): Promise<string> {
   return hmacHex(secret, `tg:${telegramId}`);
 }
 
-function adminIds(): Set<number> {
-  return new Set(
-    (Deno.env.get('ADMIN_TELEGRAM_IDS') ?? '')
-      .split(',')
-      .map((s) => Number(s.trim()))
-      .filter((n) => Number.isFinite(n) && n > 0)
-  );
-}
-
 const defaultLanguage = (code?: string) => (code === 'ru' ? 'ru' : 'uz');
 
 // Returns the auth user id for this Telegram account, creating it on first contact.
 export async function ensureUser(tg: TelegramUser): Promise<string> {
-  const role = adminIds().has(tg.id) ? 'admin' : 'student';
+  const listed = parseAdminIds(Deno.env.get('ADMIN_TELEGRAM_IDS')).has(tg.id);
   const { data: existing } = await admin.from('profiles').select('id, role').eq('telegram_id', tg.id).maybeSingle();
 
   if (existing) {
@@ -47,8 +39,8 @@ export async function ensureUser(tg: TelegramUser): Promise<string> {
         last_name: tg.last_name ?? null,
         username: tg.username ?? null,
         last_seen_at: new Date().toISOString(),
-        // Admin list in secrets wins; removing someone from it demotes them
-        role,
+        // ADMIN_TELEGRAM_IDS decides who is admin; moderators keep their role
+        role: resolveRole(listed, existing.role),
       })
       .eq('id', existing.id);
     return existing.id;
@@ -69,7 +61,7 @@ export async function ensureUser(tg: TelegramUser): Promise<string> {
     last_name: tg.last_name ?? null,
     username: tg.username ?? null,
     language: defaultLanguage(tg.language_code),
-    role,
+    role: resolveRole(listed, null),
   });
   if (profileError) throw profileError;
   return created.user.id;
@@ -91,7 +83,7 @@ export async function userIdForTelegram(telegramId: number): Promise<string | nu
 }
 
 export async function joinCommunity(userId: string, inviteCode: string): Promise<string | null> {
-  const { data: community } = await admin.from('communities').select('id, name').eq('invite_code', inviteCode).maybeSingle();
+  const { data: community } = await admin.from('communities').select('id, name').eq('invite_code', inviteCode).eq('invite_enabled', true).maybeSingle();
   if (!community) return null;
   await admin.from('community_members').upsert({ community_id: community.id, user_id: userId }, { onConflict: 'community_id,user_id' });
   return community.name;

@@ -1,7 +1,6 @@
 import { admin } from './admin.ts';
 
 const MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.8-flash';
-export const DAILY_LIMIT = Number(Deno.env.get('AI_DAILY_LIMIT') ?? '30');
 
 export type Part =
   | { text: string }
@@ -10,9 +9,9 @@ export type Part =
 
 export class QuotaError extends Error {}
 
-// Counts one AI request against the user's daily limit
+// Counts one AI request against the user's daily limit (set in the admin panel; blocked users never pass)
 export async function consumeQuota(userId: string): Promise<void> {
-  const { data, error } = await admin.rpc('consume_ai_quota', { p_user: userId, daily_limit: DAILY_LIMIT });
+  const { data, error } = await admin.rpc('consume_ai_quota_auto', { p_user: userId });
   if (error) throw error;
   if (!data) throw new QuotaError('Daily AI limit reached');
 }

@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
     return new Response('forbidden', { status: 403 });
   }
 
-  const { data: users, error } = await admin.from('profiles').select('id, telegram_id, language').eq('reminders_enabled', true);
+  const { data: users, error } = await admin.from('profiles').select('id, telegram_id, language').eq('reminders_enabled', true).eq('blocked', false);
   if (error) return new Response(error.message, { status: 500 });
 
   let sent = 0;
