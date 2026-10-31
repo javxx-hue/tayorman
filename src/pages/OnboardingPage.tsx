@@ -31,7 +31,7 @@ export const OnboardingPage: React.FC<{ onDone: () => void }> = ({ onDone }) => 
 
   return (
     <div className="min-h-screen bg-background text-foreground px-5 py-8 max-w-md mx-auto flex flex-col">
-      <h1 className="text-3xl font-serif font-bold">Sessiyaga tayyorlan</h1>
+      <h1 className="text-3xl font-serif font-bold">Tayyorman</h1>
       <p className="text-sm text-muted-foreground mt-2 mb-6">
         {tr(lang, 'Sessiya va oraliq nazoratlarga tayyorlanish uchun yordamchi.', 'Помощник для подготовки к сессии и промежуточному контролю.')}
       </p>

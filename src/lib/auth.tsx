@@ -30,7 +30,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const LANG_KEY = 'sessiyagatayyorlan_language';
+const LANG_KEY = 'tayyorman_language';
 
 function initialLang(): Language {
   const saved = localStorage.getItem(LANG_KEY);
@@ -45,48 +45,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [joinedCommunity, setJoinedCommunity] = useState<string | null>(null);
 
   useEffect(() => {
-    const buildFallbackProfile = (): Profile => {
-      const u = webApp?.initDataUnsafe?.user;
-      const userLang = (u?.language_code === 'ru' ? 'ru' : 'uz') as Language;
-      const isAdminUser = u?.id ? [7537966029, 7629355296].includes(Number(u.id)) : false;
-      return {
-        id: u?.id ? String(u.id) : 'local-user',
-        telegram_id: u?.id ? Number(u.id) : 0,
-        first_name: u?.first_name || 'Talaba',
-        username: u?.username || null,
-        language: userLang,
-        university: 'samdu',
-        role: isAdminUser ? 'admin' : 'student',
-        reminders_enabled: true,
-      };
-    };
-
-    if (!isTelegram && !import.meta.env.DEV) {
-      // Opened strictly in a normal external browser (not inside Telegram)
-      setStatus('outside');
-      return;
-    }
-
-    if (!supabase) {
-      // Running in local-first mode without remote Supabase server
-      const p = buildFallbackProfile();
-      setProfile(p);
-      setLang(p.language);
-      setStatus('ready');
-      return;
-    }
-
-    if (!webApp?.initData) {
-      // Inside Telegram but initData is not provided yet (local preview)
-      const p = buildFallbackProfile();
-      setProfile(p);
-      setLang(p.language);
-      setStatus('ready');
+    if (!isTelegram || !supabase) {
+      // Opened in a normal browser or Supabase is not configured: only the dev build may continue
+      setStatus(import.meta.env.DEV ? 'ready' : 'outside');
       return;
     }
 
     supabase.functions
-      .invoke('telegram-auth', { body: { initData: webApp.initData } })
+      .invoke('telegram-auth', { body: { initData: webApp!.initData } })
       .then(async ({ data, error }) => {
         if (error || !data?.session) throw error ?? new Error('no session');
         await supabase!.auth.setSession(data.session);
@@ -97,11 +63,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setStatus('ready');
       })
       .catch((e) => {
-        console.error('Telegram sign-in failed, fallback to local session', e);
-        const p = buildFallbackProfile();
-        setProfile(p);
-        setLang(p.language);
-        setStatus('ready');
+        console.error('Telegram sign-in failed', e);
+        setStatus('error');
       });
   }, []);
 

@@ -1,4 +1,4 @@
-# Sessiyaga tayyorlan
+# Tayyorman
 
 Sessiya va oraliq nazoratlarga tayyorlanish uchun **Telegram bot + Mini App**. Hozircha SamDU talabalariga mo'ljallangan, lekin kirish hamma uchun ochiq. Hammasi bepul (beta).
 
@@ -87,7 +87,7 @@ npm run typecheck
 Mini App faqat Telegram ichida to'liq ishlaydi; oddiy brauzerda production build «Telegram ichida oching» deb yozadi, dev build esa lokal ma'lumotlar bilan ochiladi.
 
 ## Eslatmalar
-- Bot nomi va brend «Sessiyaga tayyorlan».
+- Bot nomi va brend hozircha vaqtincha «Tayyorman».
 - To'lov yo'q: barcha rejimlar bepul. Keyin tarif qo'shish uchun `profiles` jadvaliga maydon qo'shiladi.
 - Bir martalik xabar yuborish (`admin-broadcast`) bitta so'rovda 2500 tagacha foydalanuvchiga ishlaydi; kattaroq auditoriya uchun bo'laklash kerak bo'ladi.
 - Bot fayllarni 20 MB gacha qabul qiladi (Telegram cheklovi).

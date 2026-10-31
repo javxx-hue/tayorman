@@ -1,4 +1,4 @@
--- Sessiyaga tayyorlan schema. Run in Supabase: SQL Editor -> paste -> Run (or `supabase db push`).
+-- Tayyorman schema. Run in Supabase: SQL Editor -> paste -> Run (or `supabase db push`).
 -- Users sign in only through Telegram (Edge Function "telegram-auth"), which
 -- creates one auth user per Telegram account.
 

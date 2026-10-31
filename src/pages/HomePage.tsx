@@ -24,7 +24,7 @@ export const HomePage: React.FC<HomePageProps> = ({ subjects, studySets, stats, 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-5 pb-6">
       <h1 className="text-2xl font-serif font-bold text-foreground mb-4">
-        {profile?.first_name ? tr(lang, `Salom, ${profile.first_name}!`, `Привет, ${profile.first_name}!`) : 'Sessiyaga tayyorlan'}
+        {profile?.first_name ? tr(lang, `Salom, ${profile.first_name}!`, `Привет, ${profile.first_name}!`) : 'Tayyorman'}
       </h1>
 
       <TodayPlan subjects={subjects} studySets={studySets} lang={lang} />

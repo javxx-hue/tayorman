@@ -20,9 +20,9 @@ const MAX_FILE_BYTES = 20 * 1024 * 1024; // Bot API download limit
 const T = {
   welcome: {
     uz: (name: string) =>
-      `Salom, ${name}! 👋\n\n«Sessiyaga tayyorlan» sessiya va oraliq nazoratlarga tayyorlanishga yordam beradi:\n• fanlar va imtihon sanalari\n• ma'ruzalardan testlar va kartalar\n• imtihon savollariga javoblar va AI baholash\n• har kuni ertalab bugungi reja\n\nBoshlash uchun pastdagi tugmani bosing. Ma'ruza fayllarini (PDF, PPTX, rasm) shu chatga yuborsangiz, ular fanga qo'shiladi.`,
+      `Salom, ${name}! 👋\n\n«Tayyorman» sessiya va oraliq nazoratlarga tayyorlanishga yordam beradi:\n• fanlar va imtihon sanalari\n• ma'ruzalardan testlar va kartalar\n• imtihon savollariga javoblar va AI baholash\n• har kuni ertalab bugungi reja\n\nBoshlash uchun pastdagi tugmani bosing. Ma'ruza fayllarini (PDF, PPTX, rasm) shu chatga yuborsangiz, ular fanga qo'shiladi.`,
     ru: (name: string) =>
-      `Привет, ${name}! 👋\n\n«Sessiyaga tayyorlan» помогает готовиться к сессии и промежуточному контролю:\n• предметы и даты экзаменов\n• тесты и карточки по лекциям\n• ответы на экзаменационные вопросы и оценка ИИ\n• каждое утро план на день\n\nНажмите кнопку ниже, чтобы начать. Файлы лекций (PDF, PPTX, фото) можно присылать в этот чат — они добавятся к предмету.`,
+      `Привет, ${name}! 👋\n\n«Tayyorman» помогает готовиться к сессии и промежуточному контролю:\n• предметы и даты экзаменов\n• тесты и карточки по лекциям\n• ответы на экзаменационные вопросы и оценка ИИ\n• каждое утро план на день\n\nНажмите кнопку ниже, чтобы начать. Файлы лекций (PDF, PPTX, фото) можно присылать в этот чат — они добавятся к предмету.`,
   },
   open: { uz: '📚 Ochish', ru: '📚 Открыть' },
   joined: { uz: (n: string) => `✅ Siz «${n}» guruhiga qo'shildingiz.`, ru: (n: string) => `✅ Вы присоединились к группе «${n}».` },

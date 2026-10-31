@@ -2,7 +2,11 @@
 // Built with native node:https (IPv4 enforced, rock-solid)
 import https from 'node:https';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '9088363125:AAFQ8Gtfnjl5G04n_aHRUPKbocAlg1QDuLo';
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+if (!BOT_TOKEN) {
+  console.error('XATOLIK: TELEGRAM_BOT_TOKEN muhit o\'zgaruvchisi o\'rnatilmagan!');
+  process.exit(1);
+}
 const APP_URL = process.env.APP_URL || 'https://st.uzbek-talim.uz';
 
 const WELCOME_TEXT = (name) => `Salom, ${name || 'talaba'}! 👋

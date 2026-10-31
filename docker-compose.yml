@@ -1,101 +1,19 @@
-name: sessiyagatayyorlan
-
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_TELEGRAM_BOT: ${VITE_TELEGRAM_BOT:-sessiyagatayyorlanbot}
+        VITE_TELEGRAM_BOT: ${VITE_TELEGRAM_BOT:-}
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
-    container_name: sessiyagatayyorlan_web
+    container_name: tayyorman_web
     restart: unless-stopped
-    expose:
-      - "80"
-    networks:
-      - sessiyagatayyorlan_net
+    ports:
+      - "${PORT:-8080}:80"
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 5s
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: sessiyagatayyorlan_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-sessiyagatayyorlan}
-      POSTGRES_USER: ${POSTGRES_USER:-sessiya_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sessiyasecret2026}
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-      - ./supabase/migrations/0001_init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
-    ports:
-      # Expose only to localhost on the host machine for maintenance/admin
-      - "127.0.0.1:5432:5432"
-    networks:
-      - sessiyagatayyorlan_net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  redis:
-    image: redis:7-alpine
-    container_name: sessiyagatayyorlan_redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--loglevel", "warning"]
-    volumes:
-      - redis_data:/data
-    ports:
-      # Expose only to localhost on the host machine
-      - "127.0.0.1:6379:6379"
-    networks:
-      - sessiyagatayyorlan_net
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-
-  nginx:
-    image: nginx:1.27-alpine
-    container_name: sessiyagatayyorlan_nginx
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-      - "8443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - certbot_conf:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-    depends_on:
-      web:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - sessiyagatayyorlan_net
-
-networks:
-  sessiyagatayyorlan_net:
-    driver: bridge
-
-volumes:
-  pg_data:
-    driver: local
-  redis_data:
-    driver: local
-  certbot_conf:
-    driver: local
-  certbot_www:
-    driver: local
