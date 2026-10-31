@@ -1,11 +1,11 @@
 import { StudySet, UserStats, Language, Subject } from '../types';
 
 const STORAGE_KEYS = {
-  SETS: 'tayyorman_study_sets',
-  SUBJECTS: 'tayyorman_subjects',
-  STATS: 'tayyorman_user_stats',
-  LANG: 'tayyorman_language',
-  THEME: 'tayyorman_theme',
+  SETS: 'sessiyagatayyorlan_study_sets',
+  SUBJECTS: 'sessiyagatayyorlan_subjects',
+  STATS: 'sessiyagatayyorlan_user_stats',
+  LANG: 'sessiyagatayyorlan_language',
+  THEME: 'sessiyagatayyorlan_theme',
 };
 
 // Listeners for reactive updates

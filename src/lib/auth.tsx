@@ -30,7 +30,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-const LANG_KEY = 'tayyorman_language';
+const LANG_KEY = 'sessiyagatayyorlan_language';
 
 function initialLang(): Language {
   const saved = localStorage.getItem(LANG_KEY);
