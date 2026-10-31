@@ -7,6 +7,7 @@ import { toast } from '../components/ui/Toast';
 import { Language } from '../lib/i18n';
 import { ExamFormat, StudySet, Subject } from '../types';
 import { saveSubject, newId, localDateKey } from '../lib/storage';
+import { track } from '../lib/track';
 import { daysUntil, subjectReadiness } from '../lib/prep';
 
 export const FORMAT_LABELS: Record<ExamFormat, { uz: string; ru: string }> = {
@@ -51,6 +52,7 @@ export const SubjectForm: React.FC<SubjectFormProps> = ({ isOpen, onClose, lang,
       ? { ...initial, name: name.trim(), examDate, examFormat }
       : { id: newId('sub'), name: name.trim(), examDate, examFormat, createdAt: now, updatedAt: now, materials: [], questions: [] };
     saveSubject(subject);
+    if (!initial) track('subject_created');
     toast.success(isUz ? 'Saqlandi' : 'Сохранено');
     onSaved(subject);
     onClose();

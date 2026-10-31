@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { pushNow } from '../lib/sync';
 import { useAuth } from '../lib/auth';
 import { haptic, openBotChat } from '../lib/telegram';
+import { track } from '../lib/track';
 import { Subject } from '../types';
 import { getSubjectById, saveSubject, recordStudyActivity } from '../lib/storage';
 import { generateModelAnswer, gradeAnswer, planSubject, questionScore, scoreToGrade } from '../lib/prep';
@@ -77,6 +78,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
       const attempt = await gradeAnswer(subject, question, answer, lang);
       saveQuestion({ attempts: [...question.attempts, attempt] });
       recordStudyActivity();
+      track('first_answer', { oncePerSession: true });
     } catch (e) {
       toast.error(describeGenerationError(e, lang));
     } finally {
@@ -88,6 +90,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   const selfAssess = (score: number) => {
     saveQuestion({ attempts: [...question.attempts, { at: Date.now(), answer: answer.trim(), score, feedback: '', missing: [] }] });
     recordStudyActivity();
+    track('first_answer', { oncePerSession: true });
     haptic.success();
   };
 

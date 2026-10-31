@@ -9,6 +9,7 @@ import { StudySet, Subject, UserStats } from './types';
 import { isMastered } from './lib/srs';
 import { useAuth } from './lib/auth';
 import { startSync } from './lib/sync';
+import { track } from './lib/track';
 import { startTelegram, applyTelegramTheme, useTelegramBackButton, BOT_USERNAME } from './lib/telegram';
 
 // Pages load on demand to keep the first download small on mobile data
@@ -92,6 +93,10 @@ export default function App() {
       }),
     []
   );
+
+  useEffect(() => {
+    if (online) track('app_open', { oncePerSession: true });
+  }, [online]);
 
   // Mirror local data to Supabase while signed in
   useEffect(() => {

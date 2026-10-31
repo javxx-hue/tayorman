@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { toast } from '../components/ui/Toast';
 import { Language } from '../lib/i18n';
 import { Material, StudySet, StudySetType, Subject } from '../types';
+import { track } from '../lib/track';
 import { saveSubject, deleteSubject, saveStudySet, getSubjectById, StorageFullError } from '../lib/storage';
 import { ACCEPTED_FILES, buildMaterialContext, materialFromFile, materialFromYouTube } from '../lib/materials';
 import { generateModelAnswer, planSubject, questionScore, questionsFromText, scoreToGrade, subjectReadiness, daysUntil, PASS_SCORE } from '../lib/prep';
@@ -139,6 +140,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
       return;
     }
     update((s) => ({ ...s, questions: [...s.questions, ...qs] }));
+    track('questions_added');
     setQuestionDraft('');
     toast.success(isUz ? `${qs.length} ta savol qo'shildi` : `Добавлено вопросов: ${qs.length}`);
   };
