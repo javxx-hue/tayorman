@@ -75,6 +75,7 @@ export default function App() {
   const [stats, setStats] = useState<UserStats>(getUserStats());
   const [subjects, setSubjects] = useState<Subject[]>(getSubjects());
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem(ONBOARDED_KEY) === '1');
+  const [forceDemo, setForceDemo] = useState(false);
 
   useEffect(() => {
     initStorage();
@@ -119,7 +120,7 @@ export default function App() {
       </Centered>
     );
   }
-  if (status === 'outside') {
+  if (status === 'outside' && !forceDemo) {
     return (
       <Centered>
         <h1 className="text-2xl font-serif font-bold">Sessiyaga tayyorlan</h1>
@@ -131,6 +132,12 @@ export default function App() {
             @{BOT_USERNAME}
           </a>
         )}
+        <button
+          onClick={() => setForceDemo(true)}
+          className="text-xs text-muted-foreground underline pt-4 cursor-pointer hover:text-foreground"
+        >
+          {tr(lang, "Brauzerda ko'rish (Demo)", 'Открыть в браузере (Демо)')}
+        </button>
       </Centered>
     );
   }

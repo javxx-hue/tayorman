@@ -4,7 +4,17 @@ import { useEffect } from 'react';
 
 type WebApp = {
   initData: string;
-  initDataUnsafe: { start_param?: string; user?: { language_code?: string } };
+  initDataUnsafe: {
+    start_param?: string;
+    user?: {
+      id?: number;
+      first_name?: string;
+      last_name?: string;
+      username?: string;
+      language_code?: string;
+    };
+  };
+  platform?: string;
   colorScheme: 'light' | 'dark';
   ready(): void;
   expand(): void;
@@ -33,9 +43,11 @@ declare global {
 }
 
 export const webApp: WebApp | undefined =
-  typeof window !== 'undefined' && window.Telegram?.WebApp?.initData ? window.Telegram.WebApp : undefined;
+  typeof window !== 'undefined' && window.Telegram?.WebApp ? window.Telegram.WebApp : undefined;
 
-export const isTelegram = !!webApp;
+export const isTelegram =
+  typeof window !== 'undefined' &&
+  !!(window.Telegram?.WebApp && (window.Telegram.WebApp.platform || window.Telegram.WebApp.initData !== undefined));
 export const BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT ?? '';
 
 export function startTelegram(): void {

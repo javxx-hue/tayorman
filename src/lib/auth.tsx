@@ -45,13 +45,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [joinedCommunity, setJoinedCommunity] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isTelegram || !supabase) {
-      // Opened in a normal browser: only the dev build may continue (local data, no server)
-      setStatus(import.meta.env.DEV ? 'ready' : 'outside');
+    const buildFallbackProfile = (): Profile => {
+      const u = webApp?.initDataUnsafe?.user;
+      const userLang = (u?.language_code === 'ru' ? 'ru' : 'uz') as Language;
+      return {
+        id: u?.id ? String(u.id) : 'local-user',
+        telegram_id: u?.id ? Number(u.id) : 0,
+        first_name: u?.first_name || 'Talaba',
+        username: u?.username || null,
+        language: userLang,
+        university: 'samdu',
+        role: 'student',
+        reminders_enabled: true,
+      };
+    };
+
+    if (!isTelegram && !import.meta.env.DEV) {
+      // Opened strictly in a normal external browser (not inside Telegram)
+      setStatus('outside');
       return;
     }
+
+    if (!supabase) {
+      // Running in local-first mode without remote Supabase server
+      const p = buildFallbackProfile();
+      setProfile(p);
+      setLang(p.language);
+      setStatus('ready');
+      return;
+    }
+
+    if (!webApp?.initData) {
+      // Inside Telegram but initData is not provided yet (local preview)
+      const p = buildFallbackProfile();
+      setProfile(p);
+      setLang(p.language);
+      setStatus('ready');
+      return;
+    }
+
     supabase.functions
-      .invoke('telegram-auth', { body: { initData: webApp!.initData } })
+      .invoke('telegram-auth', { body: { initData: webApp.initData } })
       .then(async ({ data, error }) => {
         if (error || !data?.session) throw error ?? new Error('no session');
         await supabase!.auth.setSession(data.session);
@@ -62,8 +96,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setStatus('ready');
       })
       .catch((e) => {
-        console.error('Telegram sign-in failed', e);
-        setStatus('error');
+        console.error('Telegram sign-in failed, fallback to local session', e);
+        const p = buildFallbackProfile();
+        setProfile(p);
+        setLang(p.language);
+        setStatus('ready');
       });
   }, []);
 
