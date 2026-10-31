@@ -20,6 +20,6 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "admin/src", "admin/vite-env.d.ts", "supabase/tests"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
