@@ -8,7 +8,7 @@ Qabul qilingan qarorlar:
 
 ## 1-bosqich: Admin sayti (alohida, faqat adminlar)
 - Alohida Vite kirish nuqtasi `admin/` va alohida Vercel loyihasi (talabalar yuklaydigan faylda admin kodi bo'lmaydi).
-- Kirish: botga `/admin` yozilsa, ID `ADMIN_TELEGRAM_IDS` ichida bo'lsa, 5 daqiqalik bir martalik havola keladi.
+- Kirish: saytda Telegram Login tugmasi; ID `ADMIN_TELEGRAM_IDS` ichida bo'lsa (yoki moderator bo'lsa) kiradi. Bot buyrug'i yo'q.
   - Jadval `admin_login_tokens` (token xeshi, user, muddat, ishlatilgan).
   - Funksiya `admin-login`: tokenni tekshiradi, bir marta ishlatadi, Supabase sessiyasini beradi.
   - Har bir so'rov bazada `is_admin()` bilan yana tekshiriladi (sayt ham, Mini App ham).

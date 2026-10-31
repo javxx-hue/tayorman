@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './lib/auth';
 import { DashboardPage } from './pages/Dashboard';
@@ -11,16 +11,43 @@ const NAV: { to: string; label: string; adminOnly?: boolean }[] = [
   { to: '/audit', label: 'Jurnal', adminOnly: true },
 ];
 
+const BOT = import.meta.env.VITE_TELEGRAM_BOT || 'tayormanbot';
+
+// Telegram's own button; it hands the signed user data to onAuth
+const TelegramButton: React.FC<{ onAuth: (user: Record<string, unknown>) => void }> = ({ onAuth }) => {
+  const box = useRef<HTMLDivElement>(null);
+  const handler = useRef(onAuth);
+  handler.current = onAuth;
+
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    (window as unknown as { onTelegramAuth: (u: Record<string, unknown>) => void }).onTelegramAuth = (u) => handler.current(u);
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://telegram.org/js/telegram-widget.js?22';
+    script.setAttribute('data-telegram-login', BOT);
+    script.setAttribute('data-size', 'large');
+    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    script.setAttribute('data-request-access', 'write');
+    el.appendChild(script);
+    return () => {
+      el.innerHTML = '';
+    };
+  }, []);
+
+  return <div ref={box} className="flex justify-center min-h-[40px]" />;
+};
+
 const SignedOut: React.FC = () => {
-  const { error } = useAuth();
+  const { error, signInWithTelegram } = useAuth();
   return (
     <div className="min-h-screen flex items-center justify-center px-5">
       <div className="max-w-sm w-full rounded-2xl border border-border bg-card p-6 space-y-4 text-center">
         <h1 className="text-2xl font-serif font-bold">Admin</h1>
         {error && <p className="text-sm text-rose-600" role="alert">{error}</p>}
-        <p className="text-sm text-muted-foreground">
-          Kirish uchun Telegram'da botga <b className="text-foreground">/admin</b> deb yozing. Bot 5 daqiqa amal qiladigan, bir martalik havola yuboradi.
-        </p>
+        <p className="text-sm text-muted-foreground">Telegram hisobingiz bilan kiring.</p>
+        <TelegramButton onAuth={signInWithTelegram} />
         <p className="text-xs text-muted-foreground">Parol yo'q. Faqat administratorlar va moderatorlar kira oladi.</p>
       </div>
     </div>

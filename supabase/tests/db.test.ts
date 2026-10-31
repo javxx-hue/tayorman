@@ -74,7 +74,7 @@ describe('migrations', () => {
   it('apply cleanly and create the new tables', async () => {
     const t = await rows(`select table_name from information_schema.tables where table_schema = 'public' order by 1`);
     const names = t.map((r) => r.table_name);
-    for (const n of ['assignments', 'assignment_progress', 'suggestions', 'issue_reports', 'audit_log', 'admin_login_tokens', 'app_settings', 'community_moderators']) {
+    for (const n of ['assignments', 'assignment_progress', 'suggestions', 'issue_reports', 'audit_log', 'app_settings', 'community_moderators']) {
       expect(names).toContain(n);
     }
   });
@@ -269,10 +269,5 @@ describe('audit log', () => {
     expect(JSON.stringify(entries)).not.toContain('secret'); // content (data column) is never copied into the log
     expect(await as(U.s1, () => rows('select 1 from public.audit_log'))).toEqual([]);
     await db.exec(`update public.library_items set published = true where id = '${LIB}'`);
-  });
-
-  it('login tokens are invisible to every API role', async () => {
-    await db.exec(`insert into public.admin_login_tokens (token_hash, user_id, expires_at) values ('h', '${U.admin}', now() + interval '5 min')`);
-    expect(await as(U.admin, () => rows('select 1 from public.admin_login_tokens'))).toEqual([]);
   });
 });

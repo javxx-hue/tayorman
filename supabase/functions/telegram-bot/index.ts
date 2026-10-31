@@ -13,7 +13,6 @@ import { tg, sendMessage, openAppButton, downloadFile } from '../_shared/telegra
 import { planLines } from '../_shared/plan.ts';
 import { kindOf, needsAi, extractText } from '../_shared/extract.ts';
 import { bytesToBase64, callGemini, consumeQuota, QuotaError } from '../_shared/gemini.ts';
-import { createLoginCode } from '../_shared/adminLogin.ts';
 
 class BlockedError extends Error {}
 
@@ -61,13 +60,6 @@ const T = {
     uz: "Hisobingiz cheklangan. Savol bo'lsa, administratorga murojaat qiling.",
     ru: 'Ваш аккаунт ограничен. По вопросам обратитесь к администратору.',
   },
-  notStaff: { uz: 'Bu buyruq faqat administratorlar uchun.', ru: 'Эта команда только для администраторов.' },
-  adminLink: {
-    uz: '🔐 Admin saytiga kirish havolasi. U 5 daqiqa amal qiladi va faqat bir marta ishlaydi. Hech kimga yubormang.',
-    ru: '🔐 Ссылка для входа на админ-сайт. Действует 5 минут и срабатывает один раз. Никому не пересылайте.',
-  },
-  adminOpen: { uz: '🔓 Admin saytini ochish', ru: '🔓 Открыть админ-сайт' },
-  adminNotSet: { uz: 'Admin sayti manzili (ADMIN_URL) sozlanmagan.', ru: 'Адрес админ-сайта (ADMIN_URL) не настроен.' },
   cancelled: { uz: 'Bekor qilindi.', ru: 'Отменено.' },
   added: { uz: (s: string) => `✅ Material «${s}» faniga qo'shildi.`, ru: (s: string) => `✅ Материал добавлен к предмету «${s}».` },
   expired: { uz: 'Bu so\'rov eskirgan. Faylni qayta yuboring.', ru: 'Запрос устарел. Пришлите файл снова.' },
@@ -115,25 +107,6 @@ async function onCommand(chatId: number, text: string, user: TelegramUser) {
       const next: Lang = lang === 'uz' ? 'ru' : 'uz';
       await admin.from('profiles').update({ language: next }).eq('id', profile.id);
       await sendMessage(chatId, t('lang', next));
-      return;
-    }
-    case '/admin': {
-      // Same answer for everyone else, so the command does not reveal who the admins are
-      if (profile.role !== 'admin' && profile.role !== 'moderator') {
-        await sendMessage(chatId, t('notStaff', lang));
-        return;
-      }
-      const base = Deno.env.get('ADMIN_URL');
-      if (!base) {
-        await sendMessage(chatId, t('adminNotSet', lang));
-        return;
-      }
-      const code = await createLoginCode(profile.id);
-      // The code travels in the URL fragment: it is never sent to a server or logged
-      await sendMessage(chatId, t('adminLink', lang), {
-        reply_markup: { inline_keyboard: [[{ text: t('adminOpen', lang), url: `${base.replace(/\/+$/, '')}/#code=${code}` }]] },
-        protect_content: true,
-      });
       return;
     }
     case '/eslatma': {

@@ -1,4 +1,5 @@
 -- 0002: admin web panel, assignments, suggestions, audit, limits, moderators.
+-- (Admin web sign-in uses the Telegram Login Widget, verified by the Edge Function: no tables needed.)
 -- Additive on top of 0001: safe to run once on the live database.
 -- Run in Supabase: SQL Editor -> paste -> Run.
 
@@ -194,18 +195,6 @@ create trigger audit_library after insert or update or delete on public.library_
   for each row execute function public.audit_row();
 create trigger audit_settings after insert or update or delete on public.app_settings
   for each row execute function public.audit_row();
-
--- ---------------------------------------------------------------
--- Admin web login: one-time codes created by the bot
--- ---------------------------------------------------------------
-create table public.admin_login_tokens (
-  token_hash text primary key,
-  user_id uuid not null references auth.users (id) on delete cascade,
-  expires_at timestamptz not null,
-  used_at timestamptz,
-  created_at timestamptz not null default now()
-);
-alter table public.admin_login_tokens enable row level security; -- no policies: Edge Functions only
 
 -- ---------------------------------------------------------------
 -- Assignments (topshiriq): library content + groups + deadline
