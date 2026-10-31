@@ -74,10 +74,12 @@ jobs:
           path: dist
 
       - name: Setup SSH Key
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
+          printf "%s\n" "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 400 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SERVER_HOST || '54.206.159.221' }} >> ~/.ssh/known_hosts
 
       - name: Sync Files to Server
@@ -86,18 +88,18 @@ jobs:
           USER: ${{ secrets.SERVER_USER || 'ubuntu' }}
         run: |
           # Sync production dist
-          rsync -avz --delete -e "ssh -i ~/.ssh/deploy_key" dist/ $USER@$HOST:/home/ubuntu/sessiyagatayyorlan/dist/
+          rsync -avz --delete -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" dist/ $USER@$HOST:/home/ubuntu/sessiyagatayyorlan/dist/
 
           # Sync bot and nginx config
-          scp -i ~/.ssh/deploy_key nginx/spa.conf $USER@$HOST:/home/ubuntu/sessiyagatayyorlan/nginx/spa.conf
-          scp -i ~/.ssh/deploy_key scripts/bot.mjs $USER@$HOST:/home/ubuntu/sessiyagatayyorlan/bot.mjs
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no nginx/spa.conf $USER@$HOST:/home/ubuntu/sessiyagatayyorlan/nginx/spa.conf
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no scripts/bot.mjs $USER@$HOST:/home/ubuntu/sessiyagatayyorlan/bot.mjs
 
       - name: Restart Services & Reload Caddy
         env:
           HOST: ${{ secrets.SERVER_HOST || '54.206.159.221' }}
           USER: ${{ secrets.SERVER_USER || 'ubuntu' }}
         run: |
-          ssh -i ~/.ssh/deploy_key $USER@$HOST "
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "
             cd /home/ubuntu/sessiyagatayyorlan && \
             docker compose restart && \
             docker exec mb-caddy caddy reload --config /etc/caddy/Caddyfile
