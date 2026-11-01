@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
+import { parseLimit } from '../lib/limits';
 import { Btn, Card, Pill, timeAgo } from '../ui';
 
 interface UserRow {
@@ -118,10 +119,11 @@ export const UsersPage: React.FC = () => {
                   <td className="py-2 pr-3 whitespace-nowrap text-xs text-muted-foreground">{timeAgo(u.last_seen_at)}</td>
                   {isAdmin && (
                     <td className="py-2">
-                      {u.role === 'admin' ? (
-                        <span className="text-xs text-muted-foreground">ro'yxat orqali</span>
-                      ) : (
-                        <div className="flex flex-wrap gap-1.5 items-center">
+                      <div className="flex flex-wrap gap-1.5 items-center">
+                        {u.role === 'admin' ? (
+                          <span className="text-xs text-muted-foreground">admin: ro'yxat orqali</span>
+                        ) : (
+                          <>
                           <Btn
                             tone={u.blocked ? 'outline' : 'danger'}
                             disabled={busy === u.id}
@@ -132,16 +134,17 @@ export const UsersPage: React.FC = () => {
                           <Btn disabled={busy === u.id} onClick={() => act(u, { p_role: u.role === 'moderator' ? 'student' : 'moderator' })}>
                             {u.role === 'moderator' ? 'Moderatorlikdan olish' : 'Moderator qilish'}
                           </Btn>
+                          </>
+                        )}
                           <input
                             value={limitDraft[u.id] ?? ''}
                             onChange={(e) => setLimitDraft((s) => ({ ...s, [u.id]: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
                             placeholder="AI limit"
                             className="w-20 px-2 py-1 rounded-lg border border-border bg-background text-xs"
                           />
-                          <Btn disabled={busy === u.id || !limitDraft[u.id]} onClick={() => act(u, { p_ai_limit: Number(limitDraft[u.id]) }).then(() => setLimitDraft((s) => ({ ...s, [u.id]: '' })))}>Saqlash</Btn>
+                          <Btn disabled={busy === u.id || parseLimit(limitDraft[u.id] ?? '') === null} onClick={() => act(u, { p_ai_limit: parseLimit(limitDraft[u.id] ?? '') }).then(() => setLimitDraft((s) => ({ ...s, [u.id]: '' })))}>Saqlash</Btn>
                           {u.ai_daily_limit !== null && <Btn disabled={busy === u.id} onClick={() => act(u, { p_clear_ai_limit: true })}>Limitni olib tashlash</Btn>}
-                        </div>
-                      )}
+                      </div>
                     </td>
                   )}
                 </tr>

@@ -11,6 +11,8 @@ Asosiy qaror: **talaba hech narsa yaratmaydi.** Fan, test va materiallarni faqat
 - **Xabarlar:** hamma yoki guruhlarga, hozir yoki rejalashtirilgan, yetgan va yetmaganlar soni.
 - **Guruhlar:** a'zolar, taklif havolasi, guruh AI limiti, moderatorlar.
 - **Foydalanuvchilar:** qidiruv, bloklash, moderator, shaxsiy AI limit.
+- **Xatolar:** talabalar "savolda xato bor" deb yuborganlar, bir savol bo'yicha jamlangan; "Kutubxonada ochish" bilan to'g'ridan-to'g'ri tahrirlanadi.
+- **Sozlamalar:** umumiy kunlik AI limiti (tartib: shaxsiy, guruh, umumiy; adminlarga ham shaxsiy limit beriladi).
 - **Jurnal:** kim, qachon, nima qilgan.
 
 Moderator faqat o'z guruhlarini ko'radi (a'zolar, havola, topshiriqlar).
@@ -19,6 +21,8 @@ Moderator faqat o'z guruhlarini ko'radi (a'zolar, havola, topshiriqlar).
 - **Bugun, Topshiriq, Fanlar, So'rov, Profil.** Kutubxonadan nashr qilingan narsa talabaga o'zi keladi va yangilanadi (natijalari saqlanadi).
 - **So'rov:** tur tanlab yozadi, 5 tagacha fayl biriktiradi (PDF, Word, PowerPoint, TXT, rasm; 20 MB gacha). Botga yozgan har qanday matn, fayl yoki rasm ham so'rov bo'ladi.
 - Topshiriq bajarilishi talabaning o'z ma'lumotidan hisoblanib serverga yuboriladi.
+- Har ertalab 08:00 da bot reja bilan birga bugun yoki ertaga tugaydigan, hali bajarilmagan topshiriqlarni eslatadi.
+- Test va savolda xato bo'lsa, "Savolda xato bor" tugmasi adminga xabar yuboradi.
 
 ## Qoidalar
 - Rollar: talaba, moderator, admin. `admin` faqat `ADMIN_TELEGRAM_IDS` sirida; panelda berilmaydi.
@@ -26,8 +30,4 @@ Moderator faqat o'z guruhlarini ko'radi (a'zolar, havola, topshiriqlar).
 - Ish `feature/admin-web` branchida; `main` ga faqat Pull Request orqali. Sanjar bilan `src/` va `supabase/` ga tegishdan oldin kelishiladi.
 
 ## Keyingi ishlar
-- Topshiriq muddati yaqinlashganda eslatma.
-- Adminlar uchun alohida AI limit.
-- Umumiy AI limitni saytda o'zgartirish.
-- Savol uchun «Xato haqida xabar» tugmasi (`issue_reports` jadvali tayyor).
 - Sanjar bilan `main` ni birlashtirish (nom, email domeni va qattiq yozilgan ID'lar bo'yicha kelishuv).

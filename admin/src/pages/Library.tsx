@@ -74,6 +74,16 @@ export const LibraryPage: React.FC = () => {
       .finally(() => setBusy(null));
   }, []);
 
+  // /library?edit=<id> (from a report): open that item's editor once the list is here
+  useEffect(() => {
+    const wanted = params.get('edit');
+    if (!wanted || !rows) return;
+    setParams({}, { replace: true });
+    const row = rows.find((r) => r.id === wanted);
+    if (row) edit(row);
+    else setError("Bu material kutubxonada topilmadi (o'chirilgan bo'lishi mumkin).");
+  }, [rows]);
+
   const audienceText = (r: Row) => (r.audience_all ? 'Hamma talabalar' : r.community_ids.length ? r.community_ids.map((id) => groups.find((x) => x.id === id)?.name ?? '?').join(', ') : 'Hech kimga');
 
   const fetchDoc = async (r: Row) => {

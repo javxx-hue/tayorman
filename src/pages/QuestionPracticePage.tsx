@@ -15,6 +15,7 @@ import { generateModelAnswer, gradeAnswer, planSubject, questionScore, scoreToGr
 import { describeGenerationError } from '../lib/ai';
 import { useDictation } from '../lib/useDictation';
 import { readinessColor } from './SubjectsPage';
+import { ReportIssue } from '../components/ReportIssue';
 
 interface QuestionPracticePageProps {
   subjects: Subject[];
@@ -137,6 +138,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
           )}
         </div>
         <h1 className="text-xl sm:text-2xl font-serif font-bold text-foreground leading-snug">{question.text}</h1>
+        <ReportIssue lang={lang} libraryId={subject.libraryId} context={subject.name} questionText={question.text} />
 
         {/* Student answer */}
         <div className="space-y-2">

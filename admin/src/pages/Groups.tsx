@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { BOT, inviteLink } from '../lib/config';
+import { parseLimit } from '../lib/limits';
 import { Btn, Card, Pill, timeAgo } from '../ui';
 
 type Kind = 'university' | 'faculty' | 'course' | 'group' | 'other';
@@ -257,7 +258,7 @@ export const GroupDetailPage: React.FC = () => {
     });
   };
 
-  const limitNumber = /^\d{1,4}$/.test(limitDraft) ? Number(limitDraft) : null;
+  const limitNumber = parseLimit(limitDraft);
 
   return (
     <div className="space-y-4">
