@@ -19,20 +19,21 @@ interface Props {
   initial?: StudySet;
   initialAudience?: Audience;
   initialDraft?: boolean;
+  presetFiles?: File[]; // source files that came with a student's request
   groups: { id: string; name: string }[];
   onClose: () => void;
   onSaved: () => void;
 }
 
 // New test from files (AI) or from pasted Word/Hemis text; or edit one that exists. Then choose who gets it.
-export const SetBuilder: React.FC<Props> = ({ initial, initialAudience, initialDraft, groups, onClose, onSaved }) => {
+export const SetBuilder: React.FC<Props> = ({ initial, initialAudience, initialDraft, presetFiles, groups, onClose, onSaved }) => {
   const [doc, setDoc] = useState<StudySet | null>(initial ?? null);
   const [source, setSource] = useState<'file' | 'text'>('file');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [type, setType] = useState<'quiz' | 'exam' | 'flashcards'>('quiz');
   const [count, setCount] = useState(15);
   const [lang, setLang] = useState<'uz' | 'ru'>('uz');
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>(presetFiles ?? []);
   const [pasted, setPasted] = useState('');
   const [audience, setAudience] = useState<Audience>(initialAudience ?? { all: false, groups: [] });
   const [draft, setDraft] = useState(initialDraft ?? false);
@@ -161,6 +162,7 @@ export const SetBuilder: React.FC<Props> = ({ initial, initialAudience, initialD
             {source === 'file' ? (
               <div className="space-y-2">
                 <input type="file" multiple accept={ACCEPTED_FILES} onChange={(e) => setFiles(Array.from(e.target.files ?? []))} className="text-sm" />
+                {files.length > 0 && <p className="text-xs">Tanlangan: {files.map((f) => f.name).join(', ')}</p>}
                 <p className="text-xs text-muted-foreground">PDF, PowerPoint, Word, TXT yoki konspekt rasmi. PDF va rasmni o'qish ham AI limitidan sarflaydi.</p>
                 <Btn tone="primary" disabled={!!busy || !files.length} onClick={fromFiles}>AI bilan tuzish</Btn>
               </div>

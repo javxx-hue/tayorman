@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ExamFormat, Material, Subject } from '../../../../src/types';
 import { newId } from '../../../../src/lib/storage';
 import { describeGenerationError } from '../../../../src/lib/ai';
@@ -16,13 +16,14 @@ interface Props {
   initial?: Subject;
   initialAudience?: Audience;
   initialDraft?: boolean;
+  presetFiles?: File[]; // source files that came with a student's request
   groups: { id: string; name: string }[];
   onClose: () => void;
   onSaved: () => void;
 }
 
 // A subject: name, exam date, the teacher's list of exam questions and the lecture files the AI grades against
-export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, initialDraft, groups, onClose, onSaved }) => {
+export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, initialDraft, presetFiles, groups, onClose, onSaved }) => {
   const [name, setName] = useState(initial?.name ?? '');
   const [examDate, setExamDate] = useState(initial?.examDate ?? '');
   const [format, setFormat] = useState<ExamFormat>(initial?.examFormat ?? 'oral');
@@ -33,12 +34,12 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const addFiles = async (list: FileList | null) => {
-    if (!list?.length) return;
+  const addFiles = async (list: File[]) => {
+    if (!list.length) return;
     setError(null);
     setBusy('Fayllar o\'qilmoqda...');
     const added: Material[] = [];
-    for (const f of Array.from(list)) {
+    for (const f of list) {
       try {
         added.push(await materialFromFile(f));
       } catch (e) {
@@ -48,6 +49,11 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
     setMaterials((m) => [...m, ...added]);
     setBusy(null);
   };
+
+  // Files that came with a request are read once, when the form opens
+  useEffect(() => {
+    if (presetFiles?.length) addFiles(presetFiles);
+  }, []);
 
   const save = async () => {
     setError(null);
@@ -107,7 +113,7 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
 
       <Card title={`Ma'ruza materiallari (${materials.length})`}>
         <div className="space-y-2">
-          <input type="file" multiple accept={ACCEPTED_FILES} onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} className="text-sm" />
+          <input type="file" multiple accept={ACCEPTED_FILES} onChange={(e) => { addFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }} className="text-sm" />
           <p className="text-xs text-muted-foreground">AI talabaning javobini shu materiallarga qarab baholaydi. PDF, PowerPoint, Word, TXT yoki rasm.</p>
           {materials.map((m) => (
             <div key={m.id} className="flex items-center justify-between gap-2 text-sm rounded-lg border border-border px-3 py-1.5">

@@ -1,7 +1,8 @@
 // Student requests to the admins ("Taklif qutisi"). Used by the Mini App (request-admin)
 // and by the bot, so both save and announce a request the same way.
 import { admin } from './admin.ts';
-import { sendMessage, tg } from './telegram.ts';
+import { sendMessage } from './telegram.ts';
+import type { Attachment } from './attachments.ts';
 import { parseAdminIds } from './roles.ts';
 
 export const REQUEST_KINDS = ['new_subject', 'questions', 'bug', 'other'] as const;
@@ -23,10 +24,10 @@ export async function submitRequest(
   userId: string,
   kind: RequestKind,
   text: string,
-  fromChat?: { chatId: number; messageId: number } // original message, copied to admins (files, photos)
+  attachments: Attachment[] = []
 ): Promise<number> {
   const clean = text.trim().slice(0, 4000);
-  const { data, error } = await admin.from('suggestions').insert({ user_id: userId, kind, text: clean }).select('id').single();
+  const { data, error } = await admin.from('suggestions').insert({ user_id: userId, kind, text: clean, attachments }).select('id').single();
   if (error) {
     // The daily-limit trigger raises "limit"; anything else is a real failure
     if (/limit/i.test(error.message)) throw new TooManyRequests();
@@ -35,10 +36,8 @@ export async function submitRequest(
 
   const { data: who } = await admin.from('profiles').select('first_name, username').eq('id', userId).maybeSingle();
   const name = [who?.first_name, who?.username ? `@${who.username}` : null].filter(Boolean).join(' ') || 'Talaba';
-  const note = `📩 ${KIND_LABEL[kind]} · ${name}\n\n${clean.slice(0, 600)}\n\nJavob berish: admin sayti → So'rovlar`;
-  for (const id of adminChatIds()) {
-    await sendMessage(id, note);
-    if (fromChat) await tg('copyMessage', { chat_id: id, from_chat_id: fromChat.chatId, message_id: fromChat.messageId });
-  }
+  const files = attachments.length ? `\n📎 Fayllar: ${attachments.length} ta (admin saytida ochiladi)` : '';
+  const note = `📩 ${KIND_LABEL[kind]} · ${name}\n\n${clean.slice(0, 600)}${files}\n\nJavob berish: admin sayti → So'rovlar`;
+  for (const id of adminChatIds()) await sendMessage(id, note);
   return data.id as number;
 }

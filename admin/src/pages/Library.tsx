@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { StudySet, Subject } from '../../../src/types';
 import { publishToLibrary, unpublish } from '../../../src/lib/library';
 import { supabase } from '../lib/supabase';
@@ -23,7 +24,7 @@ interface Group {
   id: string;
   name: string;
 }
-type View = { mode: 'list' } | { mode: 'set' | 'subject'; doc?: StudySet | Subject; audience?: Audience; draft?: boolean };
+type View = { mode: 'list' } | { mode: 'set' | 'subject'; doc?: StudySet | Subject; audience?: Audience; draft?: boolean; presetFiles?: File[] };
 
 const SET_TYPE: Record<string, string> = { quiz: 'Test', exam: 'Imtihon', flashcards: 'Kartalar', notes: 'Konspekt' };
 
@@ -34,6 +35,7 @@ export const LibraryPage: React.FC = () => {
   const [view, setView] = useState<View>({ mode: 'list' });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
 
   const load = useCallback(async () => {
     const [items, g] = await Promise.all([
@@ -49,6 +51,28 @@ export const LibraryPage: React.FC = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  // "Shu fayllardan test tuzish" on a request: fetch its files and open the builder with them
+  useEffect(() => {
+    const from = Number(params.get('from'));
+    const as = params.get('as');
+    if (!from || (as !== 'set' && as !== 'subject')) return;
+    setParams({}, { replace: true });
+    setBusy('request');
+    (async () => {
+      const { data } = await supabase.from('suggestions').select('attachments').eq('id', from).maybeSingle();
+      const list = (data?.attachments ?? []) as { path: string; name: string; mime: string }[];
+      const files: File[] = [];
+      for (const a of list) {
+        const { data: blob } = await supabase.storage.from('request-files').download(a.path);
+        if (blob) files.push(new File([blob], a.name, { type: a.mime }));
+      }
+      if (!files.length) throw new Error('no files');
+      setView({ mode: as, presetFiles: files });
+    })()
+      .catch(() => setError("So'rovdagi fayllarni olib bo'lmadi."))
+      .finally(() => setBusy(null));
+  }, []);
 
   const audienceText = (r: Row) => (r.audience_all ? 'Hamma talabalar' : r.community_ids.length ? r.community_ids.map((id) => groups.find((x) => x.id === id)?.name ?? '?').join(', ') : 'Hech kimga');
 
@@ -99,14 +123,15 @@ export const LibraryPage: React.FC = () => {
   };
 
   if (view.mode === 'set') {
-    return <SetBuilder initial={view.doc as StudySet | undefined} initialAudience={view.audience} initialDraft={view.draft} groups={groups} onClose={() => setView({ mode: 'list' })} onSaved={done} />;
+    return <SetBuilder initial={view.doc as StudySet | undefined} initialAudience={view.audience} initialDraft={view.draft} presetFiles={view.presetFiles} groups={groups} onClose={() => setView({ mode: 'list' })} onSaved={done} />;
   }
   if (view.mode === 'subject') {
-    return <SubjectBuilder initial={view.doc as Subject | undefined} initialAudience={view.audience} initialDraft={view.draft} groups={groups} onClose={() => setView({ mode: 'list' })} onSaved={done} />;
+    return <SubjectBuilder initial={view.doc as Subject | undefined} initialAudience={view.audience} initialDraft={view.draft} presetFiles={view.presetFiles} groups={groups} onClose={() => setView({ mode: 'list' })} onSaved={done} />;
   }
 
   return (
     <div className="space-y-4">
+      {busy === 'request' && <p className="text-sm text-muted-foreground" role="status">So'rovdagi fayllar yuklanmoqda...</p>}
       <Card title="Yangi">
         <div className="flex flex-wrap gap-2">
           <Btn tone="primary" onClick={() => setView({ mode: 'set' })}>+ Test / kartalar</Btn>

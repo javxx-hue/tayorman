@@ -1,4 +1,4 @@
-// Runs both migrations on a real Postgres (PGlite, in WebAssembly) with Supabase-like
+// Runs the migrations on a real Postgres (PGlite, in WebAssembly) with Supabase-like
 // roles and checks who may see and do what (row level security).
 import { describe, it, expect, beforeAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
@@ -20,6 +20,18 @@ const SUPABASE_STUBS = `
   create function extensions.gen_random_bytes(n int) returns bytea language sql
     as $$ select decode(substr(md5(random()::text || clock_timestamp()::text) || md5(random()::text), 1, n * 2), 'hex') $$;
   grant usage on schema public, auth, extensions to anon, authenticated, service_role;
+  create schema storage;
+  create table storage.buckets (id text primary key, name text, public boolean default false, file_size_limit bigint, allowed_mime_types text[]);
+  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text, owner uuid);
+  alter table storage.objects enable row level security;
+  create function storage.foldername(name text) returns text[] language plpgsql as $$
+    declare parts text[];
+    begin
+      parts := string_to_array(name, '/');
+      return parts[1:array_length(parts, 1) - 1];
+    end $$;
+  grant usage on schema storage to anon, authenticated, service_role;
+  grant select, insert, update, delete on storage.objects to authenticated, anon, service_role;
   alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
   alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `;
@@ -54,6 +66,7 @@ beforeAll(async () => {
   await db.exec(sql('0001_init.sql'));
   await db.exec(sql('0002_admin.sql'));
   await db.exec(sql('0003_admin_login.sql'));
+  await db.exec(sql('0004_request_files.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');
@@ -95,6 +108,50 @@ describe('admin site sign-in table', () => {
   it('accepts only SHA-256 hex hashes and one row per nonce', async () => {
     await expect(db.exec(`insert into public.admin_login_requests (nonce_hash, user_id) values ('plain-nonce', '${U.admin}')`)).rejects.toThrow();
     await expect(db.exec(`insert into public.admin_login_requests (nonce_hash, user_id) values ('${HASH}', '${U.admin}')`)).rejects.toThrow(/duplicate|unique/i);
+  });
+});
+
+describe('request files', () => {
+  const put = (uid: string, path: string) =>
+    as(uid, () => db.exec(`insert into storage.objects (bucket_id, name, owner) values ('request-files', '${path}', '${uid}')`));
+  const visible = (uid: string) => as(uid, async () => (await rows(`select name from storage.objects where bucket_id = 'request-files' order by name`)).map((r) => r.name));
+
+  it('the bucket is private and limited to documents and images up to 20 MB', async () => {
+    const [b] = await rows(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'request-files'`);
+    expect(b.public).toBe(false);
+    expect(Number(b.file_size_limit)).toBe(20 * 1024 * 1024);
+    expect(b.allowed_mime_types).toContain('application/pdf');
+    expect(b.allowed_mime_types).not.toContain('text/html'); // nothing a browser would run
+  });
+
+  it('a student can upload only into their own folder', async () => {
+    await put(U.s1, `${U.s1}/lecture.pdf`);
+    await expect(put(U.s1, `${U.s2}/sneaky.pdf`)).rejects.toThrow(/row-level security/i);
+    await expect(put(U.s1, 'lecture.pdf')).rejects.toThrow(/row-level security/i); // no folder at all
+    await expect(as(null, () => db.exec(`insert into storage.objects (bucket_id, name) values ('request-files', '${U.s1}/anon.pdf')`))).rejects.toThrow(/row-level security|permission denied/i);
+  });
+
+  it('students see only their own files; admins see all; moderators see none', async () => {
+    await put(U.s2, `${U.s2}/notes.docx`);
+    expect(await visible(U.s1)).toEqual([`${U.s1}/lecture.pdf`]);
+    expect(await visible(U.s2)).toEqual([`${U.s2}/notes.docx`]);
+    expect((await visible(U.admin)).length).toBe(2);
+    expect(await visible(U.mod)).toEqual([]);
+  });
+
+  it('only admins delete files', async () => {
+    await as(U.s1, () => db.exec(`delete from storage.objects where name = '${U.s1}/lecture.pdf'`));
+    expect((await visible(U.admin)).length).toBe(2); // the student's delete touched nothing
+    await as(U.admin, () => db.exec(`delete from storage.objects where name = '${U.s1}/lecture.pdf'`));
+    expect((await visible(U.admin)).length).toBe(1);
+  });
+
+  it('a request keeps at most 5 attachments, as a list', async () => {
+    const list = (n: number) => JSON.stringify(Array.from({ length: n }, (_, i) => ({ path: `${U.s1}/f${i}.pdf`, name: `f${i}.pdf`, size: 1, mime: 'application/pdf' })));
+    await as(U.s1, () => db.exec(`insert into public.suggestions (kind, text, attachments) values ('questions', 'with files', '${list(5)}')`));
+    await expect(as(U.s1, () => db.exec(`insert into public.suggestions (kind, text, attachments) values ('questions', 'too many', '${list(6)}')`))).rejects.toThrow(/check/i);
+    await expect(as(U.s1, () => db.exec(`insert into public.suggestions (kind, text, attachments) values ('questions', 'not a list', '{"a":1}')`))).rejects.toThrow(/check/i);
+    await db.exec("delete from public.suggestions where text = 'with files'"); // leave the table as other tests expect it
   });
 });
 

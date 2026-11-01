@@ -1,8 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Btn, Card, Pill, formatTime } from '../ui';
 
 type Status = 'new' | 'seen' | 'accepted' | 'declined';
+interface Attachment {
+  path: string;
+  name: string;
+  size: number;
+  mime: string;
+}
 interface Row {
   id: number;
   user_id: string;
@@ -10,6 +17,7 @@ interface Row {
   text: string;
   status: Status;
   admin_reply: string | null;
+  attachments: Attachment[];
   created_at: string;
 }
 interface Who {
@@ -39,6 +47,7 @@ const FILTERS: { key: Status | 'all'; label: string }[] = [
 
 // Student requests ("Taklif qutisi"). The answer is saved and sent to the student in the bot.
 export const RequestsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<Status | 'all'>('new');
   const [rows, setRows] = useState<Row[] | null>(null);
   const [who, setWho] = useState<Record<string, Who>>({});
@@ -48,7 +57,7 @@ export const RequestsPage: React.FC = () => {
 
   const load = useCallback(async () => {
     setError(null);
-    let q = supabase.from('suggestions').select('id, user_id, kind, text, status, admin_reply, created_at').order('created_at', { ascending: false }).limit(100);
+    let q = supabase.from('suggestions').select('id, user_id, kind, text, status, admin_reply, attachments, created_at').order('created_at', { ascending: false }).limit(100);
     if (filter !== 'all') q = q.eq('status', filter);
     const { data, error: err } = await q;
     if (err) return setError("So'rovlarni yuklab bo'lmadi.");
@@ -65,6 +74,13 @@ export const RequestsPage: React.FC = () => {
     setRows(null);
     load();
   }, [load]);
+
+  // The bucket is private: a short-lived link is made for each opening
+  const openFile = async (file: Attachment) => {
+    const { data, error: err } = await supabase.storage.from('request-files').createSignedUrl(file.path, 300);
+    if (err || !data) return setError("Faylni ochib bo'lmadi.");
+    window.open(data.signedUrl, '_blank', 'noopener');
+  };
 
   const act = async (row: Row, status: Status, withReply: boolean) => {
     const reply = withReply ? (replies[row.id] ?? '').trim() : '';
@@ -111,6 +127,21 @@ export const RequestsPage: React.FC = () => {
                 </div>
               </div>
               <p className="text-sm text-foreground whitespace-pre-wrap">{r.text}</p>
+              {r.attachments.length > 0 && (
+                <div className="mt-2 space-y-1.5">
+                  {r.attachments.map((f) => (
+                    <div key={f.path} className="flex items-center justify-between gap-2 text-xs rounded-lg border border-border px-3 py-1.5">
+                      <span className="truncate">📎 {f.name}</span>
+                      <span className="text-muted-foreground shrink-0">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                      <Btn onClick={() => openFile(f)}>Ochish</Btn>
+                    </div>
+                  ))}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Btn tone="primary" onClick={() => navigate(`/library?from=${r.id}&as=set`)}>Shu fayllardan test tuzish</Btn>
+                    <Btn onClick={() => navigate(`/library?from=${r.id}&as=subject`)}>Shu fayllardan fan yaratish</Btn>
+                  </div>
+                </div>
+              )}
               {r.admin_reply && <p className="mt-2 text-sm rounded-xl bg-primary/5 border border-primary/20 p-2.5 whitespace-pre-wrap"><b>Javobingiz: </b>{r.admin_reply}</p>}
 
               <textarea

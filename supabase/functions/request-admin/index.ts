@@ -3,6 +3,7 @@
 // Secrets: TELEGRAM_BOT_TOKEN, ADMIN_TELEGRAM_IDS
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { admin, requireUser } from '../_shared/admin.ts';
+import { parseAttachments } from '../_shared/attachments.ts';
 import { REQUEST_KINDS, submitRequest, TooManyRequests, type RequestKind } from '../_shared/requests.ts';
 
 Deno.serve(async (req) => {
@@ -17,10 +18,11 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => null);
   const kind = body?.kind as RequestKind;
   const text = typeof body?.text === 'string' ? body.text.trim() : '';
-  if (!REQUEST_KINDS.includes(kind) || text.length < 3) return json(req, { error: 'Bad request' }, 400);
+  const attachments = parseAttachments(body?.attachments, user.id);
+  if (!REQUEST_KINDS.includes(kind) || text.length < 3 || !attachments) return json(req, { error: 'Bad request' }, 400);
 
   try {
-    const id = await submitRequest(user.id, kind, text);
+    const id = await submitRequest(user.id, kind, text, attachments);
     return json(req, { id });
   } catch (e) {
     if (e instanceof TooManyRequests) return json(req, { error: 'Too many requests today' }, 429);

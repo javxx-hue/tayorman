@@ -12,6 +12,7 @@ import { admin } from '../_shared/admin.ts';
 import { ensureUser, joinCommunity, type TelegramUser } from '../_shared/users.ts';
 import { tg, sendMessage, openAppButton, downloadFile } from '../_shared/telegram.ts';
 import { submitRequest, TooManyRequests } from '../_shared/requests.ts';
+import { attachmentPath, MAX_FILE_BYTES, mimeForName, type Attachment } from '../_shared/attachments.ts';
 import { nonceCode, nonceFromStart, nonceHash } from '../_shared/loginNonce.ts';
 import { planLines } from '../_shared/plan.ts';
 import { bytesToBase64, callGemini, consumeQuota, QuotaError } from '../_shared/gemini.ts';
@@ -48,15 +49,15 @@ const T = {
   },
   limit: { uz: 'Bugungi AI limiti tugadi. Ertaga yana urinib ko\'ring.', ru: 'Дневной лимит ИИ исчерпан. Попробуйте завтра.' },
   failed: { uz: 'Xatolik yuz berdi, keyinroq urinib ko\'ring.', ru: 'Произошла ошибка, попробуйте позже.' },
-  noSubjects: {
-    uz: 'Avval ilovada fan yarating, keyin faylni qayta yuboring.',
-    ru: 'Сначала создайте предмет в приложении, затем пришлите файл снова.',
-  },
   blocked: {
     uz: "Hisobingiz cheklangan. Savol bo'lsa, administratorga murojaat qiling.",
     ru: 'Ваш аккаунт ограничен. По вопросам обратитесь к администратору.',
   },
-  expired: { uz: 'Bu so\'rov eskirgan. Faylni qayta yuboring.', ru: 'Запрос устарел. Пришлите файл снова.' },
+  expired: { uz: 'Bu so\'rov eskirgan. Ilovada savolni qayta oching.', ru: 'Запрос устарел. Откройте вопрос в приложении заново.' },
+  sent: { uz: "✅ So'rovingiz adminga yuborildi. Javob shu chatga keladi.", ru: '✅ Запрос отправлен администратору. Ответ придёт в этот чат.' },
+  tooMany: { uz: "Bugun juda ko'p so'rov yubordingiz. Ertaga yana yozing.", ru: 'Сегодня слишком много запросов. Напишите завтра.' },
+  badFile: { uz: "Bu fayl turini qabul qila olmayman. PDF, Word, PowerPoint, TXT yoki rasm yuboring.", ru: 'Не могу принять этот тип файла. Пришлите PDF, Word, PowerPoint, TXT или фото.' },
+  tooBig: { uz: 'Fayl 20 MB dan katta. Kichikroq fayl yuboring.', ru: 'Файл больше 20 МБ. Пришлите файл поменьше.' },
   noVoiceTask: {
     uz: 'Ovozli javob uchun ilovada savolni ochib, «Ovoz bilan javob berish» tugmasini bosing.',
     ru: 'Чтобы ответить голосом, откройте вопрос в приложении и нажмите «Ответить голосом».',
@@ -130,15 +131,51 @@ async function onCommand(chatId: number, text: string, user: TelegramUser) {
 }
 
 // ---------------------------------------------------------------- requests
+type Incoming = {
+  message_id: number;
+  text?: string;
+  caption?: string;
+  document?: { file_id: string; file_name?: string; mime_type?: string; file_size?: number };
+  photo?: { file_id: string; file_size?: number }[];
+};
+
+// A file or photo from the chat is kept in the private bucket, so the admin can open it on the site
+async function storeFile(userId: string, m: Incoming): Promise<Attachment | 'bad' | 'big' | 'failed'> {
+  const best = m.photo?.[m.photo.length - 1]; // the largest size
+  const fileId = m.document?.file_id ?? best?.file_id;
+  if (!fileId) return 'failed';
+  const name = m.document?.file_name ?? `photo-${m.message_id}.jpg`;
+  const mime = m.document ? mimeForName(name) : 'image/jpeg';
+  if (!mime) return 'bad';
+  const size = m.document?.file_size ?? best?.file_size ?? 0;
+  if (size > MAX_FILE_BYTES) return 'big';
+
+  const bytes = await downloadFile(fileId);
+  if (!bytes) return 'failed';
+  const path = attachmentPath(userId, name);
+  const { error } = await admin.storage.from('request-files').upload(path, bytes, { contentType: mime });
+  return error ? 'failed' : { path, name, size: bytes.length, mime };
+}
+
 // Students cannot add content; whatever they send becomes a request for the admins
-async function onRequest(chatId: number, user: TelegramUser, m: { message_id: number; text?: string; caption?: string; document?: { file_name?: string }; photo?: unknown[] }) {
+async function onRequest(chatId: number, user: TelegramUser, m: Incoming) {
   const profile = await profileOf(user);
   const lang = profile.language;
-  const label = m.document ? `📎 Fayl: ${m.document.file_name ?? 'file'}` : m.photo ? '🖼 Rasm' : '';
+  const hasFile = !!(m.document || m.photo?.length);
+  const label = m.document ? `📎 Fayl: ${m.document.file_name ?? 'file'}` : m.photo?.length ? '🖼 Rasm' : '';
   const text = [label, m.text ?? m.caption ?? ''].filter(Boolean).join(' — ');
   if (text.trim().length < 3) return void (await sendMessage(chatId, t('help', lang), appKeyboard(lang)));
+
   try {
-    await submitRequest(profile.id, m.document || m.photo ? 'questions' : 'other', text, m.document || m.photo ? { chatId, messageId: m.message_id } : undefined);
+    const attachments: Attachment[] = [];
+    if (hasFile) {
+      const stored = await storeFile(profile.id, m);
+      if (stored === 'bad') return void (await sendMessage(chatId, t('badFile', lang)));
+      if (stored === 'big') return void (await sendMessage(chatId, t('tooBig', lang)));
+      if (stored === 'failed') return void (await sendMessage(chatId, t('failed', lang)));
+      attachments.push(stored);
+    }
+    await submitRequest(profile.id, hasFile ? 'questions' : 'other', text, attachments);
     await sendMessage(chatId, t('sent', lang));
   } catch (e) {
     if (e instanceof TooManyRequests) return void (await sendMessage(chatId, t('tooMany', lang)));
