@@ -101,20 +101,29 @@ export default function App() {
   }, [online]);
 
   // Mirror local data to Supabase while signed in
+  // Content is delivered only after the first sync has finished, or an old cloud copy of something
+  // the admin has since taken back could come down again. Not waiting forever if the network is slow.
+  const [synced, setSynced] = useState(false);
   useEffect(() => {
     if (!online) return;
-    return startSync((s) => {
+    const fallback = setTimeout(() => setSynced(true), 8000);
+    const stop = startSync((s) => {
       if (s === 'error') console.warn('Cloud sync failed; data is still saved on this device.');
+      if (s === 'synced' || s === 'error') setSynced(true);
     });
+    return () => {
+      clearTimeout(fallback);
+      stop();
+    };
   }, [online, profile?.id]);
 
   // Students create nothing: whatever the admin published for them arrives (and updates) by itself
   useEffect(() => {
-    if (!online || profile?.role !== 'student') return;
+    if (!online || !synced || profile?.role !== 'student') return;
     deliverLibrary().catch((e) => console.warn('Library delivery failed', e));
-  }, [online, profile?.id, profile?.role]);
+  }, [online, synced, profile?.id, profile?.role]);
 
-  const isStudent = online && profile?.role === 'student';
+  const isStudent = online && synced && profile?.role === 'student';
   const { assignments, server: assignmentProgress } = useAssignments(isStudent, subjects, studySets);
   // Tab badge: assignments not finished yet
   const openAssignments = (assignments ?? []).filter((a) => {

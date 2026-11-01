@@ -122,6 +122,19 @@ export function saveSubject(subject: Subject, opts: { fromSync?: boolean } = {})
   notifyListeners();
 }
 
+// Removed from the device and, through the sync hook, from the cloud copy too
+export function deleteStudySet(id: string): void {
+  writeJson(STORAGE_KEYS.SETS, getStudySets().filter((s) => s.id !== id));
+  changeHooks.forEach((fn) => fn({ kind: 'set', op: 'delete', id }));
+  notifyListeners();
+}
+
+export function deleteSubject(id: string): void {
+  writeJson(STORAGE_KEYS.SUBJECTS, getSubjects().filter((s) => s.id !== id));
+  changeHooks.forEach((fn) => fn({ kind: 'subject', op: 'delete', id }));
+  notifyListeners();
+}
+
 export function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }

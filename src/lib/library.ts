@@ -4,7 +4,7 @@
 import { StudySet, Subject } from '../types';
 import { supabase } from './supabase';
 import { track } from './track';
-import { getStudySets, getSubjects, saveStudySet, saveSubject, newId } from './storage';
+import { deleteStudySet, deleteSubject, getStudySets, getSubjects, saveStudySet, saveSubject, newId } from './storage';
 
 export interface LibraryItem {
   id: string;
@@ -18,8 +18,9 @@ export interface LibraryItem {
   updated_at: string;
 }
 
+// Throws when it cannot ask: an empty answer must mean "nothing is published for you", never "no connection"
 async function fetchLibrary(): Promise<LibraryItem[]> {
-  if (!supabase) return [];
+  if (!supabase) throw new Error('offline');
   const { data, error } = await supabase.from('library_items').select('*').order('updated_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as LibraryItem[];
@@ -115,7 +116,15 @@ export function deliver(item: LibraryItem, subjects: Subject[], sets: StudySet[]
   return own ? 'updated' : 'new';
 }
 
-// Fetches everything published for this student and delivers it. Returns how many changed.
+// Copies on this device whose library item is no longer there for this student (deleted, hidden,
+// or the student left the group): the admin took it back, so it goes from the app too.
+export function withdrawn(visibleIds: Set<string>, subjects: Subject[], sets: StudySet[]): { subjects: string[]; sets: string[] } {
+  const gone = (x: { libraryId?: string }) => !!x.libraryId && !visibleIds.has(x.libraryId);
+  return { subjects: subjects.filter(gone).map((s) => s.id), sets: sets.filter(gone).map((s) => s.id) };
+}
+
+// Fetches everything published for this student, delivers it and takes back what was withdrawn.
+// Returns how many copies changed.
 export async function deliverLibrary(): Promise<number> {
   const items = (await fetchLibrary()).filter((i) => i.published);
   let changed = 0;
@@ -126,5 +135,9 @@ export async function deliverLibrary(): Promise<number> {
     if (result === 'new') arrived++;
   }
   if (arrived) track('got_content', { oncePerSession: true });
-  return changed;
+
+  const gone = withdrawn(new Set(items.map((i) => i.id)), getSubjects(), getStudySets());
+  gone.subjects.forEach(deleteSubject);
+  gone.sets.forEach(deleteStudySet);
+  return changed + gone.subjects.length + gone.sets.length;
 }

@@ -113,7 +113,7 @@ export const LibraryPage: React.FC = () => {
     });
 
   const remove = (r: Row) => {
-    if (!window.confirm(`«${r.title}» o'chirilsinmi? U bilan bog'liq topshiriqlar ham o'chadi. Talabalar o'z natijalarini saqlab qoladi.`)) return;
+    if (!window.confirm(`«${r.title}» o'chirilsinmi? U bilan bog'liq topshiriqlar ham o'chadi va talabalarning ilovasidan ham olib tashlanadi (ularning shu materialdagi natijalari bilan).`)) return;
     act(r, () => unpublish(r.id));
   };
 

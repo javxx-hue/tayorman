@@ -8,10 +8,12 @@ vi.mock('./storage', () => ({
   getStudySets: () => saved.sets,
   saveSubject: (s: Subject) => saved.subjects.push(s),
   saveStudySet: (s: StudySet) => saved.sets.push(s),
+  deleteSubject: () => {},
+  deleteStudySet: () => {},
   newId: (p: string) => `${p}-new`,
 }));
 
-import { deliver, type LibraryItem } from './library';
+import { deliver, withdrawn, type LibraryItem } from './library';
 
 const subjectItem = (updated_at: string, questions: Subject['questions']): LibraryItem => ({
   id: 'lib-1',
@@ -71,5 +73,23 @@ describe('library delivery to students', () => {
     expect(updated.id).toBe(own.id);
     expect(updated.lastScore).toBe(90);
     expect((updated.flashcards?.[0] as unknown as { srs: unknown }).srs).toEqual({ due: 9 });
+  });
+});
+
+describe('items the admin took back', () => {
+  const own = (id: string, libraryId?: string) => ({ id, libraryId }) as Subject & StudySet;
+
+  it('removes only copies whose library item is no longer visible', () => {
+    const visible = new Set(['lib-keep']);
+    const result = withdrawn(visible, [own('s-keep', 'lib-keep'), own('s-gone', 'lib-deleted')], [own('t-gone', 'lib-hidden'), own('t-keep', 'lib-keep')]);
+    expect(result).toEqual({ subjects: ['s-gone'], sets: ['t-gone'] });
+  });
+
+  it('never touches something that did not come from the library', () => {
+    expect(withdrawn(new Set(), [own('mine')], [own('mine-too')])).toEqual({ subjects: [], sets: [] });
+  });
+
+  it('removes everything delivered when nothing is visible any more (e.g. left the group)', () => {
+    expect(withdrawn(new Set(), [own('a', 'x')], [own('b', 'y')])).toEqual({ subjects: ['a'], sets: ['b'] });
   });
 });
