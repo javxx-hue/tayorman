@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { covers, expand, tashkentToIso } from '../lib/audience';
+import { AudiencePicker } from '../components/AudiencePicker';
 import { Btn, Card, Pill, formatTime } from '../ui';
 
 interface Item {
@@ -172,8 +173,6 @@ export const AssignmentsPage: React.FC = () => {
     load();
   };
 
-  const toggleGroup = (id: string) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-
   return (
     <div className="space-y-4">
       <Card title="Yangi topshiriq">
@@ -192,29 +191,7 @@ export const AssignmentsPage: React.FC = () => {
           <input value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} placeholder="Topshiriq nomi" className={`${inputClass} w-full`} />
           <textarea value={note} maxLength={2000} rows={2} onChange={(e) => setNote(e.target.value)} placeholder="Izoh (ixtiyoriy): talabaga nima qilish kerak" className={`${inputClass} w-full`} />
 
-          <div>
-            <div className="text-xs font-semibold text-muted-foreground mb-1">Kimga</div>
-            {isAdmin && (
-              <label className="flex items-center gap-2 text-sm mb-1">
-                <input type="checkbox" checked={toAll} onChange={(e) => setToAll(e.target.checked)} /> Hamma talabalarga
-              </label>
-            )}
-            {!toAll && (
-              <div className="flex flex-wrap gap-2">
-                {groups.length === 0 && <span className="text-xs text-muted-foreground">Avval «Guruhlar» bo'limida guruh yarating.</span>}
-                {groups.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => toggleGroup(g.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${picked.includes(g.id) ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:bg-secondary'}`}
-                  >
-                    {g.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <AudiencePicker groups={groups} value={{ all: toAll, groups: picked }} onChange={(v) => { setToAll(v.all); setPicked(v.groups); }} allowAll={isAdmin} />
 
           <div className="flex flex-wrap items-end gap-4">
             <div>

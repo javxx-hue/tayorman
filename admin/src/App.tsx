@@ -7,11 +7,13 @@ import { AuditPage } from './pages/Audit';
 import { RequestsPage } from './pages/Requests';
 import { GroupDetailPage, GroupsPage } from './pages/Groups';
 import { AssignmentsPage } from './pages/Assignments';
+import { LibraryPage } from './pages/Library';
 import { BOT } from './lib/config';
 
 const NAV: { to: string; label: string; adminOnly?: boolean }[] = [
   { to: '/', label: 'Umumiy ko\'rinish', adminOnly: true },
   { to: '/requests', label: "So'rovlar", adminOnly: true },
+  { to: '/library', label: 'Kutubxona', adminOnly: true },
   { to: '/assignments', label: 'Topshiriqlar' },
   { to: '/groups', label: 'Guruhlar' },
   { to: '/users', label: 'Foydalanuvchilar' },
@@ -121,6 +123,7 @@ const Shell: React.FC = () => {
         <Routes>
           <Route path="/" element={isAdmin ? <DashboardPage /> : <Navigate to={home} replace />} />
           <Route path="/requests" element={isAdmin ? <RequestsPage /> : <Navigate to={home} replace />} />
+          <Route path="/library" element={isAdmin ? <LibraryPage /> : <Navigate to={home} replace />} />
           <Route path="/assignments" element={<AssignmentsPage />} />
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/groups/:id" element={<GroupDetailPage />} />

@@ -209,16 +209,16 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
     'w-full p-3.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y';
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <div className="max-w-3xl mx-auto px-4 pt-5 pb-6">
       <button onClick={() => navigate('/subjects')} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4">
         <ArrowLeft size={14} /> {isUz ? 'Fanlarim' : 'Мои предметы'}
       </button>
 
       {/* Header */}
-      <div className="rounded-3xl bg-card border border-border/80 p-5 sm:p-6 shadow-soft mb-6">
+      <div className="rounded-2xl bg-card border border-border p-4 mb-4">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-foreground">{subject.name}</h1>
+            <h1 className="text-2xl font-serif font-bold text-foreground">{subject.name}</h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2">
               <span className="flex items-center gap-1"><CalendarDays size={13} />{subject.examDate} · {daysLeftLabel(days, isUz)}</span>
               <span>{FORMAT_LABELS[subject.examFormat][lang]}</span>

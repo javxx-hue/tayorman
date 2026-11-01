@@ -106,10 +106,10 @@ export const SubjectsPage: React.FC<SubjectsPageProps> = ({ subjects, studySets,
   const sorted = [...subjects].sort((a, b) => a.examDate.localeCompare(b.examDate));
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+    <div className="max-w-3xl mx-auto px-4 pt-5 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-3xl sm:text-4xl font-serif font-bold text-foreground">{isUz ? 'Mening fanlarim' : 'Мои предметы'}</h1>
+          <h1 className="text-2xl font-serif font-bold text-foreground">{isUz ? 'Mening fanlarim' : 'Мои предметы'}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {isAdmin
               ? isUz
@@ -132,7 +132,7 @@ export const SubjectsPage: React.FC<SubjectsPageProps> = ({ subjects, studySets,
       </div>
 
       {sorted.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-border p-10 text-center bg-card">
+        <div className="rounded-2xl border border-dashed border-border p-8 text-center bg-card">
           <BookOpen size={36} className="mx-auto text-muted-foreground mb-3" />
           <h3 className="text-lg font-serif font-bold text-foreground mb-1">{isUz ? 'Hali fan biriktirilmagan' : 'Предметов пока нет'}</h3>
           <p className="text-sm text-muted-foreground mb-5 max-w-md mx-auto">
@@ -155,7 +155,7 @@ export const SubjectsPage: React.FC<SubjectsPageProps> = ({ subjects, studySets,
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
           {sorted.map((s) => {
             const days = daysUntil(s.examDate);
             const readiness = subjectReadiness(s, studySets);
@@ -163,7 +163,7 @@ export const SubjectsPage: React.FC<SubjectsPageProps> = ({ subjects, studySets,
               <button
                 key={s.id}
                 onClick={() => navigate(`/subjects/${s.id}`)}
-                className="text-left rounded-2xl bg-card border border-border/80 p-5 shadow-soft hover:border-primary/50 transition-colors"
+                className="w-full text-left rounded-2xl bg-card border border-border p-4 hover:border-primary/50 transition-colors"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
