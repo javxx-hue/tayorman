@@ -10,6 +10,8 @@ import { isMastered } from './lib/srs';
 import { useAuth } from './lib/auth';
 import { startSync } from './lib/sync';
 import { deliverLibrary } from './lib/library';
+import { useAssignments } from './lib/useAssignments';
+import { localItem, progressOf } from './lib/assignments';
 import { track } from './lib/track';
 import { startTelegram, applyTelegramTheme, useTelegramBackButton, BOT_USERNAME } from './lib/telegram';
 
@@ -18,6 +20,7 @@ const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m
 const SubjectsPage = lazy(() => import('./pages/SubjectsPage').then((m) => ({ default: m.SubjectsPage })));
 const SubjectPage = lazy(() => import('./pages/SubjectPage').then((m) => ({ default: m.SubjectPage })));
 const QuestionPracticePage = lazy(() => import('./pages/QuestionPracticePage').then((m) => ({ default: m.QuestionPracticePage })));
+const AssignmentsPage = lazy(() => import('./pages/AssignmentsPage').then((m) => ({ default: m.AssignmentsPage })));
 const RequestPage = lazy(() => import('./pages/RequestPage').then((m) => ({ default: m.RequestPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
@@ -113,6 +116,14 @@ export default function App() {
     deliverLibrary().catch((e) => console.warn('Library delivery failed', e));
   }, [online, profile?.id, profile?.role]);
 
+  const isStudent = online && profile?.role === 'student';
+  const { assignments, server: assignmentProgress } = useAssignments(isStudent, subjects, studySets);
+  // Tab badge: assignments not finished yet
+  const openAssignments = (assignments ?? []).filter((a) => {
+    const mine = progressOf(localItem(a, subjects, studySets));
+    return (mine.status === 'new' ? assignmentProgress[a.id]?.status : mine.status) !== 'done';
+  }).length;
+
   useEffect(() => {
     if (joinedCommunity) toast.success(tr(lang, `«${joinedCommunity}» guruhiga qo'shildingiz`, `Вы в группе «${joinedCommunity}»`));
   }, [joinedCommunity]);
@@ -192,6 +203,7 @@ export default function App() {
             <Route path="/subjects/:id/q/:qid" element={<QuestionPracticePage subjects={subjects} lang={lang} />} />
             <Route path="/study/:id" element={<StudyRoute studySets={studySets} lang={lang} />} />
             <Route path="/study/:id/edit" element={isAdmin ? <SetEditorPage studySets={studySets} lang={lang} /> : <Navigate to="/" replace />} />
+            <Route path="/assignments" element={<AssignmentsPage assignments={assignments} server={assignmentProgress} subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/request" element={<RequestPage lang={lang} />} />
             <Route path="/library" element={<Navigate to="/request" replace />} />
             <Route path="/profile" element={<ProfilePage lang={lang} />} />
@@ -200,7 +212,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </main>
-      <BottomNav lang={lang} />
+      <BottomNav lang={lang} openAssignments={openAssignments} />
       <ToastContainer />
     </div>
   );
