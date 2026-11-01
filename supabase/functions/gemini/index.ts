@@ -4,14 +4,15 @@
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { requireUser } from '../_shared/admin.ts';
 import { callGemini, consumeQuota, QuotaError, type Part } from '../_shared/gemini.ts';
+import { isAllowedInlineMime } from '../_shared/geminiParts.ts';
 
-const MAX_BODY_BYTES = 8 * 1024 * 1024; // photos are sent inline as base64
+const MAX_BODY_BYTES = 8 * 1024 * 1024; // photos and voice answers are sent inline as base64
 
 function validParts(parts: unknown): parts is Part[] {
   if (!Array.isArray(parts) || parts.length === 0 || parts.length > 10) return false;
   return parts.every((p) => {
     if (typeof p?.text === 'string') return true;
-    if (typeof p?.inline_data?.data === 'string') return /^image\//.test(p.inline_data.mime_type ?? '');
+    if (typeof p?.inline_data?.data === 'string') return isAllowedInlineMime(p.inline_data.mime_type);
     return false;
   });
 }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Mic, MicOff, Sparkles, BookOpen } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Mic, Sparkles, BookOpen } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { toast } from '../components/ui/Toast';
 import { Language } from '../lib/i18n';
@@ -13,7 +13,8 @@ import { Subject } from '../types';
 import { getSubjectById, saveSubject, recordStudyActivity } from '../lib/storage';
 import { generateModelAnswer, gradeAnswer, planSubject, questionScore, scoreToGrade } from '../lib/prep';
 import { describeGenerationError } from '../lib/ai';
-import { useDictation } from '../lib/useDictation';
+import { AnswerInput } from '../components/AnswerInput';
+import { canRecordAudio } from '../lib/useRecorder';
 import { readinessColor } from './SubjectsPage';
 import { ReportIssue } from '../components/ReportIssue';
 import { nextInQueue, placeInQueue, queueOf, usableQueue } from '../lib/practiceQueue';
@@ -35,7 +36,6 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   const [showModel, setShowModel] = useState(false);
   const [busy, setBusy] = useState<'grading' | 'answer' | null>(null);
   const { online } = useAuth();
-  const dictation = useDictation(lang, (text) => setAnswer((prev) => (prev ? `${prev} ${text}` : text)));
 
   if (!subject || !question) {
     return (
@@ -79,7 +79,6 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   };
 
   const handleGrade = async () => {
-    dictation.stop();
     setBusy('grading');
     try {
       const attempt = await gradeAnswer(subject, question, answer, lang);
@@ -152,30 +151,17 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
 
         {/* Student answer */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-semibold text-foreground">{isUz ? 'Javobingiz' : 'Ваш ответ'}</label>
-            {dictation.supported && (
-              <button
-                type="button"
-                onClick={dictation.listening ? dictation.stop : dictation.start}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
-                  dictation.listening ? 'bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-300' : 'border-border text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {dictation.listening ? <MicOff size={14} /> : <Mic size={14} />}
-                {dictation.listening ? (isUz ? 'To\'xtatish' : 'Стоп') : (isUz ? 'Gapirib javob berish' : 'Ответить голосом')}
-              </button>
-            )}
-          </div>
+          <label className="block text-sm font-semibold text-foreground">{isUz ? 'Javobingiz' : 'Ваш ответ'}</label>
+          {online && <AnswerInput lang={lang} disabled={busy !== null} onText={(text) => setAnswer((prev) => (prev.trim() ? `${prev.trim()}\n\n${text}` : text))} />}
           <textarea
             rows={7}
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder={isUz ? 'Imtihondagidek javob yozing yoki gapiring. AI baholab, nimani unutganingizni ko\'rsatadi.' : 'Ответьте как на экзамене. ИИ оценит ответ и покажет, что вы упустили.'}
+            placeholder={isUz ? 'Javobni yozing, gapiring yoki qog\'ozdagi javobingiz rasmini yuklang. AI baholab, nimani unutganingizni ko\'rsatadi.' : 'Напишите ответ, скажите голосом или загрузите фото ответа с бумаги. ИИ оценит и покажет, что вы упустили.'}
             className="w-full p-3.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
           />
           <div className="flex flex-wrap gap-2 justify-end">
-            {online && (
+            {online && !canRecordAudio() && (
               <Button variant="outline" size="sm" onClick={answerByVoice} disabled={busy !== null} icon={<Mic size={14} />}>
                 {isUz ? 'Botda ovoz bilan' : 'Голосом в боте'}
               </Button>
