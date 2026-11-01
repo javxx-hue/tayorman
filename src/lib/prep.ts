@@ -3,6 +3,7 @@
 import { AnswerAttempt, ExamFormat, ExamQuestion, ModelAnswer, StudySet, Subject } from '../types';
 import { Language } from './i18n';
 import { geminiGenerate, GenerationError, parseJson } from './ai';
+import { MATH_STYLE_RULE, plainMath } from './mathText';
 import { buildMaterialContext } from './materials';
 import { localDateKey } from './storage';
 import { dueQueue, isMastered } from './srs';
@@ -54,6 +55,7 @@ export async function generateModelAnswer(subject: Subject, question: ExamQuesti
 You help a university student prepare for the "${subject.name}" exam. ${FORMAT_HINT[subject.examFormat]}
 Answer the exam question using ONLY the lecture materials below. If the materials do not cover it, say so in the summary.
 Write in ${langName(lang)}.
+${MATH_STYLE_RULE}
 
 Exam question: ${question.text}
 
@@ -73,7 +75,7 @@ Return strict JSON:
     throw new GenerationError('BAD_RESPONSE', 'Model answer missing.');
   }
   const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x.trim()) : []);
-  return { summary: parsed.summary.trim(), keyPoints: strings(parsed.keyPoints), sources: strings(parsed.sources) };
+  return { summary: plainMath(parsed.summary.trim()), keyPoints: strings(parsed.keyPoints).map(plainMath), sources: strings(parsed.sources) };
 }
 
 export async function gradeAnswer(
@@ -90,6 +92,7 @@ export async function gradeAnswer(
 You are a fair but demanding university examiner for "${subject.name}". ${FORMAT_HINT[subject.examFormat]}
 Grade the student's answer against the reference. Judge content, not spelling. Write feedback in ${langName(lang)},
 addressing the student directly, 2-4 sentences: what was good, what was wrong.
+${MATH_STYLE_RULE}
 
 Exam question: ${question.text}
 
@@ -109,8 +112,8 @@ Return strict JSON:
     at: Date.now(),
     answer: answer.trim(),
     score,
-    feedback: typeof parsed.feedback === 'string' ? parsed.feedback.trim() : '',
-    missing: Array.isArray(parsed.missing) ? parsed.missing.filter((x: unknown) => typeof x === 'string' && x.trim()) : [],
+    feedback: typeof parsed.feedback === 'string' ? plainMath(parsed.feedback.trim()) : '',
+    missing: Array.isArray(parsed.missing) ? parsed.missing.filter((x: unknown): x is string => typeof x === 'string' && !!x.trim()).map(plainMath) : [],
   };
 }
 

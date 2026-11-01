@@ -1,6 +1,7 @@
 // Exam questions from a subject's lecture files: take the list a document already contains, or have the AI write one.
 import { geminiGenerate, parseJson } from '../../../src/lib/ai';
 import { buildMaterialContext } from '../../../src/lib/materials';
+import { MATH_STYLE_RULE, plainMath } from '../../../src/lib/mathText';
 import { Material } from '../../../src/types';
 
 export type Mode = 'extract' | 'generate';
@@ -16,7 +17,7 @@ export function buildPrompt(material: string, { mode, count, language }: Options
   const task =
     mode === 'extract'
       ? `The material below may contain a list of exam questions (numbered or not). Return those questions exactly as written, in the order given, without answers and without numbers. If the material contains no list of questions, return an empty list. Do not invent questions.`
-      : `Write ${count} exam questions that a teacher could ask on this material. Cover its main topics, one question each, in ${LANGUAGE[language]}. Use only what the material supports. Do not add answers or numbers.`;
+      : `Write ${count} exam questions that a teacher could ask on this material. Cover its main topics, one question each, in ${LANGUAGE[language]}. Use only what the material supports. Do not add answers or numbers. ${MATH_STYLE_RULE}`;
   return `You prepare university exam materials.\n${task}\n\nReturn strict JSON: { "questions": ["...", "..."] }\n\nMATERIAL:\n${material}`;
 }
 
@@ -29,7 +30,7 @@ export function parseQuestions(raw: string): string[] {
   for (const item of list) {
     const candidate = typeof item === 'string' ? item : typeof item?.question === 'string' ? item.question : typeof item?.text === 'string' ? item.text : null;
     if (candidate === null) continue;
-    const text = candidate.replace(/^\s*(?:[-•*–]|\d+[.)])\s*/, '').replace(/\s+/g, ' ').trim();
+    const text = plainMath(candidate).replace(/^\s*(?:[-•*–]|\d+[.)])\s*/, '').replace(/\s+/g, ' ').trim();
     if (text.length < 5 || text.length > 500 || seen.has(text.toLowerCase())) continue;
     seen.add(text.toLowerCase());
     out.push(text);

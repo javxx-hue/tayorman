@@ -1,5 +1,6 @@
 import { StudySet, StudySetType, Difficulty, Language, QuizQuestion, Flashcard } from '../types';
 import { supabase } from './supabase';
+import { MATH_STYLE_RULE, plainMath } from './mathText';
 
 export interface GenerationParams {
   rawContent: string;
@@ -71,6 +72,8 @@ function buildPrompt(params: GenerationParams): string {
 You are an educational assistant helping university students prepare for exams.
 ${grounding}
 
+${MATH_STYLE_RULE}
+
 Language: ${language === 'uz' ? "Uzbek (O'zbek tili, lotin yozuvi)" : 'Russian (русский язык)'}
 Target Type: ${targetType}
 Difficulty: ${difficulty}
@@ -137,11 +140,11 @@ function parseQuestions(raw: unknown, now: number): QuizQuestion[] {
     )
     .map((q: any, i: number) => ({
       id: `q-${now}-${i}`,
-      question: q.question,
-      options: q.options,
+      question: plainMath(q.question),
+      options: q.options.map(plainMath),
       correctAnswer: q.correctAnswer,
-      hint: isNonEmptyString(q.hint) ? q.hint : '',
-      explanation: isNonEmptyString(q.explanation) ? q.explanation : '',
+      hint: isNonEmptyString(q.hint) ? plainMath(q.hint) : '',
+      explanation: isNonEmptyString(q.explanation) ? plainMath(q.explanation) : '',
       source: isNonEmptyString(q.source) ? q.source : undefined,
     }));
 }
@@ -152,9 +155,9 @@ function parseFlashcards(raw: unknown, now: number): Flashcard[] {
     .filter((fc: any) => isNonEmptyString(fc?.front) && isNonEmptyString(fc?.back))
     .map((fc: any, i: number) => ({
       id: `fc-${now}-${i}`,
-      front: fc.front,
-      back: fc.back,
-      example: isNonEmptyString(fc.example) ? fc.example : undefined,
+      front: plainMath(fc.front),
+      back: plainMath(fc.back),
+      example: isNonEmptyString(fc.example) ? plainMath(fc.example) : undefined,
       source: isNonEmptyString(fc.source) ? fc.source : undefined,
     }));
 }
@@ -204,10 +207,10 @@ export async function generateStudySet(params: GenerationParams): Promise<StudyS
     notes: {
       id: `note-${now}`,
       title: base.title,
-      summary: parsed.summary,
-      keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints.filter(isNonEmptyString) : [],
+      summary: plainMath(parsed.summary),
+      keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints.filter(isNonEmptyString).map(plainMath) : [],
       glossary: Array.isArray(parsed.glossary)
-        ? parsed.glossary.filter((g: any) => isNonEmptyString(g?.term) && isNonEmptyString(g?.definition))
+        ? parsed.glossary.filter((g: any) => isNonEmptyString(g?.term) && isNonEmptyString(g?.definition)).map((g: any) => ({ term: plainMath(g.term), definition: plainMath(g.definition) }))
         : [],
     },
   };

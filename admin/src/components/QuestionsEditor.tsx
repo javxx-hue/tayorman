@@ -1,6 +1,7 @@
 import React from 'react';
 import { Flashcard, QuizQuestion } from '../../../src/types';
 import { newId } from '../../../src/lib/storage';
+import { plainMath } from '../../../src/lib/mathText';
 import { Btn } from '../ui';
 
 const field = 'w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary';
@@ -9,8 +10,17 @@ export const QuizEditor: React.FC<{ questions: QuizQuestion[]; onChange: (next: 
   const patch = (i: number, change: Partial<QuizQuestion>) => onChange(questions.map((q, j) => (j === i ? { ...q, ...change } : q)));
   const patchOption = (i: number, k: number, text: string) => patch(i, { options: questions[i].options.map((o, m) => (m === k ? text : o)) });
 
+  const cleaned = questions.map((q) => ({ ...q, question: plainMath(q.question), options: q.options.map(plainMath), hint: plainMath(q.hint), explanation: plainMath(q.explanation) }));
+  const dirty = JSON.stringify(cleaned) !== JSON.stringify(questions);
+
   return (
     <div className="space-y-3">
+      {dirty && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs">
+          <span>Ba'zi savollarda formulalar kod ko'rinishida yozilgan ($...$, \sqrt, ^{'{'}-1{'}'}).</span>
+          <Btn onClick={() => onChange(cleaned)}>Formulalarni tozalash</Btn>
+        </div>
+      )}
       {questions.map((q, i) => (
         <div key={q.id} className="rounded-xl border border-border p-3 space-y-2">
           <div className="flex items-start gap-2">
