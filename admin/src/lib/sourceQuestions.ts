@@ -27,8 +27,9 @@ export function parseQuestions(raw: string): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const item of list) {
-    if (typeof item !== 'string') continue;
-    const text = item.replace(/^\s*(?:[-•*–]|\d+[.)])\s*/, '').replace(/\s+/g, ' ').trim();
+    const candidate = typeof item === 'string' ? item : typeof item?.question === 'string' ? item.question : typeof item?.text === 'string' ? item.text : null;
+    if (candidate === null) continue;
+    const text = candidate.replace(/^\s*(?:[-•*–]|\d+[.)])\s*/, '').replace(/\s+/g, ' ').trim();
     if (text.length < 5 || text.length > 500 || seen.has(text.toLowerCase())) continue;
     seen.add(text.toLowerCase());
     out.push(text);

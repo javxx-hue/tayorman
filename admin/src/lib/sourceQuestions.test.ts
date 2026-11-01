@@ -12,6 +12,11 @@ describe('parseQuestions', () => {
     expect(parseQuestions(raw)).toEqual(['Chiziqli algebra nima?', 'Matritsa nima?']);
   });
 
+  it('reads questions out of objects when a model answers that way', () => {
+    const raw = JSON.stringify({ questions: [{ id: 1, question: 'Matritsa nima?' }, { text: 'Determinant nima?' }, { id: 3 }] });
+    expect(parseQuestions(raw)).toEqual(['Matritsa nima?', 'Determinant nima?']);
+  });
+
   it('gives an empty list when there is nothing usable', () => {
     expect(parseQuestions(JSON.stringify({ questions: [] }))).toEqual([]);
     expect(parseQuestions(JSON.stringify({ other: 1 }))).toEqual([]);

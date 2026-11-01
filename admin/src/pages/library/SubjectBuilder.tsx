@@ -155,6 +155,8 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
           </select>
         </div>
         {!materials.length && <p className="text-xs text-muted-foreground mb-2">Savollarni fayldan olish uchun avval yuqoridagi «Ma'ruza materiallari» ga fayl qo'shing.</p>}
+        {busy && <p className="text-sm text-foreground mb-2 animate-pulse" role="status">⏳ {busy} (bir daqiqagacha cho'zilishi mumkin)</p>}
+        {error && <p className="text-sm text-rose-600 mb-2" role="alert">{error}</p>}
         <textarea value={questionText} rows={10} onChange={(e) => setQuestionText(e.target.value)} className={`${field} w-full`} placeholder={"1. Bozor iqtisodiyoti nima?\n2. Talab qonuni...\n\n(o'qituvchi bergan ro'yxatni shu yerga joylashtiring)"} />
         <p className="text-xs text-muted-foreground mt-1">Har bir savol alohida qatorda. Raqamlar bo'lsa ham bo'ladi. O'zgarmagan savollar tayyor javobini saqlab qoladi.</p>
       </Card>
