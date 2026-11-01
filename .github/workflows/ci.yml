@@ -4,10 +4,14 @@ on:
   push:
     branches:
       - main
+      - production
+      - development
       - 'sanjar/**'
   pull_request:
     branches:
       - main
+      - production
+      - development
 
 jobs:
   test-and-build:
