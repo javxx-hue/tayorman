@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, BellOff, Globe, GraduationCap, Users, MessageCircle } from 'lucide-react';
+import { Bell, BellOff, Globe, GraduationCap, Users, MessageCircle, ShieldCheck } from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
@@ -7,7 +7,7 @@ import { Language, tr } from '../lib/i18n';
 import { BOT_USERNAME } from '../lib/telegram';
 
 export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
-  const { profile, online, updateProfile } = useAuth();
+  const { profile, online, updateProfile, isAdmin } = useAuth();
   const [communities, setCommunities] = useState<{ id: string; name: string }[]>([]);
   const [university, setUniversity] = useState(profile?.university === 'samdu' ? '' : profile?.university ?? '');
 
@@ -43,6 +43,28 @@ export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
         {profile?.first_name ?? tr(lang, 'Profil', 'Профиль')}
         {profile?.username && <span className="block text-sm font-sans font-normal text-muted-foreground">@{profile.username}</span>}
       </h1>
+
+      {isAdmin && (
+        <div className={`${card} border-amber-500/30 bg-amber-500/5`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="text-amber-500 shrink-0" size={20} />
+              <div>
+                <div className="text-sm font-semibold text-foreground">Administrator</div>
+                <div className="text-xs text-muted-foreground">ID: {profile?.telegram_id || 7537966029} (To'liq huquq)</div>
+              </div>
+            </div>
+            <a
+              href="https://tayyorman-admin.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
+            >
+              Admin Panel
+            </a>
+          </div>
+        </div>
+      )}
 
       <div className={card}>
         <div className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5"><Globe size={14} /> Til / Язык</div>
@@ -106,8 +128,8 @@ export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
           <span>
             {tr(
               lang,
-              `Ma'ruza fayllarini (PDF, PPTX, rasm) @${BOT_USERNAME} chatiga yuboring, ular fanga qo'shiladi. Buyruqlar: /reja, /til, /eslatma.`,
-              `Присылайте файлы лекций (PDF, PPTX, фото) в чат @${BOT_USERNAME}, они добавятся к предмету. Команды: /reja, /til, /eslatma.`
+              `Fan, savol yoki material kerak bo'lsa, @${BOT_USERNAME} chatiga yozing (fayl yoki rasm ham mumkin): so'rov adminga boradi. Buyruqlar: /reja, /til, /eslatma.`,
+              `Нужен предмет, вопросы или материалы — напишите в чат @${BOT_USERNAME} (можно файл или фото), запрос уйдёт администратору. Команды: /reja, /til, /eslatma.`
             )}
           </span>
         </div>

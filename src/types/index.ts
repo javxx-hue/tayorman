@@ -53,13 +53,14 @@ export interface StudySet {
   updatedAt?: number; // last local change, used to merge with the cloud copy
   itemCount: number;
   difficulty: Difficulty;
-  sourceType: 'text' | 'pdf' | 'youtube' | 'prompt' | 'topic';
+  sourceType: 'text' | 'pdf' | 'prompt' | 'topic';
   sourceSnippet?: string;
   questions?: QuizQuestion[];
   flashcards?: Flashcard[];
   notes?: StudyNote;
   subjectId?: string; // set generated inside a subject
   libraryId?: string; // copied from the admin library
+  libraryUpdatedAt?: string; // library version this copy was last refreshed from
   lastScore?: number;
   completedAt?: number;
 }
@@ -85,7 +86,7 @@ export interface GenerationOptions {
 // Session prep: subjects, their materials and exam question lists
 // ---------------------------------------------------------------
 export type ExamFormat = 'test' | 'written' | 'oral' | 'mixed';
-export type MaterialKind = 'pdf' | 'pptx' | 'image' | 'text' | 'youtube';
+export type MaterialKind = 'pdf' | 'pptx' | 'image' | 'text';
 
 export interface Material {
   id: string;
@@ -127,4 +128,5 @@ export interface Subject {
   materials: Material[];
   questions: ExamQuestion[];
   libraryId?: string; // copied from the admin library
+  libraryUpdatedAt?: string; // library version this copy was last refreshed from
 }

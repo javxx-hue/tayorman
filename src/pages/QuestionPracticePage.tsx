@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Mic, MicOff, Sparkles, BookOpen } from 'lucide-react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Mic, Sparkles, BookOpen } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { toast } from '../components/ui/Toast';
 import { Language } from '../lib/i18n';
@@ -8,12 +8,16 @@ import { supabase } from '../lib/supabase';
 import { pushNow } from '../lib/sync';
 import { useAuth } from '../lib/auth';
 import { haptic, openBotChat } from '../lib/telegram';
+import { track } from '../lib/track';
 import { Subject } from '../types';
 import { getSubjectById, saveSubject, recordStudyActivity } from '../lib/storage';
 import { generateModelAnswer, gradeAnswer, planSubject, questionScore, scoreToGrade } from '../lib/prep';
 import { describeGenerationError } from '../lib/ai';
-import { useDictation } from '../lib/useDictation';
+import { AnswerInput } from '../components/AnswerInput';
+import { canRecordAudio } from '../lib/useRecorder';
 import { readinessColor } from './SubjectsPage';
+import { ReportIssue } from '../components/ReportIssue';
+import { nextInQueue, placeInQueue, queueOf, usableQueue } from '../lib/practiceQueue';
 
 interface QuestionPracticePageProps {
   subjects: Subject[];
@@ -24,6 +28,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   const { id, qid } = useParams();
   const navigate = useNavigate();
   const isUz = lang === 'uz';
+  const location = useLocation();
   const subject = subjects.find((s) => s.id === id);
   const question = subject?.questions.find((q) => q.id === qid);
 
@@ -31,7 +36,6 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   const [showModel, setShowModel] = useState(false);
   const [busy, setBusy] = useState<'grading' | 'answer' | null>(null);
   const { online } = useAuth();
-  const dictation = useDictation(lang, (text) => setAnswer((prev) => (prev ? `${prev} ${text}` : text)));
 
   if (!subject || !question) {
     return (
@@ -44,9 +48,13 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
 
   const index = subject.questions.findIndex((q) => q.id === question.id);
   const last = question.attempts[question.attempts.length - 1];
-  // Next: today's plan first, otherwise the next question in the list
-  const todayIds = planSubject(subject).today.map((q) => q.id).filter((x) => x !== question.id);
-  const nextId = todayIds[0] ?? subject.questions[index + 1]?.id;
+  // "Next" follows the order this sitting was opened with (today's plan, the whole list, more practice).
+  // Opened without one (a bookmark, a reload that lost it), it goes through today's plan.
+  const existing = new Set(subject.questions.map((q) => q.id));
+  const opened = queueOf(location.state);
+  const queue = usableQueue(opened ?? [question.id, ...planSubject(subject).today.map((q) => q.id).filter((x) => x !== question.id)], existing);
+  const nextId = nextInQueue(queue, question.id);
+  const place = placeInQueue(queue, question.id);
 
   const saveQuestion = (patch: Partial<typeof question>) => {
     const latest = getSubjectById(subject.id);
@@ -71,12 +79,12 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   };
 
   const handleGrade = async () => {
-    dictation.stop();
     setBusy('grading');
     try {
       const attempt = await gradeAnswer(subject, question, answer, lang);
       saveQuestion({ attempts: [...question.attempts, attempt] });
       recordStudyActivity();
+      track('first_answer', { oncePerSession: true });
     } catch (e) {
       toast.error(describeGenerationError(e, lang));
     } finally {
@@ -88,6 +96,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   const selfAssess = (score: number) => {
     saveQuestion({ attempts: [...question.attempts, { at: Date.now(), answer: answer.trim(), score, feedback: '', missing: [] }] });
     recordStudyActivity();
+    track('first_answer', { oncePerSession: true });
     haptic.success();
   };
 
@@ -115,7 +124,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   const goNext = () => {
     setAnswer('');
     setShowModel(false);
-    navigate(nextId ? `/subjects/${subject.id}/q/${nextId}` : `/subjects/${subject.id}`);
+    navigate(nextId ? `/subjects/${subject.id}/q/${nextId}` : `/subjects/${subject.id}`, nextId ? { state: { queue } } : undefined);
   };
 
   const gradedNow = last && last.answer === answer.trim();
@@ -128,39 +137,31 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
 
       <div className="rounded-3xl bg-card border border-border/80 p-5 sm:p-7 shadow-soft space-y-5">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{isUz ? `${index + 1}-savol / ${subject.questions.length}` : `Вопрос ${index + 1} / ${subject.questions.length}`}</span>
+          <span>
+            {opened && queue.length > 1
+              ? isUz ? `Mashq: ${place} / ${queue.length}` : `Практика: ${place} / ${queue.length}`
+              : isUz ? `${index + 1}-savol / ${subject.questions.length}` : `Вопрос ${index + 1} / ${subject.questions.length}`}
+          </span>
           {question.attempts.length > 0 && (
             <span>{isUz ? `Oxirgi natija: ${questionScore(question)}%` : `Последний результат: ${questionScore(question)}%`}</span>
           )}
         </div>
         <h1 className="text-xl sm:text-2xl font-serif font-bold text-foreground leading-snug">{question.text}</h1>
+        <ReportIssue lang={lang} libraryId={subject.libraryId} context={subject.name} questionText={question.text} />
 
         {/* Student answer */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-semibold text-foreground">{isUz ? 'Javobingiz' : 'Ваш ответ'}</label>
-            {dictation.supported && (
-              <button
-                type="button"
-                onClick={dictation.listening ? dictation.stop : dictation.start}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border ${
-                  dictation.listening ? 'bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-300' : 'border-border text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {dictation.listening ? <MicOff size={14} /> : <Mic size={14} />}
-                {dictation.listening ? (isUz ? 'To\'xtatish' : 'Стоп') : (isUz ? 'Gapirib javob berish' : 'Ответить голосом')}
-              </button>
-            )}
-          </div>
+          <label className="block text-sm font-semibold text-foreground">{isUz ? 'Javobingiz' : 'Ваш ответ'}</label>
+          {online && <AnswerInput lang={lang} disabled={busy !== null} onText={(text) => setAnswer((prev) => (prev.trim() ? `${prev.trim()}\n\n${text}` : text))} />}
           <textarea
             rows={7}
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder={isUz ? 'Imtihondagidek javob yozing yoki gapiring. AI baholab, nimani unutganingizni ko\'rsatadi.' : 'Ответьте как на экзамене. ИИ оценит ответ и покажет, что вы упустили.'}
+            placeholder={isUz ? 'Javobni yozing, gapiring yoki qog\'ozdagi javobingiz rasmini yuklang. AI baholab, nimani unutganingizni ko\'rsatadi.' : 'Напишите ответ, скажите голосом или загрузите фото ответа с бумаги. ИИ оценит и покажет, что вы упустили.'}
             className="w-full p-3.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
           />
           <div className="flex flex-wrap gap-2 justify-end">
-            {online && (
+            {online && !canRecordAudio() && (
               <Button variant="outline" size="sm" onClick={answerByVoice} disabled={busy !== null} icon={<Mic size={14} />}>
                 {isUz ? 'Botda ovoz bilan' : 'Голосом в боте'}
               </Button>
@@ -230,7 +231,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
 
         <div className="pt-3 border-t border-border flex justify-end">
           <Button variant="secondary" size="md" onClick={goNext} icon={<ArrowRight size={15} />}>
-            {nextId ? (isUz ? 'Keyingi savol' : 'Следующий вопрос') : (isUz ? 'Fanga qaytish' : 'К предмету')}
+            {nextId ? (isUz ? 'Keyingi savol' : 'Следующий вопрос') : (isUz ? 'Tugatish' : 'Завершить')}
           </Button>
         </div>
       </div>

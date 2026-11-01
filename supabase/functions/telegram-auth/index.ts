@@ -21,13 +21,15 @@ Deno.serve(async (req) => {
     const code = verified.startParam?.match(/^c_([a-f0-9]{12})$/)?.[1];
     if (code) joined = await joinCommunity(userId, code);
 
-    const session = await sessionFor(verified.user);
     const { data: profile } = await admin
       .from('profiles')
-      .select('id, telegram_id, first_name, username, language, university, role, reminders_enabled')
+      .select('id, telegram_id, first_name, username, language, university, role, reminders_enabled, blocked')
       .eq('id', userId)
       .single();
-    return json(req, { session, profile, joined });
+    if (profile?.blocked) return json(req, { error: 'Account is blocked' }, 403);
+    const session = await sessionFor(verified.user);
+    const { blocked: _blocked, ...publicProfile } = profile ?? {};
+    return json(req, { session, profile: publicProfile, joined });
   } catch (e) {
     console.error('telegram-auth failed', e);
     return json(req, { error: 'Sign in failed' }, 500);

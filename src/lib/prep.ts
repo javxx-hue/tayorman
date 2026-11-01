@@ -3,8 +3,9 @@
 import { AnswerAttempt, ExamFormat, ExamQuestion, ModelAnswer, StudySet, Subject } from '../types';
 import { Language } from './i18n';
 import { geminiGenerate, GenerationError, parseJson } from './ai';
+import { MATH_STYLE_RULE, plainMath } from './mathText';
 import { buildMaterialContext } from './materials';
-import { newId, localDateKey } from './storage';
+import { localDateKey } from './storage';
 import { dueQueue, isMastered } from './srs';
 
 // ---------------------------------------------------------------
@@ -34,10 +35,6 @@ export function parseQuestionList(raw: string): string[] {
   return out.map((q) => q.replace(/\s+/g, ' ').trim()).filter((q) => q.length > 2);
 }
 
-export function questionsFromText(raw: string): ExamQuestion[] {
-  return parseQuestionList(raw).map((text) => ({ id: newId('q'), text, attempts: [] }));
-}
-
 // ---------------------------------------------------------------
 // AI: model answer and grading
 // ---------------------------------------------------------------
@@ -58,6 +55,7 @@ export async function generateModelAnswer(subject: Subject, question: ExamQuesti
 You help a university student prepare for the "${subject.name}" exam. ${FORMAT_HINT[subject.examFormat]}
 Answer the exam question using ONLY the lecture materials below. If the materials do not cover it, say so in the summary.
 Write in ${langName(lang)}.
+${MATH_STYLE_RULE}
 
 Exam question: ${question.text}
 
@@ -77,7 +75,7 @@ Return strict JSON:
     throw new GenerationError('BAD_RESPONSE', 'Model answer missing.');
   }
   const strings = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && !!x.trim()) : []);
-  return { summary: parsed.summary.trim(), keyPoints: strings(parsed.keyPoints), sources: strings(parsed.sources) };
+  return { summary: plainMath(parsed.summary.trim()), keyPoints: strings(parsed.keyPoints).map(plainMath), sources: strings(parsed.sources) };
 }
 
 export async function gradeAnswer(
@@ -94,6 +92,7 @@ export async function gradeAnswer(
 You are a fair but demanding university examiner for "${subject.name}". ${FORMAT_HINT[subject.examFormat]}
 Grade the student's answer against the reference. Judge content, not spelling. Write feedback in ${langName(lang)},
 addressing the student directly, 2-4 sentences: what was good, what was wrong.
+${MATH_STYLE_RULE}
 
 Exam question: ${question.text}
 
@@ -113,8 +112,8 @@ Return strict JSON:
     at: Date.now(),
     answer: answer.trim(),
     score,
-    feedback: typeof parsed.feedback === 'string' ? parsed.feedback.trim() : '',
-    missing: Array.isArray(parsed.missing) ? parsed.missing.filter((x: unknown) => typeof x === 'string' && x.trim()) : [],
+    feedback: typeof parsed.feedback === 'string' ? plainMath(parsed.feedback.trim()) : '',
+    missing: Array.isArray(parsed.missing) ? parsed.missing.filter((x: unknown): x is string => typeof x === 'string' && !!x.trim()).map(plainMath) : [],
   };
 }
 
@@ -166,9 +165,13 @@ export interface SubjectPlan {
   daysLeft: number;
   remaining: number; // questions below PASS_SCORE
   perDay: number;
-  today: ExamQuestion[];
+  today: ExamQuestion[]; // still to do today
+  doneToday: number; // answered today already
+  more: ExamQuestion[]; // the next weakest ones, for whoever wants to go beyond today's share
   isReviewDay: boolean; // day before the exam: go over everything
 }
+
+export const MORE_PRACTICE = 10;
 
 // Weakest questions first, spread evenly over the days left, keeping the
 // day before the exam free for a full review when there is room for it.
@@ -180,15 +183,23 @@ export function planSubject(subject: Subject, today: string = localDateKey()): S
     .sort((a, b) => a.score - b.score || a.index - b.index)
     .map((x) => x.q);
 
-  if (daysLeft <= 0) return { daysLeft, remaining: pending.length, perDay: 0, today: [], isReviewDay: false };
+  if (daysLeft <= 0) return { daysLeft, remaining: pending.length, perDay: 0, today: [], doneToday: 0, more: [], isReviewDay: false };
 
   const isReviewDay = daysLeft === 1 && subject.questions.length > 0;
   if (isReviewDay) {
-    return { daysLeft, remaining: pending.length, perDay: pending.length, today: pending, isReviewDay };
+    return { daysLeft, remaining: pending.length, perDay: pending.length, today: pending, doneToday: 0, more: [], isReviewDay };
   }
+
+  // The day's share is fixed in the morning: what was still to learn then, over the days left.
+  // Questions answered today count towards it, so the plan can actually be finished.
+  const answeredToday = (q: ExamQuestion) => q.attempts.some((a) => localDateKey(new Date(a.at)) === today);
+  const done = subject.questions.filter(answeredToday);
+  const learnedToday = done.filter((q) => questionScore(q) >= PASS_SCORE).length;
   const studyDays = daysLeft >= 3 ? daysLeft - 1 : daysLeft;
-  const perDay = Math.ceil(pending.length / studyDays);
-  return { daysLeft, remaining: pending.length, perDay, today: pending.slice(0, perDay), isReviewDay };
+  const perDay = Math.ceil((pending.length + learnedToday) / studyDays);
+  const todo = pending.filter((q) => !answeredToday(q));
+  const left = Math.max(perDay - done.length, 0);
+  return { daysLeft, remaining: pending.length, perDay, today: todo.slice(0, left), doneToday: done.length, more: todo.slice(left, left + MORE_PRACTICE), isReviewDay };
 }
 
 export interface TodayTask {

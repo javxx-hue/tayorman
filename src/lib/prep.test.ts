@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { parseQuestionList, planSubject, scoreToGrade, subjectReadiness, daysUntil, todayOverview } from './prep';
 import { buildMaterialContext, officeXmlToText } from './materials';
@@ -122,5 +122,47 @@ describe('materials helpers', () => {
     const ctx = buildMaterialContext(mats, 40);
     expect(ctx.startsWith('=== A.pdf ===\naaaa')).toBe(true);
     expect(ctx.length).toBeLessThanOrEqual(40);
+  });
+});
+
+describe('planSubject: the day\'s share', () => {
+  const today = '2026-11-01';
+  const answeredToday = (id: string, score: number): ExamQuestion => ({
+    id,
+    text: `Savol ${id}`,
+    attempts: [{ at: new Date('2026-11-01T10:00:00').getTime(), answer: 'x', score, feedback: '', missing: [] }],
+  });
+  // 5 days left -> 4 study days; 8 questions still to learn -> 2 a day
+  const base = () => Array.from({ length: 8 }, (_, i) => q(String(i)));
+
+  it('counts questions answered today towards the share, so the day can be finished', () => {
+    const qs = [answeredToday('0', 40), ...base().slice(1)];
+    const plan = planSubject(subject('2026-11-06', qs), today);
+    expect(plan.perDay).toBe(2);
+    expect(plan.doneToday).toBe(1);
+    expect(plan.today.map((x) => x.id)).toEqual(['1']); // one more to do, not the same one again
+  });
+
+  it('is finished when the share is answered, and offers more practice beyond it', () => {
+    const qs = [answeredToday('0', 40), answeredToday('1', 50), ...base().slice(2)];
+    const plan = planSubject(subject('2026-11-06', qs), today);
+    expect(plan.today).toEqual([]);
+    expect(plan.doneToday).toBe(2);
+    expect(plan.more.map((x) => x.id)).toEqual(['2', '3', '4', '5', '6', '7']);
+  });
+
+  it('keeps the share steady when a question answered well today stops being pending', () => {
+    const qs = [answeredToday('0', 90), ...base().slice(1)]; // learned today: 7 pending, but 8 were this morning
+    const plan = planSubject(subject('2026-11-06', qs), today);
+    expect(plan.perDay).toBe(2); // counted from the 8 of this morning, not from the 7 left
+    expect(plan.doneToday).toBe(1);
+    expect(plan.today).toHaveLength(1);
+  });
+
+  it('does not count answers from other days', () => {
+    const yesterday = { ...answeredToday('0', 40), attempts: [{ ...answeredToday('0', 40).attempts[0], at: new Date('2026-10-31T10:00:00').getTime() }] };
+    const plan = planSubject(subject('2026-11-06', [yesterday, ...base().slice(1)]), today);
+    expect(plan.doneToday).toBe(0);
+    expect(plan.today.map((x) => x.id)).toEqual(['1', '2']); // untouched ones come before the one answered badly yesterday
   });
 });

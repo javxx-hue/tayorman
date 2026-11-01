@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Keep in sync with scripts/make-icons.mjs (PNG versions) -->
+  <rect width="512" height="512" rx="112" fill="#1c1917"/>
+  <rect x="128" y="136" width="172" height="240" rx="22" fill="#faf7ee"/>
+  <rect x="312" y="136" width="72" height="240" rx="22" fill="#fbbf24"/>
+  <rect x="170" y="196" width="88" height="16" rx="8" fill="#1c1917"/>
+  <rect x="170" y="248" width="88" height="16" rx="8" fill="#1c1917"/>
+  <rect x="170" y="300" width="60" height="16" rx="8" fill="#1c1917"/>
+</svg>

@@ -6,16 +6,18 @@ Sessiya va oraliq nazoratlarga tayyorlanish uchun **Telegram bot + Mini App**. H
 
 **Bot (chat):**
 - `/start` — salomlashish va Mini App tugmasi; `t.me/<bot>?start=c_<kod>` havolasi orqali guruhga qo'shilish.
-- PDF, PPTX, DOCX, TXT yoki konspekt rasmini yuboring → matn o'qiladi (PDF va rasmni Gemini), «qaysi fanga?» tugmalari chiqadi.
+- Har qanday matn, fayl yoki rasm adminga so'rov bo'lib boradi (talaba o'zi fan yoki material yaratmaydi). Admin javobi botga keladi.
 - Ovozli javob: ilovada savolni oching → «Botda ovoz bilan» → botga ovozli xabar yuboring, AI tinglab baholaydi.
 - `/reja` (bugungi reja), `/til` (o'zbek/rus), `/eslatma`. Har kuni 08:00 da reja avtomatik keladi.
 
 **Mini App:**
 - **Bugun** — bugungi reja, ketma-ket kunlar, oxirgi to'plamlar.
-- **Fanlar** — imtihon sanasi va shakli, materiallar (PDF, PPTX, DOCX, rasm, YouTube), imtihon savollari ro'yxati, namunaviy javob, AI baholash yoki «Bilaman / Qisman / Bilmayman» (AI limiti tugaganda ham ishlaydi), test va kartalar (FSRS takrorlash), tayyorlik foizi.
-- **Kutubxona** — admin chop etgan fan va to'plamlar; «Qo'shish» bilan o'zingizniki bo'ladi.
+- **Topshiriq** — admin guruhga bergan vazifalar: muddat, holat (yangi, jarayonda, bajarildi), natija.
+- **Fanlar** — admin biriktirgan fanlar: imtihon sanasi, savollar ro'yxati, AI baholash yoki «Bilaman / Qisman / Bilmayman» (AI limiti tugaganda ham ishlaydi), test va kartalar (FSRS takrorlash), tayyorlik foizi. Talaba fan yaratmaydi: nashr qilingan narsa o'zi keladi va yangilanadi.
+- **So'rov** — adminga yozish (yangi fan, savol/material, xato); 5 tagacha manba fayl biriktiriladi; admin javobi botga keladi.
 - **Profil** — til, OTM, guruhlar, eslatmalar.
-- **Admin** (faqat adminlarga) — statistika, guruhlar va taklif havolalari, kutubxonaga chop etish (kimga ko'rinishini siz tanlaysiz), tanlangan auditoriyaga xabar.
+
+Barcha boshqaruv (fan va test tuzish, topshiriq, guruh, xabar, so'rovlarga javob) admin saytda; qarang: `docs/ADMIN_PLAN.md`.
 
 AI kuniga har bir foydalanuvchiga 30 ta so'rov bilan cheklangan (`AI_DAILY_LIMIT`). Kalit faqat serverda.
 
@@ -72,8 +74,32 @@ select cron.schedule('daily-reminders', '0 3 * * *', $$
 $$);
 ```
 
+### 5b. Rejalashtirilgan xabarlar (har daqiqa)
+Admin saytdagi "Xabarlar" bo'limida vaqtga qo'yilgan xabarlar shu ish bilan yuboriladi. `broadcast-due` funksiyasini `--no-verify-jwt` bilan joylang va SQL Editor'da (`<CRON_SECRET>` — Supabase sirlaridagi qiymat):
+```sql
+select cron.schedule('broadcasts-due', '* * * * *', $$
+  select net.http_post(
+    url := 'https://<loyiha-ref>.supabase.co/functions/v1/broadcast-due',
+    headers := jsonb_build_object('x-cron-secret', '<CRON_SECRET>')
+  );
+$$);
+```
+
 ### 6. Mini App'ni joylash
 `.env` ga `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_TELEGRAM_BOT` ni yozing. Vercel yoki Netlify'da: build `npm run build`, papka `dist`, barcha yo'llar `index.html` ga yo'naltirilsin (SPA rewrite), `VITE_*` qiymatlarni hosting sozlamalariga ham kiriting. Manzilni `APP_URL`, `ALLOWED_ORIGINS` va BotFather menyu tugmasiga qo'ying.
+
+## Admin sayti
+
+Alohida veb sahifa (`admin/`), talabalar ilovasidan butunlay ajratilgan. Kirish: saytdagi "Telegram orqali kirish" tugmasi botni ochadi, bot kodni ko'rsatib "Tasdiqlash" tugmasini yuboradi (parol yo'q, `/setdomain` kerak emas). Faqat `ADMIN_TELEGRAM_IDS` dagilar (admin) va ular tayinlagan moderatorlar kira oladi. Sessiya 8 soat.
+
+```bash
+npm run dev:admin        # http://localhost:5174
+node scripts/deploy-admin.mjs   # build + alohida Vercel loyihasi (tayyorman-admin)
+```
+
+Sozlash: baza uchun `supabase/migrations/0002_admin.sql`, so'ng `0003_admin_login.sql` ni SQL Editor'da ishga tushiring; `ALLOWED_ORIGINS` ga admin sayti manzilini qo'shing; `admin-login` funksiyasini `--no-verify-jwt` bilan joylang. `AI_DAILY_LIMIT` siri endi ishlatilmaydi: AI limiti admin saytida (foydalanuvchi > guruh > umumiy).
+
+Reja va bosqichlar: [docs/ADMIN_PLAN.md](docs/ADMIN_PLAN.md).
 
 ## Ishlab chiqish
 
@@ -90,4 +116,4 @@ Mini App faqat Telegram ichida to'liq ishlaydi; oddiy brauzerda production build
 - Bot nomi va brend «Sessiyaga tayyorlan».
 - To'lov yo'q: barcha rejimlar bepul. Keyin tarif qo'shish uchun `profiles` jadvaliga maydon qo'shiladi.
 - Bir martalik xabar yuborish (`admin-broadcast`) bitta so'rovda 2500 tagacha foydalanuvchiga ishlaydi; kattaroq auditoriya uchun bo'laklash kerak bo'ladi.
-- Bot fayllarni 20 MB gacha qabul qiladi (Telegram cheklovi).
+- Ovozli javob 20 MB gacha (Telegram cheklovi).

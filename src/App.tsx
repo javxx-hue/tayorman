@@ -9,6 +9,10 @@ import { StudySet, Subject, UserStats } from './types';
 import { isMastered } from './lib/srs';
 import { useAuth } from './lib/auth';
 import { startSync } from './lib/sync';
+import { deliverLibrary } from './lib/library';
+import { useAssignments } from './lib/useAssignments';
+import { localItem, progressOf } from './lib/assignments';
+import { track } from './lib/track';
 import { startTelegram, applyTelegramTheme, useTelegramBackButton, BOT_USERNAME } from './lib/telegram';
 
 // Pages load on demand to keep the first download small on mobile data
@@ -16,11 +20,10 @@ const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m
 const SubjectsPage = lazy(() => import('./pages/SubjectsPage').then((m) => ({ default: m.SubjectsPage })));
 const SubjectPage = lazy(() => import('./pages/SubjectPage').then((m) => ({ default: m.SubjectPage })));
 const QuestionPracticePage = lazy(() => import('./pages/QuestionPracticePage').then((m) => ({ default: m.QuestionPracticePage })));
-const LibraryPage = lazy(() => import('./pages/LibraryPage').then((m) => ({ default: m.LibraryPage })));
+const AssignmentsPage = lazy(() => import('./pages/AssignmentsPage').then((m) => ({ default: m.AssignmentsPage })));
+const RequestPage = lazy(() => import('./pages/RequestPage').then((m) => ({ default: m.RequestPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
-const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
-const SetEditorPage = lazy(() => import('./pages/SetEditorPage').then((m) => ({ default: m.SetEditorPage })));
 const QuizRunner = lazy(() => import('./components/study/QuizRunner').then((m) => ({ default: m.QuizRunner })));
 const FlashcardPlayer = lazy(() => import('./components/study/FlashcardPlayer').then((m) => ({ default: m.FlashcardPlayer })));
 const NotesViewer = lazy(() => import('./components/study/NotesViewer').then((m) => ({ default: m.NotesViewer })));
@@ -93,13 +96,40 @@ export default function App() {
     []
   );
 
+  useEffect(() => {
+    if (online) track('app_open', { oncePerSession: true });
+  }, [online]);
+
   // Mirror local data to Supabase while signed in
+  // Content is delivered only after the first sync has finished, or an old cloud copy of something
+  // the admin has since taken back could come down again. Not waiting forever if the network is slow.
+  const [synced, setSynced] = useState(false);
   useEffect(() => {
     if (!online) return;
-    return startSync((s) => {
+    const fallback = setTimeout(() => setSynced(true), 8000);
+    const stop = startSync((s) => {
       if (s === 'error') console.warn('Cloud sync failed; data is still saved on this device.');
+      if (s === 'synced' || s === 'error') setSynced(true);
     });
+    return () => {
+      clearTimeout(fallback);
+      stop();
+    };
   }, [online, profile?.id]);
+
+  // Students create nothing: whatever the admin published for them arrives (and updates) by itself
+  useEffect(() => {
+    if (!online || !synced || profile?.role !== 'student') return;
+    deliverLibrary().catch((e) => console.warn('Library delivery failed', e));
+  }, [online, synced, profile?.id, profile?.role]);
+
+  const isStudent = online && synced && profile?.role === 'student';
+  const { assignments, server: assignmentProgress } = useAssignments(isStudent, subjects, studySets);
+  // Tab badge: assignments not finished yet
+  const openAssignments = (assignments ?? []).filter((a) => {
+    const mine = progressOf(localItem(a, subjects, studySets));
+    return (mine.status === 'new' ? assignmentProgress[a.id]?.status : mine.status) !== 'done';
+  }).length;
 
   useEffect(() => {
     if (joinedCommunity) toast.success(tr(lang, `«${joinedCommunity}» guruhiga qo'shildingiz`, `Вы в группе «${joinedCommunity}»`));
@@ -179,15 +209,15 @@ export default function App() {
             <Route path="/subjects/:id" element={<SubjectPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id/q/:qid" element={<QuestionPracticePage subjects={subjects} lang={lang} />} />
             <Route path="/study/:id" element={<StudyRoute studySets={studySets} lang={lang} />} />
-            <Route path="/study/:id/edit" element={<SetEditorPage studySets={studySets} lang={lang} />} />
-            <Route path="/library" element={<LibraryPage subjects={subjects} studySets={studySets} lang={lang} />} />
+            <Route path="/assignments" element={<AssignmentsPage assignments={assignments} server={assignmentProgress} subjects={subjects} studySets={studySets} lang={lang} />} />
+            <Route path="/request" element={<RequestPage lang={lang} />} />
+            <Route path="/library" element={<Navigate to="/request" replace />} />
             <Route path="/profile" element={<ProfilePage lang={lang} />} />
-            <Route path="/admin" element={<AdminPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </main>
-      <BottomNav lang={lang} />
+      <BottomNav lang={lang} openAssignments={openAssignments} />
       <ToastContainer />
     </div>
   );

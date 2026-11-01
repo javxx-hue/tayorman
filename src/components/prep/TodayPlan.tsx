@@ -34,11 +34,11 @@ export const TodayPlan: React.FC<TodayPlanProps> = ({ subjects, studySets, lang 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             {isUz
-              ? 'Sessiyadagi fanlaringizni qo\'shing: imtihon sanasi va savollar asosida har kuni nimani o\'qishni aytib turamiz.'
-              : 'Добавьте свои экзамены, и мы будем подсказывать, что учить каждый день.'}
+              ? 'Fanlaringizni administrator biriktiradi, shundan keyin har kuni nimani o\'qishni aytib turamiz. Kerakli fanni so\'rab yozing.'
+              : 'Предметы назначает администратор, после этого мы будем подсказывать, что учить каждый день. Напишите, какой предмет нужен.'}
           </p>
-          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => navigate('/subjects')}>
-            {isUz ? 'Fan qo\'shish' : 'Добавить предмет'}
+          <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => navigate('/request')}>
+            {isUz ? 'Fan so\'rash' : 'Запросить предмет'}
           </Button>
         </div>
       ) : (
@@ -46,7 +46,7 @@ export const TodayPlan: React.FC<TodayPlanProps> = ({ subjects, studySets, lang 
           {tasks.map(({ subject, plan }) => (
             <li key={subject.id}>
               <button
-                onClick={() => navigate(plan.today[0] ? `/subjects/${subject.id}/q/${plan.today[0].id}` : `/subjects/${subject.id}`)}
+                onClick={() => (plan.today[0] ? navigate(`/subjects/${subject.id}/q/${plan.today[0].id}`, { state: { queue: plan.today.map((q) => q.id) } }) : navigate(`/subjects/${subject.id}`))}
                 className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-secondary/50"
               >
                 <div className="flex-1 min-w-0">

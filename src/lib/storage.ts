@@ -1,4 +1,4 @@
-import { StudySet, UserStats, Language, Subject } from '../types';
+import { StudySet, UserStats, Subject, Language } from '../types';
 
 const STORAGE_KEYS = {
   SETS: 'sessiyagatayyorlan_study_sets',
@@ -60,14 +60,6 @@ export function initStorage(): void {
   }
 }
 
-// Reset to a brand new clean account
-export function resetToFreshState(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify([]));
-  localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(defaultStats));
-  notifyListeners();
-}
-
 // Study Sets
 export function getStudySets(): StudySet[] {
   if (typeof window === 'undefined') return [];
@@ -94,7 +86,7 @@ export function onLocalChange(fn: (change: LocalChange) => void): () => void {
   return () => changeHooks.delete(fn);
 }
 
-export class StorageFullError extends Error {
+class StorageFullError extends Error {
   constructor() {
     super('Browser storage is full');
     this.name = 'StorageFullError';
@@ -125,12 +117,6 @@ export function saveStudySet(set: StudySet, opts: { fromSync?: boolean } = {}): 
   notifyListeners();
 }
 
-export function deleteStudySet(id: string, opts: { fromSync?: boolean } = {}): void {
-  writeJson(STORAGE_KEYS.SETS, getStudySets().filter((s) => s.id !== id));
-  if (!opts.fromSync) changeHooks.forEach((fn) => fn({ kind: 'set', op: 'delete', id }));
-  notifyListeners();
-}
-
 // Subjects (fan): materials + exam question list
 export function getSubjects(): Subject[] {
   if (typeof window === 'undefined') return [];
@@ -153,19 +139,21 @@ export function saveSubject(subject: Subject, opts: { fromSync?: boolean } = {})
   notifyListeners();
 }
 
-export function deleteSubject(id: string, opts: { fromSync?: boolean } = {}): void {
+// Removed from the device and, through the sync hook, from the cloud copy too
+export function deleteStudySet(id: string): void {
+  writeJson(STORAGE_KEYS.SETS, getStudySets().filter((s) => s.id !== id));
+  changeHooks.forEach((fn) => fn({ kind: 'set', op: 'delete', id }));
+  notifyListeners();
+}
+
+export function deleteSubject(id: string): void {
   writeJson(STORAGE_KEYS.SUBJECTS, getSubjects().filter((s) => s.id !== id));
-  if (!opts.fromSync) changeHooks.forEach((fn) => fn({ kind: 'subject', op: 'delete', id }));
+  changeHooks.forEach((fn) => fn({ kind: 'subject', op: 'delete', id }));
   notifyListeners();
 }
 
 export function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-export function getStudySetById(id: string): StudySet | undefined {
-  const sets = getStudySets();
-  return sets.find((s) => s.id === id);
 }
 
 // User Stats & Streak

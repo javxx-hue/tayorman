@@ -8,7 +8,9 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev:admin": "vite --config vite.admin.config.ts",
+    "build:admin": "vite build --config vite.admin.config.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
@@ -23,6 +25,7 @@
     "ts-fsrs": "5.4.2"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.14",
     "@types/node": "^22.13.1",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",

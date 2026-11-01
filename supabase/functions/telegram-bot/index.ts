@@ -1,8 +1,9 @@
 // Telegram bot webhook.
 //  /start [c_<code>]  welcome + Mini App button, optional community join
+//  /start a_<nonce>   admin site sign-in: shows a code and a Confirm button
 //  /reja              today's plan       /til      switch language
 //  /eslatma           reminders on/off   /yordam   help
-//  file or photo      text is extracted, then "which subject?" buttons
+//  any other message  (text, file, photo) is passed to the admins as a request
 //  voice message      graded as an answer to the question chosen in the Mini App
 // Deploy with --no-verify-jwt; requests are checked against TELEGRAM_WEBHOOK_SECRET.
 // Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, APP_URL, AUTH_SECRET,
@@ -10,19 +11,22 @@
 import { admin } from '../_shared/admin.ts';
 import { ensureUser, joinCommunity, type TelegramUser } from '../_shared/users.ts';
 import { tg, sendMessage, openAppButton, downloadFile } from '../_shared/telegram.ts';
+import { submitRequest, TooManyRequests } from '../_shared/requests.ts';
+import { attachmentPath, MAX_FILE_BYTES, mimeForName, type Attachment } from '../_shared/attachments.ts';
+import { nonceCode, nonceFromStart, nonceHash } from '../_shared/loginNonce.ts';
 import { planLines } from '../_shared/plan.ts';
-import { kindOf, needsAi, extractText } from '../_shared/extract.ts';
 import { bytesToBase64, callGemini, consumeQuota, QuotaError } from '../_shared/gemini.ts';
 
+class BlockedError extends Error {}
+
 type Lang = 'uz' | 'ru';
-const MAX_FILE_BYTES = 20 * 1024 * 1024; // Bot API download limit
 
 const T = {
   welcome: {
     uz: (name: string) =>
-      `Salom, ${name}! 👋\n\n«Sessiyaga tayyorlan» sessiya va oraliq nazoratlarga tayyorlanishga yordam beradi:\n• fanlar va imtihon sanalari\n• ma'ruzalardan testlar va kartalar\n• imtihon savollariga javoblar va AI baholash\n• har kuni ertalab bugungi reja\n\nBoshlash uchun pastdagi tugmani bosing. Ma'ruza fayllarini (PDF, PPTX, rasm) shu chatga yuborsangiz, ular fanga qo'shiladi.`,
+      `Salom, ${name}! 👋\n\n«Tayyorman» sessiya va oraliq nazoratlarga tayyorlanishga yordam beradi:\n• fanlar va imtihon sanalari\n• tayyor testlar va kartalar\n• imtihon savollariga javoblar va AI baholash\n• har kuni ertalab bugungi reja\n\nBoshlash uchun pastdagi tugmani bosing. Fan, savol yoki material kerak bo'lsa, shu chatga yozing: so'rovingiz adminga boradi.`,
     ru: (name: string) =>
-      `Привет, ${name}! 👋\n\n«Sessiyaga tayyorlan» помогает готовиться к сессии и промежуточному контролю:\n• предметы и даты экзаменов\n• тесты и карточки по лекциям\n• ответы на экзаменационные вопросы и оценка ИИ\n• каждое утро план на день\n\nНажмите кнопку ниже, чтобы начать. Файлы лекций (PDF, PPTX, фото) можно присылать в этот чат — они добавятся к предмету.`,
+      `Привет, ${name}! 👋\n\n«Tayyorman» помогает готовиться к сессии и промежуточному контролю:\n• предметы и даты экзаменов\n• готовые тесты и карточки\n• ответы на экзаменационные вопросы и оценка ИИ\n• каждое утро план на день\n\nНажмите кнопку ниже, чтобы начать. Нужен предмет, вопросы или материалы — напишите сюда, запрос уйдёт администратору.`,
   },
   open: { uz: '📚 Ochish', ru: '📚 Открыть' },
   joined: { uz: (n: string) => `✅ Siz «${n}» guruhiga qo'shildingiz.`, ru: (n: string) => `✅ Вы присоединились к группе «${n}».` },
@@ -30,47 +34,52 @@ const T = {
   planTitle: { uz: '📚 Bugungi reja', ru: '📚 План на сегодня' },
   planEmpty: {
     uz: 'Hozircha reja yo\'q. Ilovada fan va imtihon sanasini qo\'shing.',
-    ru: 'Плана пока нет. Добавьте предмет и дату экзамена в приложении.',
+    ru: 'Плана пока нет. Предметы назначает администратор.',
   },
   lang: { uz: 'Til: o\'zbekcha 🇺🇿', ru: 'Язык: русский 🇷🇺' },
   remindersOn: { uz: '🔔 Har kunlik eslatmalar yoqildi (08:00).', ru: '🔔 Ежедневные напоминания включены (08:00).' },
   remindersOff: { uz: '🔕 Eslatmalar o\'chirildi.', ru: '🔕 Напоминания выключены.' },
   help: {
-    uz: '/reja — bugungi reja\n/til — tilni almashtirish\n/eslatma — eslatmalarni yoqish/o\'chirish\n\nFayl (PDF, PPTX, DOCX, rasm) yuboring — fanga qo\'shaman.',
-    ru: '/reja — план на сегодня\n/til — сменить язык\n/eslatma — вкл/выкл напоминания\n\nПришлите файл (PDF, PPTX, DOCX, фото) — добавлю к предмету.',
+    uz: "/reja — bugungi reja\\n/til — tilni almashtirish\\n/eslatma — eslatmalarni yoqish/o'chirish\\n\\nFan, savol, material yoki xato haqida shu chatga yozing (fayl yoki rasm ham mumkin): so'rovingiz adminga yuboriladi.",
+    ru: "/reja — план на сегодня\\n/til — сменить язык\\n/eslatma — вкл/выкл напоминания\\n\\nНапишите сюда о предмете, вопросах, материалах или ошибке (можно файл или фото): запрос уйдёт администратору.",
   },
-  reading: { uz: '⏳ Faylni o\'qiyapman...', ru: '⏳ Читаю файл...' },
   badFile: {
     uz: 'Bu fayl turini o\'qiy olmayman. PDF, PPTX, DOCX, TXT yoki rasm yuboring.',
     ru: 'Не могу прочитать этот тип файла. Пришлите PDF, PPTX, DOCX, TXT или фото.',
   },
-  tooBig: { uz: 'Fayl 20 MB dan katta. Kichikroq fayl yuboring.', ru: 'Файл больше 20 МБ. Пришлите файл поменьше.' },
-  emptyFile: { uz: 'Fayldan matn topilmadi.', ru: 'В файле не найден текст.' },
   limit: { uz: 'Bugungi AI limiti tugadi. Ertaga yana urinib ko\'ring.', ru: 'Дневной лимит ИИ исчерпан. Попробуйте завтра.' },
   failed: { uz: 'Xatolik yuz berdi, keyinroq urinib ko\'ring.', ru: 'Произошла ошибка, попробуйте позже.' },
-  whichSubject: { uz: (n: string) => `«${n}» qaysi fanga qo'shilsin?`, ru: (n: string) => `К какому предмету добавить «${n}»?` },
-  noSubjects: {
-    uz: 'Avval ilovada fan yarating, keyin faylni qayta yuboring.',
-    ru: 'Сначала создайте предмет в приложении, затем пришлите файл снова.',
+  blocked: {
+    uz: "Hisobingiz cheklangan. Savol bo'lsa, administratorga murojaat qiling.",
+    ru: 'Ваш аккаунт ограничен. По вопросам обратитесь к администратору.',
   },
-  cancel: { uz: '✖️ Bekor qilish', ru: '✖️ Отмена' },
-  cancelled: { uz: 'Bekor qilindi.', ru: 'Отменено.' },
-  added: { uz: (s: string) => `✅ Material «${s}» faniga qo'shildi.`, ru: (s: string) => `✅ Материал добавлен к предмету «${s}».` },
-  expired: { uz: 'Bu so\'rov eskirgan. Faylni qayta yuboring.', ru: 'Запрос устарел. Пришлите файл снова.' },
+  expired: { uz: 'Bu so\'rov eskirgan. Ilovada savolni qayta oching.', ru: 'Запрос устарел. Откройте вопрос в приложении заново.' },
+  sent: { uz: "✅ So'rovingiz adminga yuborildi. Javob shu chatga keladi.", ru: '✅ Запрос отправлен администратору. Ответ придёт в этот чат.' },
+  tooMany: { uz: "Bugun juda ko'p so'rov yubordingiz. Ertaga yana yozing.", ru: 'Сегодня слишком много запросов. Напишите завтра.' },
+  badFile: { uz: "Bu fayl turini qabul qila olmayman. PDF, Word, PowerPoint, TXT yoki rasm yuboring.", ru: 'Не могу принять этот тип файла. Пришлите PDF, Word, PowerPoint, TXT или фото.' },
+  tooBig: { uz: 'Fayl 20 MB dan katta. Kichikroq fayl yuboring.', ru: 'Файл больше 20 МБ. Пришлите файл поменьше.' },
   noVoiceTask: {
     uz: 'Ovozli javob uchun ilovada savolni ochib, «Ovoz bilan javob berish» tugmasini bosing.',
     ru: 'Чтобы ответить голосом, откройте вопрос в приложении и нажмите «Ответить голосом».',
   },
   grading: { uz: '⏳ Javobingizni tinglayapman...', ru: '⏳ Слушаю ваш ответ...' },
+  staffOnly: { uz: "Bu bo'lim faqat administratorlar uchun.", ru: 'Этот раздел только для администраторов.' },
+  loginAsk: {
+    uz: (code: string) => `🔐 Admin saytga kirish\n\nSaytda ko'rsatilgan kod: ${code}\nKod bir xil bo'lsa, tasdiqlang. Siz saytni ochmagan bo'lsangiz, tasdiqlamang.`,
+    ru: (code: string) => `🔐 Вход на сайт администратора\n\nКод на сайте: ${code}\nЕсли код совпадает, подтвердите. Если вы не открывали сайт, не подтверждайте.`,
+  },
+  loginConfirm: { uz: '✅ Tasdiqlash', ru: '✅ Подтвердить' },
+  loginDone: { uz: '✅ Tasdiqlandi. Saytga qayting, u o\'zi ochiladi.', ru: '✅ Подтверждено. Вернитесь на сайт, он откроется сам.' },
   openQuestion: { uz: 'Savolni ochish', ru: 'Открыть вопрос' },
 };
 
 const t = <K extends keyof typeof T>(key: K, lang: Lang) => T[key][lang];
 
-async function profileOf(tgUser: TelegramUser): Promise<{ id: string; language: Lang; reminders_enabled: boolean }> {
+async function profileOf(tgUser: TelegramUser): Promise<{ id: string; language: Lang; reminders_enabled: boolean; role: string }> {
   const id = await ensureUser(tgUser);
-  const { data } = await admin.from('profiles').select('id, language, reminders_enabled').eq('id', id).single();
-  return data as { id: string; language: Lang; reminders_enabled: boolean };
+  const { data } = await admin.from('profiles').select('id, language, reminders_enabled, role, blocked').eq('id', id).single();
+  if (data?.blocked) throw new BlockedError();
+  return data as { id: string; language: Lang; reminders_enabled: boolean; role: string };
 }
 
 const appKeyboard = (lang: Lang, path = '') => ({ reply_markup: { inline_keyboard: [[openAppButton(t('open', lang), path)]] } });
@@ -83,6 +92,14 @@ async function onCommand(chatId: number, text: string, user: TelegramUser) {
 
   switch (command.replace(/@\w+$/, '')) {
     case '/start': {
+      const nonce = nonceFromStart(arg);
+      if (nonce) {
+        // Only admins and moderators get a Confirm button; everyone else just sees a plain refusal
+        if (!['admin', 'moderator'].includes(profile.role)) return void (await sendMessage(chatId, t('staffOnly', lang)));
+        return void (await sendMessage(chatId, t('loginAsk', lang)(nonceCode(nonce)), {
+          reply_markup: { inline_keyboard: [[{ text: t('loginConfirm', lang), callback_data: `al:${nonce}` }]] },
+        }));
+      }
       await sendMessage(chatId, t('welcome', lang)(user.first_name ?? ''), appKeyboard(lang));
       const code = arg?.match(/^c_([a-f0-9]{12})$/)?.[1];
       if (code) {
@@ -113,75 +130,75 @@ async function onCommand(chatId: number, text: string, user: TelegramUser) {
   }
 }
 
-// ---------------------------------------------------------------- files
-type Incoming = { fileId: string; name: string; mime: string; size?: number };
+// ---------------------------------------------------------------- requests
+type Incoming = {
+  message_id: number;
+  text?: string;
+  caption?: string;
+  document?: { file_id: string; file_name?: string; mime_type?: string; file_size?: number };
+  photo?: { file_id: string; file_size?: number }[];
+};
 
-async function onFile(chatId: number, user: TelegramUser, file: Incoming) {
+// A file or photo from the chat is kept in the private bucket, so the admin can open it on the site
+async function storeFile(userId: string, m: Incoming): Promise<Attachment | 'bad' | 'big' | 'failed'> {
+  const best = m.photo?.[m.photo.length - 1]; // the largest size
+  const fileId = m.document?.file_id ?? best?.file_id;
+  if (!fileId) return 'failed';
+  const name = m.document?.file_name ?? `photo-${m.message_id}.jpg`;
+  const mime = m.document ? mimeForName(name) : 'image/jpeg';
+  if (!mime) return 'bad';
+  const size = m.document?.file_size ?? best?.file_size ?? 0;
+  if (size > MAX_FILE_BYTES) return 'big';
+
+  const bytes = await downloadFile(fileId);
+  if (!bytes) return 'failed';
+  const path = attachmentPath(userId, name);
+  const { error } = await admin.storage.from('request-files').upload(path, bytes, { contentType: mime });
+  return error ? 'failed' : { path, name, size: bytes.length, mime };
+}
+
+// Students cannot add content; whatever they send becomes a request for the admins
+async function onRequest(chatId: number, user: TelegramUser, m: Incoming) {
   const profile = await profileOf(user);
   const lang = profile.language;
-  const kind = kindOf(file.name, file.mime);
-  if (!kind) return void (await sendMessage(chatId, t('badFile', lang)));
-  if ((file.size ?? 0) > MAX_FILE_BYTES) return void (await sendMessage(chatId, t('tooBig', lang)));
+  const hasFile = !!(m.document || m.photo?.length);
+  const label = m.document ? `📎 Fayl: ${m.document.file_name ?? 'file'}` : m.photo?.length ? '🖼 Rasm' : '';
+  const text = [label, m.text ?? m.caption ?? ''].filter(Boolean).join(' — ');
+  if (text.trim().length < 3) return void (await sendMessage(chatId, t('help', lang), appKeyboard(lang)));
 
-  const { data: subjects } = await admin.from('subjects').select('id, data').eq('user_id', profile.id);
-  if (!subjects?.length) return void (await sendMessage(chatId, t('noSubjects', lang), appKeyboard(lang, '/subjects')));
-
-  await sendMessage(chatId, t('reading', lang));
   try {
-    if (needsAi(kind)) await consumeQuota(profile.id);
-    const bytes = await downloadFile(file.fileId);
-    if (!bytes) throw new Error('download failed');
-    const text = (await extractText(kind, bytes, file.mime)).trim();
-    if (!text) return void (await sendMessage(chatId, t('emptyFile', lang)));
-
-    await admin.from('bot_pending').upsert({
-      user_id: profile.id,
-      kind: 'material',
-      payload: { name: file.name, kind: kind === 'docx' ? 'text' : kind, text, fileId: file.fileId },
-      created_at: new Date().toISOString(),
-    });
-
-    // callback_data is limited to 64 bytes; subject ids are short
-    const rows = subjects
-      .map((s: { id: string; data: { name: string; examDate: string } }) => s)
-      .sort((a, b) => a.data.examDate.localeCompare(b.data.examDate))
-      .slice(0, 20)
-      .map((s) => [{ text: s.data.name.slice(0, 60), callback_data: `m:${s.id}` }]);
-    rows.push([{ text: t('cancel', lang), callback_data: 'm:-' }]);
-    await sendMessage(chatId, t('whichSubject', lang)(file.name), { reply_markup: { inline_keyboard: rows } });
+    const attachments: Attachment[] = [];
+    if (hasFile) {
+      const stored = await storeFile(profile.id, m);
+      if (stored === 'bad') return void (await sendMessage(chatId, t('badFile', lang)));
+      if (stored === 'big') return void (await sendMessage(chatId, t('tooBig', lang)));
+      if (stored === 'failed') return void (await sendMessage(chatId, t('failed', lang)));
+      attachments.push(stored);
+    }
+    await submitRequest(profile.id, hasFile ? 'questions' : 'other', text, attachments);
+    await sendMessage(chatId, t('sent', lang));
   } catch (e) {
-    console.error('file failed', e);
-    await sendMessage(chatId, e instanceof QuotaError ? t('limit', lang) : t('failed', lang));
+    if (e instanceof TooManyRequests) return void (await sendMessage(chatId, t('tooMany', lang)));
+    console.error('request failed', e);
+    await sendMessage(chatId, t('failed', lang));
   }
 }
 
-async function onSubjectChosen(query: { id: string; data: string; from: TelegramUser; message?: { chat: { id: number }; message_id: number } }) {
+// ---------------------------------------------------------------- admin site sign-in
+async function onLoginConfirm(query: { id: string; data: string; from: TelegramUser; message?: { chat: { id: number }; message_id: number } }) {
   const profile = await profileOf(query.from);
   const lang = profile.language;
-  const chatId = query.message?.chat.id ?? query.from.id;
-  const subjectId = query.data.slice(2);
   await tg('answerCallbackQuery', { callback_query_id: query.id });
+  const nonce = nonceFromStart(`a_${query.data.slice(3)}`);
+  if (!nonce || !['admin', 'moderator'].includes(profile.role)) return;
 
-  const edit = (text: string) =>
-    query.message ? tg('editMessageText', { chat_id: chatId, message_id: query.message.message_id, text }) : sendMessage(chatId, text);
+  await admin.from('admin_login_requests').upsert({ nonce_hash: await nonceHash(nonce), user_id: profile.id }, { onConflict: 'nonce_hash', ignoreDuplicates: true });
+  // Old rows are of no use to anyone
+  await admin.from('admin_login_requests').delete().lt('approved_at', new Date(Date.now() - 24 * 3600 * 1000).toISOString());
 
-  const { data: pending } = await admin.from('bot_pending').select('kind, payload').eq('user_id', profile.id).maybeSingle();
-  if (subjectId === '-') {
-    await admin.from('bot_pending').delete().eq('user_id', profile.id);
-    return void (await edit(t('cancelled', lang)));
-  }
-  if (pending?.kind !== 'material') return void (await edit(t('expired', lang)));
-
-  const { data: row } = await admin.from('subjects').select('data').eq('user_id', profile.id).eq('id', subjectId).maybeSingle();
-  if (!row) return void (await edit(t('expired', lang)));
-
-  const p = pending.payload as { name: string; kind: string; text: string; fileId: string };
-  const now = Date.now();
-  const material = { id: `mat-${now.toString(36)}`, name: p.name, kind: p.kind, text: p.text, fileId: p.fileId, createdAt: now };
-  const data = { ...row.data, materials: [...(row.data.materials ?? []), material], updatedAt: now };
-  await admin.from('subjects').update({ data, updated_at: new Date().toISOString() }).eq('user_id', profile.id).eq('id', subjectId);
-  await admin.from('bot_pending').delete().eq('user_id', profile.id);
-  await edit(t('added', lang)(row.data.name));
+  const chatId = query.message?.chat.id ?? query.from.id;
+  if (query.message) await tg('editMessageText', { chat_id: chatId, message_id: query.message.message_id, text: t('loginDone', lang) });
+  else await sendMessage(chatId, t('loginDone', lang));
 }
 
 // ---------------------------------------------------------------- voice answers
@@ -260,23 +277,25 @@ Deno.serve(async (req) => {
   const update = await req.json().catch(() => null);
 
   try {
-    if (update?.callback_query?.data?.startsWith('m:')) {
-      await onSubjectChosen(update.callback_query);
+    if (typeof update?.callback_query?.data === 'string' && update.callback_query.data.startsWith('al:')) {
+      await onLoginConfirm(update.callback_query);
     } else if (update?.message?.chat?.type === 'private' && update.message.from) {
       const m = update.message;
       const chatId: number = m.chat.id;
       if (typeof m.text === 'string' && m.text.startsWith('/')) await onCommand(chatId, m.text, m.from);
-      else if (m.document) await onFile(chatId, m.from, { fileId: m.document.file_id, name: m.document.file_name ?? 'file', mime: m.document.mime_type ?? '', size: m.document.file_size });
-      else if (m.photo?.length) {
-        const best = m.photo[m.photo.length - 1]; // largest size
-        await onFile(chatId, m.from, { fileId: best.file_id, name: `photo-${m.message_id}.jpg`, mime: 'image/jpeg', size: best.file_size });
-      } else if (m.voice) await onVoice(chatId, m.from, m.voice.file_id, m.voice.mime_type ?? 'audio/ogg');
+      else if (m.voice) await onVoice(chatId, m.from, m.voice.file_id, m.voice.mime_type ?? 'audio/ogg');
       else if (m.audio) await onVoice(chatId, m.from, m.audio.file_id, m.audio.mime_type ?? 'audio/mpeg');
-      else await onCommand(chatId, '/yordam', m.from);
+      else await onRequest(chatId, m.from, m);
     }
   } catch (e) {
     // Always 200 so Telegram does not retry the same update forever
-    console.error('update failed', e);
+    if (e instanceof BlockedError) {
+      const who = update?.message?.from ?? update?.callback_query?.from;
+      const lang: Lang = who?.language_code === 'ru' ? 'ru' : 'uz';
+      if (who?.id) await sendMessage(who.id, t('blocked', lang));
+    } else {
+      console.error('update failed', e);
+    }
   }
   return new Response('ok');
 });

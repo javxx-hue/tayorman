@@ -83,14 +83,14 @@ export const AdminPage: React.FC<{ subjects: Subject[]; studySets: StudySet[]; l
       if (file.name.endsWith('.txt') || file.name.endsWith('.json')) {
         const t = await file.text();
         setRawText(t);
-        const qs = parseExamQuestionsFromText(t);
+        const { questions: qs } = parseExamQuestionsFromText(t);
         setParsedQuestions(qs);
         if (!importTitle) setImportTitle(file.name.replace(/\.[^/.]+$/, ''));
         toast.success(tr(lang, `${qs.length} ta savol topildi`, `Найдено ${qs.length} вопросов`));
       } else {
         const mat = await materialFromFile(file);
         setRawText(mat.text);
-        const qs = parseExamQuestionsFromText(mat.text);
+        const { questions: qs } = parseExamQuestionsFromText(mat.text);
         setParsedQuestions(qs);
         if (!importTitle) setImportTitle(file.name.replace(/\.[^/.]+$/, ''));
         toast.success(tr(lang, `${qs.length} ta savol topildi`, `Найдено ${qs.length} вопросов`));
@@ -103,7 +103,7 @@ export const AdminPage: React.FC<{ subjects: Subject[]; studySets: StudySet[]; l
   };
 
   const handleParse = () => {
-    const qs = parseExamQuestionsFromText(rawText);
+    const { questions: qs } = parseExamQuestionsFromText(rawText);
     setParsedQuestions(qs);
     if (qs.length === 0) {
       toast.error(tr(lang, 'Savollar topilmadi. Formatni tekshiring.', 'Вопросы не найдены.'));

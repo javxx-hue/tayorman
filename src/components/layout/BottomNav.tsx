@@ -1,21 +1,19 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, BookOpen, Library, User, Shield } from 'lucide-react';
+import { Home, BookOpen, MessageSquarePlus, ClipboardList, User } from 'lucide-react';
 import { Language, tr } from '../../lib/i18n';
-import { useAuth } from '../../lib/auth';
 import { haptic } from '../../lib/telegram';
 
 // Tab roots hide Telegram's back button; every other page shows it
-export const TAB_ROOTS = ['/', '/subjects', '/library', '/profile', '/admin'];
+export const TAB_ROOTS = ['/', '/assignments', '/subjects', '/request', '/profile'];
 
-export const BottomNav: React.FC<{ lang: Language }> = ({ lang }) => {
-  const { isAdmin } = useAuth();
+export const BottomNav: React.FC<{ lang: Language; openAssignments?: number }> = ({ lang, openAssignments = 0 }) => {
   const tabs = [
     { to: '/', icon: Home, label: tr(lang, 'Bugun', 'Сегодня') },
+    { to: '/assignments', icon: ClipboardList, label: tr(lang, 'Topshiriq', 'Задания'), badge: openAssignments },
     { to: '/subjects', icon: BookOpen, label: tr(lang, 'Fanlar', 'Предметы') },
-    { to: '/library', icon: Library, label: tr(lang, 'Kutubxona', 'Библиотека') },
+    { to: '/request', icon: MessageSquarePlus, label: tr(lang, "So'rov", 'Запрос') },
     { to: '/profile', icon: User, label: tr(lang, 'Profil', 'Профиль') },
-    ...(isAdmin ? [{ to: '/admin', icon: Shield, label: 'Admin' }] : []),
   ];
 
   return (
@@ -24,7 +22,7 @@ export const BottomNav: React.FC<{ lang: Language }> = ({ lang }) => {
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="max-w-3xl mx-auto flex">
-        {tabs.map(({ to, icon: Icon, label }) => (
+        {tabs.map(({ to, icon: Icon, label, badge }) => (
           <NavLink
             key={to}
             to={to}
@@ -36,7 +34,12 @@ export const BottomNav: React.FC<{ lang: Language }> = ({ lang }) => {
               }`
             }
           >
-            <Icon size={20} />
+            <span className="relative">
+              <Icon size={20} />
+              {!!badge && (
+                <span className="absolute -top-1.5 -right-2.5 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] leading-4 text-center font-semibold">{badge}</span>
+              )}
+            </span>
             {label}
           </NavLink>
         ))}

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { StudySet, QuizQuestion } from '../../types';
 import { Button } from '../ui/Button';
-import { Timer, Flag, Check, AlertTriangle, Trophy, Award, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
-import { Language, getTranslations } from '../../lib/i18n';
+import { Timer, Flag, Check, AlertTriangle, Trophy, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { Language, getTranslations, tr } from '../../lib/i18n';
 import { recordQuizCompletion } from '../../lib/storage';
 
 interface ExamSimulatorProps {
@@ -75,7 +75,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
       }
     });
     const finalPct = Math.round((correctCount / totalQ) * 100);
-    recordQuizCompletion(finalPct, totalQ, set);
+    if (!reviewMistakesMode) recordQuizCompletion(finalPct, totalQ, set);
   };
 
   const currentQ = activeQuestions[currentIdx];
@@ -174,7 +174,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
               }}
               icon={<RotateCcw size={16} />}
             >
-              Xatolar ustida ishlash ({weakQuestions.length})
+              {tr(lang, 'Xatolar ustida ishlash', 'Работа над ошибками')} ({weakQuestions.length})
             </Button>
           )}
           <Button variant="outline" size="md" onClick={onRetake} icon={<RotateCcw size={16} />}>
@@ -202,7 +202,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
             </h2>
             {reviewMistakesMode && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-600 dark:text-rose-400 uppercase">
-                Xatolar tahlili
+                {tr(lang, 'Xatolar tahlili', 'Разбор ошибок')}
               </span>
             )}
           </div>

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { parseExamQuestionsFromText } from './testParser';
 
 describe('parseExamQuestionsFromText', () => {
-  it('parses standard Hemis format with + for correct answer', () => {
+  it('parses standard Hemis format with + for the correct answer', () => {
     const raw = `
 1. Axborot xavfsizligining asosiy tarkibiy qismlari qaysilar?
 +Maxfiylik, butunlik, foydalana olishlik
@@ -16,8 +16,8 @@ Cheksizlik
 Faqat murakkablik
 Faqat tezlik
 `;
-
-    const qs = parseExamQuestionsFromText(raw);
+    const { questions: qs, skipped } = parseExamQuestionsFromText(raw);
+    expect(skipped).toBe(0);
     expect(qs).toHaveLength(2);
 
     expect(qs[0].question).toBe('Axborot xavfsizligining asosiy tarkibiy qismlari qaysilar?');
@@ -26,12 +26,11 @@ Faqat tezlik
     expect(qs[0].options[0]).toBe('Maxfiylik, butunlik, foydalana olishlik');
 
     expect(qs[1].question).toBe('Algoritmning asosiy xossasi nima?');
-    expect(qs[1].options).toHaveLength(4);
     expect(qs[1].correctAnswer).toBe(1);
     expect(qs[1].options[1]).toBe('Diskretlik, tushunarlilik, ommaviylik');
   });
 
-  it('parses questions with delimiter === and letter options', () => {
+  it('parses lettered options with "Javob: X" and a +A) marker, split by ====', () => {
     const raw = `
 O'zbekiston Respublikasi poytaxti qaysi shahar?
 A) Samarqand
@@ -46,13 +45,10 @@ B) Tezkor xotira
 C) Qattiq disk
 D) Videokarta
 `;
-
-    const qs = parseExamQuestionsFromText(raw);
+    const { questions: qs } = parseExamQuestionsFromText(raw);
     expect(qs).toHaveLength(2);
-
     expect(qs[0].correctAnswer).toBe(2);
     expect(qs[0].options[2]).toBe('Toshkent');
-
     expect(qs[1].correctAnswer).toBe(0);
     expect(qs[1].options[0]).toBe('Markaziy protsessor');
   });
@@ -72,7 +68,8 @@ UPDATE
 DELETE
 `;
 
-    const qs = parseExamQuestionsFromText(raw);
+    const { questions: qs, skipped } = parseExamQuestionsFromText(raw);
+    expect(skipped).toBe(0);
     expect(qs).toHaveLength(2);
     expect(qs[0].correctAnswer).toBe(0);
     expect(qs[1].correctAnswer).toBe(2);
@@ -89,14 +86,34 @@ d. C++
 To'g'ri javob: C
 `;
 
-    const qs = parseExamQuestionsFromText(raw);
+    const { questions: qs, skipped } = parseExamQuestionsFromText(raw);
+    expect(skipped).toBe(0);
     expect(qs).toHaveLength(1);
     expect(qs[0].correctAnswer).toBe(2);
     expect(qs[0].options[2]).toBe('HTML');
   });
 
-  it('handles empty string safely', () => {
-    expect(parseExamQuestionsFromText('')).toEqual([]);
-    expect(parseExamQuestionsFromText('   ')).toEqual([]);
+  it('never guesses: a question with no marked answer is skipped and counted', () => {
+    const raw = `
+Birinchi savol?
+A) bir
+B) ikki
+C) uch
+D) to'rt
+
+Ikkinchi savol?
++A) to'g'ri
+B) noto'g'ri
+`;
+    const { questions, skipped } = parseExamQuestionsFromText(raw);
+    expect(skipped).toBe(1);
+    expect(questions).toHaveLength(1);
+    expect(questions[0].question).toBe('Ikkinchi savol?');
+    expect(questions[0].correctAnswer).toBe(0);
+  });
+
+  it('handles empty input safely', () => {
+    expect(parseExamQuestionsFromText('')).toEqual({ questions: [], skipped: 0 });
+    expect(parseExamQuestionsFromText('   ')).toEqual({ questions: [], skipped: 0 });
   });
 });

@@ -4,7 +4,7 @@ import { Button } from '../ui/Button';
 import { Check, X, Lightbulb, ArrowRight, RotateCcw, Trophy, Award, Sparkles, ChevronRight, HelpCircle, Clock, Volume2 } from 'lucide-react';
 import { Language, getTranslations } from '../../lib/i18n';
 import { recordQuizCompletion } from '../../lib/storage';
-import { toast } from '../ui/Toast';
+import { ReportIssue } from '../ReportIssue';
 
 interface QuizRunnerProps {
   set: StudySet;
@@ -308,6 +308,8 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
             )}
           </div>
         )}
+
+        {hasAnswered && <ReportIssue lang={lang} libraryId={set.libraryId} context={set.title} questionText={currentQ.question} />}
 
         {/* Action Controls */}
         <div className="pt-4 border-t border-border/60 flex items-center justify-between">

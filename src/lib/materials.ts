@@ -3,7 +3,6 @@
 import { Material, MaterialKind } from '../types';
 import { extractTextFromPdf } from './pdfParser';
 import { geminiGenerate, GenerationError } from './ai';
-import { extractYouTubeId } from './youtubeParser';
 import { newId } from './storage';
 
 const XML_ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
@@ -75,27 +74,9 @@ async function extractImage(file: File): Promise<string> {
   );
 }
 
-// Gemini watches public YouTube videos directly, so no transcript scraping is needed
-export async function extractYouTube(url: string): Promise<string> {
-  const id = extractYouTubeId(url);
-  if (!id) throw new GenerationError('EMPTY_SOURCE', 'Not a YouTube link.');
-  return geminiGenerate(
-    [
-      { file_data: { file_uri: `https://www.youtube.com/watch?v=${id}` } },
-      {
-        text:
-          'This is a lecture. Write detailed study notes of everything taught, in the language of the lecture, ' +
-          'in order, as plain text. Start each new part with its timestamp like [12:30]. ' +
-          'Include definitions, formulas, examples and lists. Do not add facts that are not in the video.',
-      },
-    ],
-    { temperature: 0.2 }
-  );
-}
-
 export const ACCEPTED_FILES = '.pdf,.pptx,.docx,.txt,.md,image/*';
 
-export function kindForFile(file: File): MaterialKind | null {
+function kindForFile(file: File): MaterialKind | null {
   const name = file.name.toLowerCase();
   if (name.endsWith('.pdf')) return 'pdf';
   if (name.endsWith('.pptx')) return 'pptx';
@@ -118,12 +99,6 @@ export async function materialFromFile(file: File): Promise<Material> {
 
   if (!text.trim()) throw new GenerationError('EMPTY_SOURCE', `No text found in ${file.name}`);
   return { id: newId('mat'), name: file.name, kind, text: text.trim(), createdAt: Date.now() };
-}
-
-export async function materialFromYouTube(url: string, title?: string): Promise<Material> {
-  const text = await extractYouTube(url);
-  if (!text.trim()) throw new GenerationError('EMPTY_SOURCE', 'No content extracted from video.');
-  return { id: newId('mat'), name: title || url, kind: 'youtube', text: text.trim(), createdAt: Date.now() };
 }
 
 // All materials of a subject as one prompt context, each under its file name,

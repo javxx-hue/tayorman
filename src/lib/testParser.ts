@@ -8,8 +8,13 @@ import { newId } from './storage';
  * - A/B/C/D option blocks with explicit "Javob: X" or "+A)"
  * - Separators: double newlines, '====', or '----'
  */
-export function parseExamQuestionsFromText(raw: string): QuizQuestion[] {
-  if (!raw || !raw.trim()) return [];
+export interface ParsedQuestions {
+  questions: QuizQuestion[];
+  skipped: number; // looked like a question but had no marked correct answer
+}
+
+export function parseExamQuestionsFromText(raw: string): ParsedQuestions {
+  if (!raw || !raw.trim()) return { questions: [], skipped: 0 };
 
   // Normalize line endings
   const normalized = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
@@ -21,6 +26,7 @@ export function parseExamQuestionsFromText(raw: string): QuizQuestion[] {
     .filter(Boolean);
 
   const questions: QuizQuestion[] = [];
+  let skipped = 0;
 
   for (const block of blocks) {
     const lines = block
@@ -102,8 +108,12 @@ export function parseExamQuestionsFromText(raw: string): QuizQuestion[] {
     }
 
     if (qText && rawOptions.length >= 2) {
-      let correctIdx = rawOptions.findIndex((o) => o.isCorrect);
-      if (correctIdx < 0) correctIdx = 0;
+      // Never guess: a question without a marked answer would teach students something wrong
+      const correctIdx = rawOptions.findIndex((o) => o.isCorrect);
+      if (correctIdx < 0) {
+        skipped++;
+        continue;
+      }
 
       questions.push({
         id: newId('q'),
@@ -116,5 +126,5 @@ export function parseExamQuestionsFromText(raw: string): QuizQuestion[] {
     }
   }
 
-  return questions;
+  return { questions, skipped };
 }
