@@ -72,6 +72,17 @@ select cron.schedule('daily-reminders', '0 3 * * *', $$
 $$);
 ```
 
+### 5b. Rejalashtirilgan xabarlar (har daqiqa)
+Admin saytdagi "Xabarlar" bo'limida vaqtga qo'yilgan xabarlar shu ish bilan yuboriladi. `broadcast-due` funksiyasini `--no-verify-jwt` bilan joylang va SQL Editor'da (`<CRON_SECRET>` — Supabase sirlaridagi qiymat):
+```sql
+select cron.schedule('broadcasts-due', '* * * * *', $$
+  select net.http_post(
+    url := 'https://<loyiha-ref>.supabase.co/functions/v1/broadcast-due',
+    headers := jsonb_build_object('x-cron-secret', '<CRON_SECRET>')
+  );
+$$);
+```
+
 ### 6. Mini App'ni joylash
 `.env` ga `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_TELEGRAM_BOT` ni yozing. Vercel yoki Netlify'da: build `npm run build`, papka `dist`, barcha yo'llar `index.html` ga yo'naltirilsin (SPA rewrite), `VITE_*` qiymatlarni hosting sozlamalariga ham kiriting. Manzilni `APP_URL`, `ALLOWED_ORIGINS` va BotFather menyu tugmasiga qo'ying.
 
