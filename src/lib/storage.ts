@@ -49,87 +49,294 @@ export function initStorage(): void {
     localStorage.setItem(STORAGE_KEYS.LANG, localStorage.getItem('tayyorman_language')!);
   }
 
-const STARTER_SUBJECT_ID = 'starter-subject-matem';
+const STARTER_SUBJECT_MATH_ID = 'starter-subject-matem';
+const STARTER_SUBJECT_SEC_ID = 'starter-subject-security';
+const STARTER_SUBJECT_PROG_ID = 'starter-subject-prog';
 
-const starterSubject: Subject = {
-  id: STARTER_SUBJECT_ID,
-  name: 'Oliy matematika (Namunaviy)',
-  examDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-  examFormat: 'test',
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-  materials: [],
-  questions: [
-    {
-      id: 'q-demo-1',
-      text: "Funksiyaning hosilasi ta'rifi nima?",
-      attempts: [],
-    },
-    {
-      id: 'q-demo-2',
-      text: 'Matritsaning determinanti qanday hisoblanadi?',
-      attempts: [],
-    },
-  ],
-};
+const starterSubjects: Subject[] = [
+  {
+    id: STARTER_SUBJECT_SEC_ID,
+    name: 'Axborot xavfsizligi',
+    examDate: new Date(Date.now() + 9 * 86400000).toISOString().split('T')[0],
+    examFormat: 'test',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    materials: [],
+    questions: [
+      {
+        id: 'q-sec-bilet-1',
+        text: 'Axborot xavfsizligining asosiy triadasi (CIA) nimalardan iborat?',
+        modelAnswer: {
+          summary: 'Axborot xavfsizligi uchta asosiy ustunga tayanadi: Maxfiylik, Butunlik va Foydalana olishlik.',
+          keyPoints: [
+            'Maxfiylik (Confidentiality) — ma\'lumot faqat ruxsati bor shaxslarga ochiq bo\'lishi.',
+            'Butunlik (Integrity) — ma\'lumotning ruxsatsiz o\'zgartirilmasligi va to\'liqligi.',
+            'Foydalana olishlik (Availability) — zarur paytda tizim va ma\'lumotning ishlashga tayyorligi.',
+          ],
+          sources: ['Axborot xavfsizligi ma\'ruzalar kursi, 1-mavzu'],
+        },
+        attempts: [],
+      },
+      {
+        id: 'q-sec-bilet-2',
+        text: 'Simmetrik va asimmetrik shifrlash algoritmlarining farqi nimada?',
+        modelAnswer: {
+          summary: 'Simmetrik shifrlashda 1 ta umumiy kalit, asimmetrikda esa 2 ta (ochiq va yopiq) kalit ishlatiladi.',
+          keyPoints: [
+            'Simmetrik: AES, DES kabi algoritmlar. Juda tez ishlaydi, katta hajmdagi ma\'lumotlar uchun mos.',
+            'Asimmetrik: RSA, ECC kabi algoritmlar. Ochiq kalit (shifrlash) va yopiq kalit (ochish) juftligi.',
+            'Asimmetrik shifrlash kalitlarni xavfsiz almashish va raqamli imzo uchun asosiy vositadir.',
+          ],
+          sources: ['Amaliy kriptografiya, 3-bob'],
+        },
+        attempts: [],
+      },
+    ],
+  },
+  {
+    id: STARTER_SUBJECT_MATH_ID,
+    name: 'Oliy matematika',
+    examDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+    examFormat: 'test',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    materials: [],
+    questions: [
+      {
+        id: 'q-mat-bilet-1',
+        text: "Funksiyaning hosilasi ta'rifi va uning geometrik ma'nosi nima?",
+        modelAnswer: {
+          summary: "Hosilaning geometrik ma'nosi — urinmaning burchak koeffitsiyenti (tangensi)ga teng.",
+          keyPoints: [
+            "Hosila — argument orttirmasi nolga intilgandagi funksiya orttirmasining argument orttirmasiga nisbatining limiti.",
+            "k = f'(x0) = tg(alpha) tengligi urinmaning qiyalik burchagini ifodalaydi.",
+          ],
+          sources: ['Matematik analiz, 2-qism'],
+        },
+        attempts: [],
+      },
+      {
+        id: 'q-mat-bilet-2',
+        text: 'Matritsaning determinanti va Kramar qoidasi nima?',
+        modelAnswer: {
+          summary: "Kramar usuli — determinantlar orqali chiziqli tenglamalar sistemasini yechish usulidir.",
+          keyPoints: [
+            "Sistema determinanti Delta != 0 bo'lgandagina yagona yechimga ega bo'ladi.",
+            "Noma'lumlar xi = Delta_i / Delta formulasi orqali topiladi.",
+          ],
+          sources: ['Chiziqli algebra, 1-mavzu'],
+        },
+        attempts: [],
+      },
+    ],
+  },
+  {
+    id: STARTER_SUBJECT_PROG_ID,
+    name: 'Dasturlash asoslari (Python)',
+    examDate: new Date(Date.now() + 21 * 86400000).toISOString().split('T')[0],
+    examFormat: 'written',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    materials: [],
+    questions: [
+      {
+        id: 'q-prog-bilet-1',
+        text: 'Python tilida List va Tuple ma\'lumot turlarining asosiy farqlari nimalar?',
+        modelAnswer: {
+          summary: 'List — o\'zgaruvchan (mutable), Tuple esa o\'zgarmas (immutable) to\'plam turidir.',
+          keyPoints: [
+            'List kvadrat qavslar [] bilan yoziladi, elementlarini qo\'shish yoki o\'chirish mumkin.',
+            'Tuple dumaloq qavslar () bilan yaratiladi, uning elementlarini yaratilgandan so\'ng o\'zgartirib bo\'lmaydi.',
+            'Tuple xotiradan kamroq joy oladi va Dictionary kalitlari sifatida ishlatilishi mumkin.',
+          ],
+          sources: ['Python Documentation, Data Structures'],
+        },
+        attempts: [],
+      },
+    ],
+  },
+];
 
-const starterSet: StudySet = {
-  id: 'starter-set-matem',
-  title: 'Oliy matematika: 1-Oraliq testlari',
-  type: 'exam',
-  description: 'Namuna: Hosilalar, integrallar va chiziqli algebra testlari.',
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-  itemCount: 4,
-  difficulty: 'medium',
-  sourceType: 'text',
-  subjectId: STARTER_SUBJECT_ID,
-  questions: [
-    {
-      id: 'q-mat-1',
-      question: 'y = x^2 funksiyasining hosilasi nimaga teng?',
-      options: ['2x', 'x', 'x^3', '2'],
-      correctAnswer: 0,
-      hint: "Daraja qoidasini qo'llang: (x^n)' = n*x^(n-1)",
-      explanation: "To'g'ri javob: 2x. (x^2)' = 2*x^(2-1) = 2x.",
-    },
-    {
-      id: 'q-mat-2',
-      question: "Qanday matritsaning teskarisi (A^(-1)) mavjud bo'ladi?",
-      options: [
-        "Determinanti nolga teng bo'lmagan kvadrat matritsa",
-        "Ixtiyoriy to'g'ri burchakli matritsa",
-        'Faqat birlik matritsa',
-        'Barcha elementlari musbat matritsa',
-      ],
-      correctAnswer: 0,
-      hint: 'det(A) != 0 shartini eslang.',
-      explanation: "To'g'ri javob: det(A) != 0 bo'lgan kvadrat matritsaning teskari matritsasi mavjud.",
-    },
-    {
-      id: 'q-mat-3',
-      question: 'Integral ∫ 2x dx nimaga teng?',
-      options: ['x^2 + C', '2x^2 + C', 'x + C', '2 + C'],
-      correctAnswer: 0,
-      hint: "Hosilaning teskari amali.",
-      explanation: "To'g'ri javob: x^2 + C. Chunki (x^2 + C)' = 2x.",
-    },
-    {
-      id: 'q-mat-4',
-      question: "Ikkita vektorning skalyar ko'paytmasi nolga teng bo'lsa, bu vektorlar qanday joylashgan?",
-      options: ["O'zaro perpendikulyar (ortogonal)", 'Parallel', 'Ustma-ust tushadi', "Qarama-qarshi yo'nalgan"],
-      correctAnswer: 0,
-      hint: 'cos(90°) = 0.',
-      explanation: "To'g'ri javob: a * b = |a|*|b|*cos(α) = 0 bo'lsa, α = 90°, ya'ni vektorlar o'zaro perpendikulyar.",
-    },
-  ],
-};
+const starterSets: StudySet[] = [
+  {
+    id: 'starter-set-security',
+    title: 'Axborot xavfsizligi (Hemis yakuniy testlar)',
+    type: 'exam',
+    description: 'Hemis tizimi standarti: CIA triadasi, shifrlash, xeshlash va kiberxavfsizlik.',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    itemCount: 6,
+    difficulty: 'medium',
+    sourceType: 'text',
+    subjectId: STARTER_SUBJECT_SEC_ID,
+    questions: [
+      {
+        id: 'q-sec-1',
+        question: 'Axborot xavfsizligining asosiy tarkibiy qismlari (triadasi) qaysilar?',
+        options: [
+          'Maxfiylik, butunlik, foydalana olishlik',
+          'Faqat maxfiylik va identifikatsiya',
+          'Autentifikatsiya, audit, nazorat',
+          'Faqat zaxira nusxalash va himoya',
+        ],
+        correctAnswer: 0,
+        hint: 'CIA triadasi: Confidentiality, Integrity, Availability.',
+        explanation: 'To\'g\'ri javob: Maxfiylik, butunlik, foydalana olishlik.',
+      },
+      {
+        id: 'q-sec-2',
+        question: 'Qaysi algoritm asimmetrik shifrlashga misol bo\'ladi?',
+        options: ['RSA', 'AES', 'DES', 'RC4'],
+        correctAnswer: 0,
+        hint: 'Ochiq va yopiq kalitlar juftligi ishlatiladigan mashhur algoritm.',
+        explanation: 'To\'g\'ri javob: RSA — asimmetrik algoritm. AES va DES esa simmetrik shifrlashdir.',
+      },
+      {
+        id: 'q-sec-3',
+        question: 'Xesh-funksiyalarning (masalan SHA-256) asosiy xususiyati nima?',
+        options: [
+          'Bir tomonlama (qaytmas) va ixtiyoriy hajmdagi ma\'lumotdan qat\'iy uzunlikdagi xesh hosil qiladi',
+          'Osonlikcha orqaga qaytarib asl matnni olish mumkin',
+          'Faqat matnlarni siqish uchun ishlatiladi',
+          'Har doim o\'zgaruvchan uzunlikdagi xesh qaytaradi',
+        ],
+        correctAnswer: 0,
+        hint: 'Xeshdan asl matnni qayta tiklashning iloji yo\'q.',
+        explanation: 'To\'g\'ri javob: Xesh bir tomonlama qaytmas funksiya bo\'lib, yaxlitlikni tekshirish uchun xizmat qiladi.',
+      },
+      {
+        id: 'q-sec-4',
+        question: 'DDoS (Distributed Denial of Service) hujumining asosiy maqsadi nima?',
+        options: [
+          'Tizimni so\'rovlar bilan to\'ldirib, foydalana olishlikni (Availability) buzish',
+          'Foydalanuvchilarning parollarini shifrdan chiqarish',
+          'Ma\'lumotlar bazasini o\'chirib tashlash',
+          'Kompyuterga troyan virusi o\'rnatish',
+        ],
+        correctAnswer: 0,
+        hint: 'Availability (foydalana olishlik)ga qarshi qaratilgan.',
+        explanation: 'To\'g\'ri javob: Tizim yoki serverni haddan tashqari ko\'p soxta so\'rovlar bilan to\'ldirib, haqiqiy foydalanuvchilar uchun xizmat ko\'rsatishni to\'xtatish.',
+      },
+      {
+        id: 'q-sec-5',
+        question: 'Raqamli imzo (Digital Signature) nimani kafolatlaydi?',
+        options: [
+          'Hujjatning yaxlitligi, haqiqiyligi va mualliflikni rad etib bo\'lmasligini',
+          'Faqat hujjat hajmini kichraytirishni',
+          'Hujjatdagi imloni tekshirishni',
+          'Faqat matnni shifrlab yashirishni',
+        ],
+        correctAnswer: 0,
+        hint: 'Non-repudiation va Integrity.',
+        explanation: 'To\'g\'ri javob: Raqamli imzo xabarning jo\'natuvchisi haqiqiyligini va yo\'lda o\'zgartirilmaganligini kafolatlaydi.',
+      },
+      {
+        id: 'q-sec-6',
+        question: 'Ko\'p faktorli autentifikatsiya (MFA / 2FA) qanday ishlaydi?',
+        options: [
+          'Foydalanuvchini kamida 2 xil mustaqil faktor (parol + SMS/OTP kod) orqali tasdiqlash',
+          'Foydalanuvchiga 2 marta bir xil parolni terdirish',
+          'Faqat 2 ta akkaunt ochishni talab qilish',
+          'Antivirus orqali tekshirish',
+        ],
+        correctAnswer: 0,
+        hint: 'Something you know + Something you have.',
+        explanation: 'To\'g\'ri javob: Parol va telefon/ilova orqali keladigan bir martalik tasdiqlash kodi kabi 2 faktor kombinatsiyasi.',
+      },
+    ],
+  },
+  {
+    id: 'starter-set-matem',
+    title: 'Oliy matematika: 1-Oraliq testlari',
+    type: 'exam',
+    description: 'Oraliq nazorat: Hosilalar, integrallar, matritsalar va determinantlar.',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    itemCount: 4,
+    difficulty: 'medium',
+    sourceType: 'text',
+    subjectId: STARTER_SUBJECT_MATH_ID,
+    questions: [
+      {
+        id: 'q-mat-1',
+        question: 'y = x^2 funksiyasining hosilasi nimaga teng?',
+        options: ['2x', 'x', 'x^3', '2'],
+        correctAnswer: 0,
+        hint: "Daraja qoidasini qo'llang: (x^n)' = n*x^(n-1)",
+        explanation: "To'g'ri javob: 2x. (x^2)' = 2*x^(2-1) = 2x.",
+      },
+      {
+        id: 'q-mat-2',
+        question: "Qanday matritsaning teskarisi (A^(-1)) mavjud bo'ladi?",
+        options: [
+          "Determinanti nolga teng bo'lmagan kvadrat matritsa",
+          "Ixtiyoriy to'g'ri burchakli matritsa",
+          'Faqat birlik matritsa',
+          'Barcha elementlari musbat matritsa',
+        ],
+        correctAnswer: 0,
+        hint: 'det(A) != 0 shartini eslang.',
+        explanation: "To'g'ri javob: det(A) != 0 bo'lgan kvadrat matritsaning teskari matritsasi mavjud.",
+      },
+      {
+        id: 'q-mat-3',
+        question: 'Integral ∫ 2x dx nimaga teng?',
+        options: ['x^2 + C', '2x^2 + C', 'x + C', '2 + C'],
+        correctAnswer: 0,
+        hint: 'Hosilaning teskari amali.',
+        explanation: "To'g'ri javob: x^2 + C. Chunki (x^2 + C)' = 2x.",
+      },
+      {
+        id: 'q-mat-4',
+        question: "Ikkita vektorning skalyar ko'paytmasi nolga teng bo'lsa, bu vektorlar qanday joylashgan?",
+        options: ["O'zaro perpendikulyar (ortogonal)", 'Parallel', 'Ustma-ust tushadi', "Qarama-qarshi yo'nalgan"],
+        correctAnswer: 0,
+        hint: 'cos(90°) = 0.',
+        explanation: "To'g'ri javob: a * b = |a|*|b|*cos(α) = 0 bo'lsa, α = 90°, ya'ni vektorlar o'zaro perpendikulyar.",
+      },
+    ],
+  },
+  {
+    id: 'starter-set-prog-cards',
+    title: 'Python asoslari (FSRS Kartochkalar)',
+    type: 'flashcards',
+    description: 'Python asosiy tushunchalari va ma\'lumotlar turlari.',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    itemCount: 4,
+    difficulty: 'easy',
+    sourceType: 'text',
+    subjectId: STARTER_SUBJECT_PROG_ID,
+    flashcards: [
+      {
+        id: 'fc-1',
+        front: 'Mutable va Immutable farqi nima?',
+        back: 'Mutable (o\'zgaruvchan: list, dict, set) xotiradagi o\'rnida o\'zgartirilishi mumkin. Immutable (int, str, tuple) esa o\'zgarmasdir.',
+      },
+      {
+        id: 'fc-2',
+        front: 'Python-da *args va **kwargs nima vazifa bajaradi?',
+        back: '*args funksiyaga istalgancha pozitsion argumentlarni tuple ko\'rinishida, **kwargs esa kalit-qiymatli argumentlarni dict ko\'rinishida qabul qiladi.',
+      },
+      {
+        id: 'fc-3',
+        front: 'Generator va Return o\'rtasidagi farq?',
+        back: 'Generator qiymatlarni bittalab hosil qilish uchun `yield` kalit so\'zini ishlatadi va butun ro\'yxatni xotirada saqlamasdan, zarur bo\'lganda bittadan hisoblaydi.',
+      },
+      {
+        id: 'fc-4',
+        front: 'Big-O O(1) va O(n) nimani anglatadi?',
+        back: 'O(1) — amallar soni ma\'lumot hajmidan qat\'i nazar doimiy (masalan dict kalitiga murojaat). O(n) — bajarilish vaqti massiv elementlari soniga chiziqli bog\'liq.',
+      },
+    ],
+  },
+];
 
   if (localStorage.getItem(STORAGE_KEYS.SUBJECTS) === null) {
-    localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify([starterSubject]));
+    localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(starterSubjects));
   }
   if (localStorage.getItem(STORAGE_KEYS.SETS) === null) {
-    localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify([starterSet]));
+    localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify(starterSets));
   }
   if (localStorage.getItem(STORAGE_KEYS.STATS) === null) {
     localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(defaultStats));

@@ -57,6 +57,44 @@ D) Videokarta
     expect(qs[1].options[0]).toBe('Markaziy protsessor');
   });
 
+  it('parses Cyrillic and Russian language exam questions', () => {
+    const raw = `
+1. Что такое реляционная база данных?
++База данных, основанная на таблицах и отношениях между ними
+Файловая система
+Графический редактор
+Операционная система
+
+2. Какая команда используется для выборки данных в SQL?
+INSERT
+UPDATE
++SELECT
+DELETE
+`;
+
+    const qs = parseExamQuestionsFromText(raw);
+    expect(qs).toHaveLength(2);
+    expect(qs[0].correctAnswer).toBe(0);
+    expect(qs[1].correctAnswer).toBe(2);
+    expect(qs[1].options[2]).toBe('SELECT');
+  });
+
+  it('handles lowercase options and dot delimiters', () => {
+    const raw = `
+1. Qaysi biri dasturlash tili emas?
+a. Python
+b. JavaScript
+c. HTML
+d. C++
+To'g'ri javob: C
+`;
+
+    const qs = parseExamQuestionsFromText(raw);
+    expect(qs).toHaveLength(1);
+    expect(qs[0].correctAnswer).toBe(2);
+    expect(qs[0].options[2]).toBe('HTML');
+  });
+
   it('handles empty string safely', () => {
     expect(parseExamQuestionsFromText('')).toEqual([]);
     expect(parseExamQuestionsFromText('   ')).toEqual([]);
