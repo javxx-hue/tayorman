@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
-import { covers, expand, tashkentClock, tashkentToIso } from '../lib/audience';
+import { covers, expand, tashkentClock } from '../lib/audience';
+import { checkDue, createAssignment } from '../lib/assignmentActions';
 import { AudiencePicker } from '../components/AudiencePicker';
 import { Btn, Card, Pill, formatTime } from '../ui';
 
@@ -98,12 +99,11 @@ export const AssignmentsPage: React.FC = () => {
     setError(null);
     setNotice(null);
     const item = items.find((x) => x.id === itemId);
-    const dueIso = due ? tashkentToIso(due) : null;
+    const dueCheck = checkDue(due);
     if (!item) return setError('Kutubxonadan fan yoki to\'plamni tanlang.');
     if (!title.trim()) return setError('Topshiriq nomini yozing.');
     if (!toAll && !picked.length) return setError('Kamida bitta guruhni tanlang.');
-    if (due && !dueIso) return setError("Muddat noto'g'ri.");
-    if (dueIso && new Date(dueIso).getTime() <= Date.now()) return setError(`Muddat o'tib ketgan vaqtni ko'rsatmoqda. Hozir Toshkentda ${tashkentClock()}.`);
+    if (!dueCheck.ok) return setError(dueCheck.error);
 
     const wanted = { all: toAll, groups: picked };
     const current = { all: item.audience_all, groups: item.community_ids };
@@ -125,20 +125,12 @@ export const AssignmentsPage: React.FC = () => {
       }
     }
 
-    const { data: created, error: insErr } = await supabase
-      .from('assignments')
-      .insert({ title: title.trim(), note: note.trim() || null, library_item_id: item.id, audience_all: toAll, community_ids: toAll ? [] : picked, due_at: dueIso, notify })
-      .select('id')
-      .single();
-    if (insErr || !created) {
+    let message: string;
+    try {
+      message = await createAssignment({ libraryItemId: item.id, title, note, audience: wanted, dueIso: dueCheck.iso, notify });
+    } catch (e) {
       setBusy(false);
-      return setError("Topshiriqni saqlab bo'lmadi.");
-    }
-
-    let message = 'Topshiriq yaratildi.';
-    if (notify) {
-      const { data: res, error: fnErr } = await supabase.functions.invoke('assignment-notify', { body: { id: created.id } });
-      message = fnErr ? "Topshiriq yaratildi, lekin botga xabar yuborib bo'lmadi." : `Topshiriq yaratildi. Botda ${res?.sent ?? 0} ta talabaga xabar yuborildi${res?.failed ? `, ${res.failed} tasiga yetmadi` : ''}.`;
+      return setError(e instanceof Error ? e.message : "Topshiriqni saqlab bo'lmadi.");
     }
     setBusy(false);
     setNotice(message);

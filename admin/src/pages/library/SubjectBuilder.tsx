@@ -3,9 +3,11 @@ import { ExamFormat, Material, Subject } from '../../../../src/types';
 import { newId } from '../../../../src/lib/storage';
 import { describeGenerationError } from '../../../../src/lib/ai';
 import { ACCEPTED_FILES, materialFromFile } from '../../../../src/lib/materials';
-import { publishToLibrary } from '../../../../src/lib/library';
+import { AssignOnPublish } from '../../components/AssignOnPublish';
 import { AudiencePicker } from '../../components/AudiencePicker';
 import { Audience } from '../../lib/audience';
+import { AssignDraft, emptyAssign } from '../../lib/assignmentActions';
+import { publishAndAssign } from '../../lib/publish';
 import { listAsText, questionsAsText, questionsKeepingAnswers } from '../../lib/content';
 import { questionsFromMaterials, Mode } from '../../lib/sourceQuestions';
 import { parseQuestionList } from '../../../../src/lib/prep';
@@ -21,7 +23,7 @@ interface Props {
   presetFiles?: File[]; // source files that came with a student's request
   groups: { id: string; name: string }[];
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (message?: string) => void;
 }
 
 // A subject: name, exam date, the teacher's list of exam questions and the lecture files the AI grades against
@@ -33,6 +35,7 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
   const [materials, setMaterials] = useState<Material[]>(initial?.materials ?? []);
   const [audience, setAudience] = useState<Audience>(initialAudience ?? { all: false, groups: [] });
   const [draft, setDraft] = useState(initialDraft ?? false);
+  const [assign, setAssign] = useState<AssignDraft>(emptyAssign);
   const [count, setCount] = useState(15);
   const [lang, setLang] = useState<'uz' | 'ru'>('uz');
   const [busy, setBusy] = useState<string | null>(null);
@@ -98,10 +101,9 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
     };
     setBusy('Saqlanmoqda...');
     try {
-      await publishToLibrary({ kind: 'subject', doc, audienceAll: audience.all, communityIds: audience.groups, published: !draft });
-      onSaved();
-    } catch {
-      setError("Saqlab bo'lmadi. Qayta urinib ko'ring.");
+      onSaved(await publishAndAssign({ kind: 'subject', doc, audience, draft, assign }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Saqlab bo'lmadi. Qayta urinib ko'ring.");
     } finally {
       setBusy(null);
     }
@@ -167,6 +169,7 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={draft} onChange={(e) => setDraft(e.target.checked)} /> Qoralama (talabalarga hali ko'rsatilmaydi)
           </label>
+          {!draft && <AssignOnPublish value={assign} onChange={setAssign} />}
           {busy && <p className="text-sm text-muted-foreground" role="status">{busy}</p>}
           {error && <p className="text-sm text-rose-600" role="alert">{error}</p>}
           <Btn tone="primary" disabled={!!busy} onClick={save}>{draft ? 'Qoralamani saqlash' : 'Saqlash va nashr qilish'}</Btn>

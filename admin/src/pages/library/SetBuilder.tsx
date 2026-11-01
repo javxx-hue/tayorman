@@ -4,11 +4,13 @@ import { newId } from '../../../../src/lib/storage';
 import { generateStudySet, describeGenerationError } from '../../../../src/lib/ai';
 import { ACCEPTED_FILES, buildMaterialContext, materialFromFile } from '../../../../src/lib/materials';
 import { parseExamQuestionsFromText } from '../../../../src/lib/testParser';
-import { publishToLibrary } from '../../../../src/lib/library';
 import { Material } from '../../../../src/types';
+import { AssignOnPublish } from '../../components/AssignOnPublish';
 import { AudiencePicker } from '../../components/AudiencePicker';
 import { CardsEditor, QuizEditor } from '../../components/QuestionsEditor';
 import { Audience } from '../../lib/audience';
+import { AssignDraft, emptyAssign } from '../../lib/assignmentActions';
+import { publishAndAssign } from '../../lib/publish';
 import { checkCards, checkQuiz } from '../../lib/content';
 import { Btn, Card } from '../../ui';
 
@@ -22,7 +24,7 @@ interface Props {
   presetFiles?: File[]; // source files that came with a student's request
   groups: { id: string; name: string }[];
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (message?: string) => void;
 }
 
 // New test from files (AI) or from pasted Word/Hemis text; or edit one that exists. Then choose who gets it.
@@ -37,6 +39,7 @@ export const SetBuilder: React.FC<Props> = ({ initial, initialAudience, initialD
   const [pasted, setPasted] = useState('');
   const [audience, setAudience] = useState<Audience>(initialAudience ?? { all: false, groups: [] });
   const [draft, setDraft] = useState(initialDraft ?? false);
+  const [assign, setAssign] = useState<AssignDraft>(emptyAssign);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -115,10 +118,9 @@ export const SetBuilder: React.FC<Props> = ({ initial, initialAudience, initialD
     };
     setBusy('Saqlanmoqda...');
     try {
-      await publishToLibrary({ kind: 'set', doc: final, audienceAll: audience.all, communityIds: audience.groups, published: !draft });
-      onSaved();
-    } catch {
-      setError("Saqlab bo'lmadi. Qayta urinib ko'ring.");
+      onSaved(await publishAndAssign({ kind: 'set', doc: final, audience, draft, assign }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Saqlab bo'lmadi. Qayta urinib ko'ring.");
     } finally {
       setBusy(null);
     }
@@ -200,6 +202,7 @@ export const SetBuilder: React.FC<Props> = ({ initial, initialAudience, initialD
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={draft} onChange={(e) => setDraft(e.target.checked)} /> Qoralama (talabalarga hali ko'rsatilmaydi)
               </label>
+              {!draft && <AssignOnPublish value={assign} onChange={setAssign} />}
               <Btn tone="primary" disabled={!!busy} onClick={save}>{draft ? 'Qoralamani saqlash' : 'Saqlash va nashr qilish'}</Btn>
             </div>
           </Card>

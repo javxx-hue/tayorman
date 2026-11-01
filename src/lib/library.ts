@@ -49,10 +49,11 @@ export interface PublishInput {
   published: boolean;
 }
 
-export async function publishToLibrary(input: PublishInput): Promise<void> {
+// Returns the library item's id (a new one for something published for the first time)
+export async function publishToLibrary(input: PublishInput): Promise<string> {
   if (!supabase) throw new Error('offline');
   const title = 'name' in input.doc ? input.doc.name : input.doc.title;
-  const { error } = await supabase.from('library_items').upsert(
+  const { data, error } = await supabase.from('library_items').upsert(
     {
       kind: input.kind,
       source_id: input.doc.id,
@@ -64,8 +65,9 @@ export async function publishToLibrary(input: PublishInput): Promise<void> {
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'kind,source_id' }
-  );
+  ).select('id').single();
   if (error) throw error;
+  return data.id as string;
 }
 
 export async function unpublish(id: string): Promise<void> {

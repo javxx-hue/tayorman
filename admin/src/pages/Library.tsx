@@ -34,6 +34,7 @@ export const LibraryPage: React.FC = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [view, setView] = useState<View>({ mode: 'list' });
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [params, setParams] = useSearchParams();
 
@@ -127,7 +128,8 @@ export const LibraryPage: React.FC = () => {
     act(r, () => unpublish(r.id));
   };
 
-  const done = () => {
+  const done = (message?: string) => {
+    setNotice(message ?? null);
     setView({ mode: 'list' });
     load();
   };
@@ -141,6 +143,7 @@ export const LibraryPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {notice && <p className="text-sm text-emerald-600" role="status">{notice}</p>}
       {busy === 'request' && <p className="text-sm text-muted-foreground" role="status">So'rovdagi fayllar yuklanmoqda...</p>}
       <Card title="Yangi">
         <div className="flex flex-wrap gap-2">
