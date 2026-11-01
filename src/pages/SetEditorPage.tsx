@@ -6,6 +6,7 @@ import { toast } from '../components/ui/Toast';
 import { Language, tr } from '../lib/i18n';
 import { Flashcard, QuizQuestion, StudySet } from '../types';
 import { newId, saveStudySet } from '../lib/storage';
+import { parseExamQuestionsFromText } from '../lib/testParser';
 
 const input =
   'w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary';
@@ -18,6 +19,7 @@ export const SetEditorPage: React.FC<{ studySets: StudySet[]; lang: Language }> 
   const [title, setTitle] = useState(original?.title ?? '');
   const [questions, setQuestions] = useState<QuizQuestion[]>(original?.questions ?? []);
   const [cards, setCards] = useState<Flashcard[]>(original?.flashcards ?? []);
+  const [bulk, setBulk] = useState('');
 
   if (!original || (original.type !== 'quiz' && original.type !== 'exam' && original.type !== 'flashcards')) {
     return (
@@ -33,6 +35,20 @@ export const SetEditorPage: React.FC<{ studySets: StudySet[]; lang: Language }> 
   const patchOption = (i: number, k: number, value: string) =>
     setQuestions((qs) => qs.map((q, j) => (j === i ? { ...q, options: q.options.map((o, m) => (m === k ? value : o)) } : q)));
   const patchCard = (i: number, patch: Partial<Flashcard>) => setCards((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+
+  // Pasted text (Word, TXT, Hemis) becomes many questions at once
+  const addFromText = () => {
+    const { questions: parsed, skipped } = parseExamQuestionsFromText(bulk);
+    if (!parsed.length) {
+      toast.error(tr(lang, "Savol topilmadi. To'g'ri javob oldiga + qo'ying yoki «Javob: C» yozing.", 'Вопросы не найдены. Поставьте + перед верным ответом или напишите «Javob: C».'));
+      return;
+    }
+    setQuestions((qs) => [...qs, ...parsed]);
+    setBulk('');
+    toast.success(
+      tr(lang, `${parsed.length} ta savol qo'shildi${skipped ? `, ${skipped} tasida to'g'ri javob belgilanmagan (o'tkazildi)` : ''}`, `Добавлено вопросов: ${parsed.length}${skipped ? `, без верного ответа пропущено: ${skipped}` : ''}`)
+    );
+  };
 
   const save = () => {
     const cleanQuestions = questions.filter((q) => q.question.trim() && q.options.filter((o) => o.trim()).length >= 2);
@@ -54,6 +70,22 @@ export const SetEditorPage: React.FC<{ studySets: StudySet[]; lang: Language }> 
     <div className="max-w-3xl mx-auto px-4 pt-5 pb-6 space-y-4">
       <h1 className="text-xl font-serif font-bold text-foreground">{tr(lang, 'Tahrirlash', 'Редактирование')}</h1>
       <input value={title} onChange={(e) => setTitle(e.target.value)} className={input} placeholder={tr(lang, 'Nomi', 'Название')} />
+
+      {!isCards && (
+        <div className="rounded-2xl border border-border bg-card p-3 space-y-2">
+          <label className="block text-xs font-semibold text-muted-foreground">{tr(lang, "Matndan ko'p savol qo'shish", 'Добавить много вопросов из текста')}</label>
+          <textarea
+            value={bulk}
+            rows={4}
+            onChange={(e) => setBulk(e.target.value)}
+            className={input}
+            placeholder={tr(lang, "Savol\n+To'g'ri javob\nBoshqa variant\nBoshqa variant\n\n(Word yoki Hemis faylidan nusxalang)", 'Вопрос\n+Верный ответ\nДругой вариант\nДругой вариант')}
+          />
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={addFromText} disabled={!bulk.trim()}>{tr(lang, "Savollarni qo'shish", 'Добавить вопросы')}</Button>
+          </div>
+        </div>
+      )}
 
       {isCards
         ? cards.map((c, i) => (
