@@ -69,7 +69,7 @@ beforeAll(async () => {
     insert into public.library_items (id, kind, source_id, title, data, audience_all)
       values ('${LIB}', 'set', 'src1', 'Math test', '{"secret":"x"}', true);
   `);
-});
+}, 60_000); // loading Postgres in WebAssembly can be slow on a busy machine
 
 describe('migrations', () => {
   it('apply cleanly and create the new tables', async () => {
@@ -222,6 +222,60 @@ describe('suggestions and reports', () => {
     await as(U.s1, () => db.query(`insert into public.issue_reports (question_text, note) values ('2+2?', 'answer is wrong')`));
     expect(await as(U.s2, () => rows('select 1 from public.issue_reports'))).toEqual([]);
     expect(await as(U.admin, () => rows('select 1 from public.issue_reports'))).toHaveLength(1);
+  });
+});
+
+describe('groups (admin site)', () => {
+  const groupRow = async (uid: string, id: string) => (await as(uid, () => rows(`select name, invite_code, invite_enabled, ai_daily_limit from public.communities where id = '${id}'`)))[0];
+
+  it('only admins create, change and delete groups', async () => {
+    await as(U.admin, () => db.exec(`insert into public.communities (id, name, kind) values ('30000000-0000-0000-0000-00000000000a', 'Temp', 'course')`));
+    for (const uid of [U.mod, U.s1]) {
+      await expect(as(uid, () => db.exec(`insert into public.communities (name) values ('Sneaky')`))).rejects.toThrow(/row-level security|permission denied/i);
+    }
+    // Updates and deletes by others touch no rows
+    await as(U.mod, () => db.exec(`update public.communities set ai_daily_limit = 999, invite_enabled = false where id = '${G1}'`));
+    await as(U.mod, () => db.exec(`delete from public.communities where id = '${G1}'`));
+    const g1 = await groupRow(U.admin, G1);
+    expect(g1).toMatchObject({ name: 'Group 1', invite_enabled: true });
+    expect(g1.ai_daily_limit).not.toBe(999);
+
+    await as(U.admin, () => db.exec(`update public.communities set invite_enabled = false, ai_daily_limit = 7 where id = '${G2}'`));
+    expect(await groupRow(U.admin, G2)).toMatchObject({ invite_enabled: false, ai_daily_limit: 7 });
+    await as(U.admin, () => db.exec(`update public.communities set invite_enabled = true, ai_daily_limit = null where id = '${G2}'`));
+    await as(U.admin, () => db.exec(`delete from public.communities where id = '30000000-0000-0000-0000-00000000000a'`));
+    expect(await as(U.admin, () => rows(`select 1 from public.communities where id = '30000000-0000-0000-0000-00000000000a'`))).toHaveLength(0);
+  });
+
+  it('a moderator sees only their group and its members, and can remove only those', async () => {
+    expect((await as(U.mod, () => rows('select id from public.communities'))).map((r) => r.id)).toEqual([G1]);
+    expect((await as(U.mod, () => rows('select user_id from public.community_members'))).map((r) => r.user_id)).toEqual([U.s1]);
+
+    await as(U.mod, () => db.exec(`delete from public.community_members where community_id = '${G2}' and user_id = '${U.s2}'`));
+    expect(await as(U.admin, () => rows(`select 1 from public.community_members where community_id = '${G2}'`))).toHaveLength(1);
+
+    await as(U.mod, () => db.exec(`delete from public.community_members where community_id = '${G1}' and user_id = '${U.s1}'`));
+    expect(await as(U.admin, () => rows(`select 1 from public.community_members where community_id = '${G1}'`))).toHaveLength(0);
+    await db.exec(`insert into public.community_members (community_id, user_id) values ('${G1}', '${U.s1}')`); // restore
+  });
+
+  it('a moderator cannot name moderators; admins can', async () => {
+    await expect(as(U.mod, () => db.exec(`insert into public.community_moderators (community_id, user_id) values ('${G2}', '${U.mod}')`))).rejects.toThrow(/row-level security|permission denied/i);
+    await as(U.admin, () => db.exec(`insert into public.community_moderators (community_id, user_id) values ('${G2}', '${U.mod}')`));
+    expect((await as(U.mod, () => rows('select id from public.communities order by name'))).map((r) => r.id)).toEqual([G1, G2]);
+    await db.exec(`delete from public.community_moderators where community_id = '${G2}' and user_id = '${U.mod}'`);
+  });
+
+  it('regenerate_invite: admins and the group moderator only, and the code really changes', async () => {
+    const before = (await groupRow(U.admin, G1)).invite_code;
+    const fresh = (await as(U.mod, () => rows(`select public.regenerate_invite('${G1}') as code`)))[0].code as string;
+    expect(fresh).toMatch(/^[a-f0-9]{12}$/);
+    expect(fresh).not.toBe(before);
+    expect((await groupRow(U.admin, G1)).invite_code).toBe(fresh);
+
+    await expect(as(U.mod, () => rows(`select public.regenerate_invite('${G2}')`))).rejects.toThrow(/forbidden/);
+    await expect(as(U.s1, () => rows(`select public.regenerate_invite('${G1}')`))).rejects.toThrow(/forbidden|permission denied/i);
+    await as(U.admin, () => rows(`select public.regenerate_invite('${G2}')`));
   });
 });
 

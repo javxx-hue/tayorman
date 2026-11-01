@@ -5,15 +5,17 @@ import { DashboardPage } from './pages/Dashboard';
 import { UsersPage } from './pages/Users';
 import { AuditPage } from './pages/Audit';
 import { RequestsPage } from './pages/Requests';
+import { GroupDetailPage, GroupsPage } from './pages/Groups';
+import { BOT } from './lib/config';
 
 const NAV: { to: string; label: string; adminOnly?: boolean }[] = [
   { to: '/', label: 'Umumiy ko\'rinish', adminOnly: true },
   { to: '/requests', label: "So'rovlar", adminOnly: true },
+  { to: '/groups', label: 'Guruhlar' },
   { to: '/users', label: 'Foydalanuvchilar' },
   { to: '/audit', label: 'Jurnal', adminOnly: true },
 ];
 
-const BOT = import.meta.env.VITE_TELEGRAM_BOT || 'tayormanbot';
 const POLL_MS = 2000;
 const WAIT_MS = 5 * 60 * 1000; // the bot's confirmation is valid for 5 minutes
 
@@ -117,6 +119,8 @@ const Shell: React.FC = () => {
         <Routes>
           <Route path="/" element={isAdmin ? <DashboardPage /> : <Navigate to={home} replace />} />
           <Route path="/requests" element={isAdmin ? <RequestsPage /> : <Navigate to={home} replace />} />
+          <Route path="/groups" element={<GroupsPage />} />
+          <Route path="/groups/:id" element={<GroupDetailPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/audit" element={isAdmin ? <AuditPage /> : <Navigate to={home} replace />} />
           <Route path="*" element={<Navigate to={home} replace />} />
