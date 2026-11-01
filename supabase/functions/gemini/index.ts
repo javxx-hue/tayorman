@@ -12,8 +12,6 @@ function validParts(parts: unknown): parts is Part[] {
   return parts.every((p) => {
     if (typeof p?.text === 'string') return true;
     if (typeof p?.inline_data?.data === 'string') return /^image\//.test(p.inline_data.mime_type ?? '');
-    // Only YouTube links: Gemini would otherwise fetch arbitrary URLs for us
-    if (typeof p?.file_data?.file_uri === 'string') return /^https:\/\/www\.youtube\.com\/watch\?v=[\w-]{11}$/.test(p.file_data.file_uri);
     return false;
   });
 }

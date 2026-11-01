@@ -1,42 +1,33 @@
-# Admin panel va talabalar oqimi: reja
+# Admin sayti va talabalar oqimi
 
-Qabul qilingan qarorlar:
-- **Topshiriq** = mazmun (fan yoki to'plam) + guruhlar + muddat.
-- **Admin sayti** = alohida veb sahifa, kirish botdagi bir martalik havola orqali, faqat adminlar ID ro'yxatidagilarga.
-- **Takliflar** = talabadan adminga «Taklif qutisi».
-- **Talabalar oqimi** = tushunarsiz yo'llarni olib tashlash (sehrgar kerak emas).
+Asosiy qaror: **talaba hech narsa yaratmaydi.** Fan, test va materiallarni faqat admin tayyorlaydi; talaba ularni o'qiydi va kerak bo'lsa adminga so'rov yuboradi. Admin ishlari faqat admin saytda, Mini App esa faqat talaba uchun.
 
-## 1-bosqich: Admin sayti (alohida, faqat adminlar)
-- Alohida Vite kirish nuqtasi `admin/` va alohida Vercel loyihasi (talabalar yuklaydigan faylda admin kodi bo'lmaydi).
-- Kirish: saytda Telegram Login tugmasi; ID `ADMIN_TELEGRAM_IDS` ichida bo'lsa (yoki moderator bo'lsa) kiradi. Bot buyrug'i yo'q.
-  - Jadval `admin_login_tokens` (token xeshi, user, muddat, ishlatilgan).
-  - Funksiya `admin-login`: tokenni tekshiradi, bir marta ishlatadi, Supabase sessiyasini beradi.
-  - Har bir so'rov bazada `is_admin()` bilan yana tekshiriladi (sayt ham, Mini App ham).
-- Admin yorlig'i Mini App'dan olib tashlanadi.
-- Adminlar ro'yxati: Telegram ID'lar, `ADMIN_TELEGRAM_IDS` sirida (vergul bilan).
+## Admin sayti (`admin/`, alohida Vercel loyiha)
+- **Kirish:** saytdagi tugma botni ochadi, bot 4 belgili kodni ko'rsatib «Tasdiqlash» tugmasini yuboradi. ID `ADMIN_TELEGRAM_IDS` ichida bo'lsa (admin) yoki moderator bo'lsa kiradi. Tasdiq 5 daqiqa, bir marta ishlaydi (`admin_login_requests`, faqat xesh saqlanadi). Sessiya 8 soat.
+- **Umumiy ko'rinish:** foydalanuvchilar, kunlik faol, voronka (ro'yxatdan o'tdi → ochdi → material oldi → birinchi javob), AI sarfi, qiyin savollar.
+- **So'rovlar:** talabalar so'rovi (fayllari bilan), javob botga boradi, shu fayldan test yoki fan tuzish.
+- **Kutubxona:** test (fayldan AI bilan yoki Word/Hemis matnidan), fan (imtihon savollari va ma'ruza fayllari), tahrirlash, qoralama, nusxalash, kimga ochiq.
+- **Topshiriqlar:** kutubxona elementi + guruhlar + muddat, botda xabar, har guruh bo'yicha natija.
+- **Xabarlar:** hamma yoki guruhlarga, hozir yoki rejalashtirilgan, yetgan va yetmaganlar soni.
+- **Guruhlar:** a'zolar, taklif havolasi, guruh AI limiti, moderatorlar.
+- **Foydalanuvchilar:** qidiruv, bloklash, moderator, shaxsiy AI limit.
+- **Jurnal:** kim, qachon, nima qilgan.
 
-## 2-bosqich: Topshiriqlar
-- Jadvallar: `assignments` (sarlavha, izoh, kutubxona elementi, guruhlar yoki hamma, muddat), `assignment_progress` (topshiriq, talaba, holat, ball).
-- Admin: fan/to'plam yaratadi, ayni shu oynada **guruhlarni tanlaydi** va muddat qo'yadi, «Yuborish» bosadi.
-- Bot: tanlangan guruhlar a'zolariga xabar + «Ochish» tugmasi.
-- Talaba: bosh sahifada «Topshiriqlar» (muddat bilan), bajarilganda belgi.
-- Admin: har guruh bo'yicha nechtasi boshladi/bajardi, o'rtacha ball.
+Moderator faqat o'z guruhlarini ko'radi (a'zolar, havola, topshiriqlar).
 
-## 3-bosqich: Taklif qutisi
-- Jadval `suggestions` (talaba, tur, matn, holat: yangi/ko'rildi/qabul qilindi/rad etildi, admin javobi).
-- Talaba: Profil va fan sahifasida «Adminga yozish» (tur: yangi fan, savollar ro'yxati, xato, boshqa).
-- Admin: botda yangi taklif haqida xabar, saytda ro'yxat va holatlar, javob bot orqali talabaga boradi.
+## Talaba (Mini App va bot)
+- **Bugun, Topshiriq, Fanlar, So'rov, Profil.** Kutubxonadan nashr qilingan narsa talabaga o'zi keladi va yangilanadi (natijalari saqlanadi).
+- **So'rov:** tur tanlab yozadi, 5 tagacha fayl biriktiradi (PDF, Word, PowerPoint, TXT, rasm; 20 MB gacha). Botga yozgan har qanday matn, fayl yoki rasm ham so'rov bo'ladi.
+- Topshiriq bajarilishi talabaning o'z ma'lumotidan hisoblanib serverga yuboriladi.
 
-## 4-bosqich: Talabalar oqimini tozalash
-Olib tashlanadi yoki soddalashtiriladi:
-- Fan yaratishdagi «Imtihon shakli» tanlovi (talabaga kerak emas).
-- Savollar kiritilmaguncha «Tayyorlik 0%» chizig'i.
-- «Test va kartalar» yorlig'i materialsiz ko'rinmaydi, nomi «Mashq».
-- «YouTube» va «Matn joylashtirish» bir maydonga birlashtiriladi («Material qo'shish»).
-- AI atamalari va texnik xabarlar oddiy tilga o'tkaziladi.
-- Bo'sh holatlarda bitta aniq tugma: «Birinchi fanni qo'shish».
-- Kutubxonada topshiriq bo'lsa, birinchi bo'lib shu ko'rsatiladi.
+## Qoidalar
+- Rollar: talaba, moderator, admin. `admin` faqat `ADMIN_TELEGRAM_IDS` sirida; panelda berilmaydi.
+- Har bir ruxsat bazada (RLS) tekshiriladi; sayt faqat ko'rinish.
+- Ish `feature/admin-web` branchida; `main` ga faqat Pull Request orqali. Sanjar bilan `src/` va `supabase/` ga tegishdan oldin kelishiladi.
 
-## Ish tartibi (Sanjar bilan)
-- Ish alohida branch'da: `feature/admin-web`. `main` ga faqat Pull Request orqali.
-- Sanjar: Docker/CI va o'z joylashi. `src/` va `supabase/` ga tegsa, avval kelishamiz.
+## Keyingi ishlar
+- Topshiriq muddati yaqinlashganda eslatma.
+- Adminlar uchun alohida AI limit.
+- Umumiy AI limitni saytda o'zgartirish.
+- Savol uchun «Xato haqida xabar» tugmasi (`issue_reports` jadvali tayyor).
+- Sanjar bilan `main` ni birlashtirish (nom, email domeni va qattiq yozilgan ID'lar bo'yicha kelishuv).

@@ -69,7 +69,7 @@ export function onLocalChange(fn: (change: LocalChange) => void): () => void {
   return () => changeHooks.delete(fn);
 }
 
-export class StorageFullError extends Error {
+class StorageFullError extends Error {
   constructor() {
     super('Browser storage is full');
     this.name = 'StorageFullError';
@@ -119,12 +119,6 @@ export function saveSubject(subject: Subject, opts: { fromSync?: boolean } = {})
   const value = opts.fromSync ? subject : { ...subject, updatedAt: Date.now() };
   writeJson(STORAGE_KEYS.SUBJECTS, upsertById(getSubjects(), value));
   if (!opts.fromSync) changeHooks.forEach((fn) => fn({ kind: 'subject', op: 'upsert', value }));
-  notifyListeners();
-}
-
-export function deleteSubject(id: string, opts: { fromSync?: boolean } = {}): void {
-  writeJson(STORAGE_KEYS.SUBJECTS, getSubjects().filter((s) => s.id !== id));
-  if (!opts.fromSync) changeHooks.forEach((fn) => fn({ kind: 'subject', op: 'delete', id }));
   notifyListeners();
 }
 

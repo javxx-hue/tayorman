@@ -12,10 +12,12 @@ Sessiya va oraliq nazoratlarga tayyorlanish uchun **Telegram bot + Mini App**. H
 
 **Mini App:**
 - **Bugun** — bugungi reja, ketma-ket kunlar, oxirgi to'plamlar.
-- **Fanlar** — imtihon sanasi va shakli, materiallar (PDF, PPTX, DOCX, rasm, YouTube), imtihon savollari ro'yxati, namunaviy javob, AI baholash yoki «Bilaman / Qisman / Bilmayman» (AI limiti tugaganda ham ishlaydi), test va kartalar (FSRS takrorlash), tayyorlik foizi.
-- **Kutubxona** — admin chop etgan fan va to'plamlar; «Qo'shish» bilan o'zingizniki bo'ladi.
+- **Topshiriq** — admin guruhga bergan vazifalar: muddat, holat (yangi, jarayonda, bajarildi), natija.
+- **Fanlar** — admin biriktirgan fanlar: imtihon sanasi, savollar ro'yxati, AI baholash yoki «Bilaman / Qisman / Bilmayman» (AI limiti tugaganda ham ishlaydi), test va kartalar (FSRS takrorlash), tayyorlik foizi. Talaba fan yaratmaydi: nashr qilingan narsa o'zi keladi va yangilanadi.
+- **So'rov** — adminga yozish (yangi fan, savol/material, xato); 5 tagacha manba fayl biriktiriladi; admin javobi botga keladi.
 - **Profil** — til, OTM, guruhlar, eslatmalar.
-- **Admin** (faqat adminlarga) — statistika, guruhlar va taklif havolalari, kutubxonaga chop etish (kimga ko'rinishini siz tanlaysiz), tanlangan auditoriyaga xabar.
+
+Barcha boshqaruv (fan va test tuzish, topshiriq, guruh, xabar, so'rovlarga javob) admin saytda; qarang: `docs/ADMIN_PLAN.md`.
 
 AI kuniga har bir foydalanuvchiga 30 ta so'rov bilan cheklangan (`AI_DAILY_LIMIT`). Kalit faqat serverda.
 

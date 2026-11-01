@@ -23,9 +23,7 @@ const QuestionPracticePage = lazy(() => import('./pages/QuestionPracticePage').t
 const AssignmentsPage = lazy(() => import('./pages/AssignmentsPage').then((m) => ({ default: m.AssignmentsPage })));
 const RequestPage = lazy(() => import('./pages/RequestPage').then((m) => ({ default: m.RequestPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
-const AdminPage = lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
-const SetEditorPage = lazy(() => import('./pages/SetEditorPage').then((m) => ({ default: m.SetEditorPage })));
 const QuizRunner = lazy(() => import('./components/study/QuizRunner').then((m) => ({ default: m.QuizRunner })));
 const FlashcardPlayer = lazy(() => import('./components/study/FlashcardPlayer').then((m) => ({ default: m.FlashcardPlayer })));
 const NotesViewer = lazy(() => import('./components/study/NotesViewer').then((m) => ({ default: m.NotesViewer })));
@@ -72,7 +70,7 @@ const Centered: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 export default function App() {
-  const { status, lang, online, profile, joinedCommunity, isAdmin } = useAuth();
+  const { status, lang, online, profile, joinedCommunity } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -202,12 +200,10 @@ export default function App() {
             <Route path="/subjects/:id" element={<SubjectPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id/q/:qid" element={<QuestionPracticePage subjects={subjects} lang={lang} />} />
             <Route path="/study/:id" element={<StudyRoute studySets={studySets} lang={lang} />} />
-            <Route path="/study/:id/edit" element={isAdmin ? <SetEditorPage studySets={studySets} lang={lang} /> : <Navigate to="/" replace />} />
             <Route path="/assignments" element={<AssignmentsPage assignments={assignments} server={assignmentProgress} subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/request" element={<RequestPage lang={lang} />} />
             <Route path="/library" element={<Navigate to="/request" replace />} />
             <Route path="/profile" element={<ProfilePage lang={lang} />} />
-            <Route path="/admin" element={<AdminPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

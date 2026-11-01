@@ -4,7 +4,7 @@ import { AnswerAttempt, ExamFormat, ExamQuestion, ModelAnswer, StudySet, Subject
 import { Language } from './i18n';
 import { geminiGenerate, GenerationError, parseJson } from './ai';
 import { buildMaterialContext } from './materials';
-import { newId, localDateKey } from './storage';
+import { localDateKey } from './storage';
 import { dueQueue, isMastered } from './srs';
 
 // ---------------------------------------------------------------
@@ -32,10 +32,6 @@ export function parseQuestionList(raw: string): string[] {
     }
   }
   return out.map((q) => q.replace(/\s+/g, ' ').trim()).filter((q) => q.length > 2);
-}
-
-export function questionsFromText(raw: string): ExamQuestion[] {
-  return parseQuestionList(raw).map((text) => ({ id: newId('q'), text, attempts: [] }));
 }
 
 // ---------------------------------------------------------------

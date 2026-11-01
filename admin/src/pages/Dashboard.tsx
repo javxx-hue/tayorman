@@ -6,7 +6,7 @@ interface Dashboard {
   dau: { day: string; users: number }[];
   new_users: { day: string; n: number }[];
   ai_per_day: { day: string; n: number }[];
-  funnel: { registered: number; opened_app: number; subject_created: number; questions_added: number; first_answer: number };
+  funnel: { registered: number; opened_app: number; got_content: number; first_answer: number };
   open_suggestions: number;
   open_reports: number;
 }
@@ -29,8 +29,7 @@ interface HardQuestion {
 const FUNNEL: [keyof Dashboard['funnel'], string][] = [
   ['registered', 'Ro\'yxatdan o\'tdi'],
   ['opened_app', 'Ilovani ochdi'],
-  ['subject_created', 'Fan qo\'shdi'],
-  ['questions_added', 'Savollarni kiritdi'],
+  ['got_content', 'Fan yoki test oldi'],
   ['first_answer', 'Birinchi javobni berdi'],
 ];
 

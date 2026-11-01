@@ -34,11 +34,11 @@ beforeEach(() => {
 describe('library delivery to students', () => {
   it('copies a published subject once, with a fresh id and no foreign progress', () => {
     const item = subjectItem('v1', [q('a'), q('b')]);
-    expect(deliver(item, [], [])).toBe(true);
+    expect(deliver(item, [], [])).toBe('new');
     expect(saved.subjects).toHaveLength(1);
     expect(saved.subjects[0]).toMatchObject({ id: 'sub-new', libraryId: 'lib-1', libraryUpdatedAt: 'v1' });
     // The same version again does nothing
-    expect(deliver(item, saved.subjects, [])).toBe(false);
+    expect(deliver(item, saved.subjects, [])).toBeNull();
     expect(saved.subjects).toHaveLength(1);
   });
 
@@ -48,7 +48,7 @@ describe('library delivery to students', () => {
     own.questions[0].attempts = [{ at: 5, answer: 'x', score: 80, feedback: '', missing: [] }];
 
     const changed = subjectItem('v2', [q('a'), q('c')]); // b removed, c added
-    expect(deliver(changed, [own], [])).toBe(true);
+    expect(deliver(changed, [own], [])).toBe('updated');
     const updated = saved.subjects[1];
     expect(updated.id).toBe(own.id);
     expect(updated.libraryUpdatedAt).toBe('v2');
@@ -66,7 +66,7 @@ describe('library delivery to students', () => {
     deliver(item('v1'), [], []);
     const own = { ...saved.sets[0], lastScore: 90, flashcards: [{ id: 'c1', front: 'f', back: 'b', srs: { due: 9 }, rating: 3 }] } as unknown as StudySet;
 
-    expect(deliver(item('v2'), [], [own])).toBe(true);
+    expect(deliver(item('v2'), [], [own])).toBe('updated');
     const updated = saved.sets[1];
     expect(updated.id).toBe(own.id);
     expect(updated.lastScore).toBe(90);

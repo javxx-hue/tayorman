@@ -67,6 +67,7 @@ beforeAll(async () => {
   await db.exec(sql('0002_admin.sql'));
   await db.exec(sql('0003_admin_login.sql'));
   await db.exec(sql('0004_request_files.sql'));
+  await db.exec(sql('0005_funnel.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');
@@ -373,9 +374,10 @@ describe('admin lists and dashboard', () => {
   });
 
   it('dashboard is admin only and returns the funnel', async () => {
-    await db.exec(`insert into public.events (user_id, type) values ('${U.s1}', 'app_open'), ('${U.s1}', 'subject_created'), ('${U.s2}', 'app_open')`);
+    await db.exec(`insert into public.events (user_id, type) values ('${U.s1}', 'app_open'), ('${U.s1}', 'got_content'), ('${U.s2}', 'app_open')`);
     const [{ d }] = await as(U.admin, () => rows('select public.admin_dashboard(14) as d'));
-    expect(d.funnel).toMatchObject({ opened_app: 2, subject_created: 1 });
+    expect(d.funnel).toMatchObject({ opened_app: 2, got_content: 1, first_answer: 0 });
+    expect(d.funnel).not.toHaveProperty('subject_created'); // students no longer create subjects
     await expect(as(U.mod, () => rows('select public.admin_dashboard(14)'))).rejects.toThrow(/forbidden/);
   });
 

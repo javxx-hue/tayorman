@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 
 export interface GenerationParams {
   rawContent: string;
-  sourceType: 'text' | 'pdf' | 'youtube' | 'prompt' | 'topic';
+  sourceType: 'text' | 'pdf' | 'prompt' | 'topic';
   targetType: StudySetType;
   title?: string;
   count?: number;
@@ -22,8 +22,7 @@ export class GenerationError extends Error {
 
 export type GeminiPart =
   | { text: string }
-  | { inline_data: { mime_type: string; data: string } } // base64 image
-  | { file_data: { file_uri: string } }; // public YouTube URL
+  | { inline_data: { mime_type: string; data: string } }; // base64 image
 
 export interface GeminiOptions {
   json?: boolean;

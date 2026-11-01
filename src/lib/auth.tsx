@@ -23,7 +23,6 @@ interface AuthContextValue {
   status: Status;
   profile: Profile | null;
   lang: Language;
-  isAdmin: boolean;
   online: boolean; // signed in to Supabase (false in local dev mode)
   joinedCommunity: string | null;
   updateProfile: (patch: Partial<Pick<Profile, 'language' | 'university' | 'reminders_enabled'>>) => Promise<void>;
@@ -87,7 +86,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     status,
     profile,
     lang,
-    isAdmin: profile?.role === 'admin',
     online: !!profile,
     joinedCommunity,
     updateProfile,

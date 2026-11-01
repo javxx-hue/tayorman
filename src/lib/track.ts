@@ -2,7 +2,7 @@
 // Never carries content: just who did what kind of step, and when.
 import { supabase } from './supabase';
 
-export type EventType = 'app_open' | 'subject_created' | 'questions_added' | 'first_answer';
+export type EventType = 'app_open' | 'got_content' | 'first_answer';
 
 const sentThisSession = new Set<EventType>();
 

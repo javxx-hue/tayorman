@@ -3,6 +3,7 @@
 // Their progress stays private and survives an update.
 import { StudySet, Subject } from '../types';
 import { supabase } from './supabase';
+import { track } from './track';
 import { getStudySets, getSubjects, saveStudySet, saveSubject, newId } from './storage';
 
 export interface LibraryItem {
@@ -17,7 +18,7 @@ export interface LibraryItem {
   updated_at: string;
 }
 
-export async function fetchLibrary(): Promise<LibraryItem[]> {
+async function fetchLibrary(): Promise<LibraryItem[]> {
   if (!supabase) return [];
   const { data, error } = await supabase.from('library_items').select('*').order('updated_at', { ascending: false });
   if (error) throw error;
@@ -74,12 +75,12 @@ export async function unpublish(id: string): Promise<void> {
 
 // Puts one library item into the student's data: a new copy, or a refresh of the existing
 // copy when the admin changed it. Attempts, scores and card schedules are kept.
-export function deliver(item: LibraryItem, subjects: Subject[], sets: StudySet[]): boolean {
+export function deliver(item: LibraryItem, subjects: Subject[], sets: StudySet[]): 'new' | 'updated' | null {
   const now = Date.now();
   if (item.kind === 'subject') {
     const incoming = item.data as Subject;
     const own = subjects.find((s) => s.libraryId === item.id);
-    if (own?.libraryUpdatedAt === item.updated_at) return false;
+    if (own?.libraryUpdatedAt === item.updated_at) return null;
     saveSubject({
       ...incoming,
       id: own?.id ?? newId('sub'),
@@ -92,11 +93,11 @@ export function deliver(item: LibraryItem, subjects: Subject[], sets: StudySet[]
         return old ? { ...q, attempts: old.attempts } : q;
       }),
     });
-    return true;
+    return own ? 'updated' : 'new';
   }
   const incoming = item.data as StudySet;
   const own = sets.find((s) => s.libraryId === item.id);
-  if (own?.libraryUpdatedAt === item.updated_at) return false;
+  if (own?.libraryUpdatedAt === item.updated_at) return null;
   saveStudySet({
     ...incoming,
     id: own?.id ?? newId('set'),
@@ -111,15 +112,19 @@ export function deliver(item: LibraryItem, subjects: Subject[], sets: StudySet[]
       return old ? { ...c, srs: old.srs, rating: old.rating } : c;
     }),
   });
-  return true;
+  return own ? 'updated' : 'new';
 }
 
 // Fetches everything published for this student and delivers it. Returns how many changed.
 export async function deliverLibrary(): Promise<number> {
   const items = (await fetchLibrary()).filter((i) => i.published);
   let changed = 0;
+  let arrived = 0;
   for (const item of items) {
-    if (deliver(item, getSubjects(), getStudySets())) changed++;
+    const result = deliver(item, getSubjects(), getStudySets());
+    if (result) changed++;
+    if (result === 'new') arrived++;
   }
+  if (arrived) track('got_content', { oncePerSession: true });
   return changed;
 }

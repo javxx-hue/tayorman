@@ -2,10 +2,7 @@ import { admin } from './admin.ts';
 
 const MODEL = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.8-flash';
 
-export type Part =
-  | { text: string }
-  | { inline_data: { mime_type: string; data: string } }
-  | { file_data: { file_uri: string } };
+export type Part = { text: string } | { inline_data: { mime_type: string; data: string } };
 
 export class QuotaError extends Error {}
 
