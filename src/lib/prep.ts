@@ -165,9 +165,13 @@ export interface SubjectPlan {
   daysLeft: number;
   remaining: number; // questions below PASS_SCORE
   perDay: number;
-  today: ExamQuestion[];
+  today: ExamQuestion[]; // still to do today
+  doneToday: number; // answered today already
+  more: ExamQuestion[]; // the next weakest ones, for whoever wants to go beyond today's share
   isReviewDay: boolean; // day before the exam: go over everything
 }
+
+export const MORE_PRACTICE = 10;
 
 // Weakest questions first, spread evenly over the days left, keeping the
 // day before the exam free for a full review when there is room for it.
@@ -179,15 +183,23 @@ export function planSubject(subject: Subject, today: string = localDateKey()): S
     .sort((a, b) => a.score - b.score || a.index - b.index)
     .map((x) => x.q);
 
-  if (daysLeft <= 0) return { daysLeft, remaining: pending.length, perDay: 0, today: [], isReviewDay: false };
+  if (daysLeft <= 0) return { daysLeft, remaining: pending.length, perDay: 0, today: [], doneToday: 0, more: [], isReviewDay: false };
 
   const isReviewDay = daysLeft === 1 && subject.questions.length > 0;
   if (isReviewDay) {
-    return { daysLeft, remaining: pending.length, perDay: pending.length, today: pending, isReviewDay };
+    return { daysLeft, remaining: pending.length, perDay: pending.length, today: pending, doneToday: 0, more: [], isReviewDay };
   }
+
+  // The day's share is fixed in the morning: what was still to learn then, over the days left.
+  // Questions answered today count towards it, so the plan can actually be finished.
+  const answeredToday = (q: ExamQuestion) => q.attempts.some((a) => localDateKey(new Date(a.at)) === today);
+  const done = subject.questions.filter(answeredToday);
+  const learnedToday = done.filter((q) => questionScore(q) >= PASS_SCORE).length;
   const studyDays = daysLeft >= 3 ? daysLeft - 1 : daysLeft;
-  const perDay = Math.ceil(pending.length / studyDays);
-  return { daysLeft, remaining: pending.length, perDay, today: pending.slice(0, perDay), isReviewDay };
+  const perDay = Math.ceil((pending.length + learnedToday) / studyDays);
+  const todo = pending.filter((q) => !answeredToday(q));
+  const left = Math.max(perDay - done.length, 0);
+  return { daysLeft, remaining: pending.length, perDay, today: todo.slice(0, left), doneToday: done.length, more: todo.slice(left, left + MORE_PRACTICE), isReviewDay };
 }
 
 export interface TodayTask {

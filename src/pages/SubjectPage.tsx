@@ -4,7 +4,8 @@ import { ArrowLeft, CalendarDays, Play } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Language } from '../lib/i18n';
 import { StudySet, Subject } from '../types';
-import { planSubject, questionScore, scoreToGrade, subjectReadiness, daysUntil, PASS_SCORE } from '../lib/prep';
+import { planSubject, questionScore, scoreToGrade, subjectReadiness, daysUntil } from '../lib/prep';
+import { ExamQuestion } from '../types';
 import { FORMAT_LABELS, daysLeftLabel, readinessColor } from './SubjectsPage';
 
 type Tab = 'plan' | 'questions' | 'practice';
@@ -43,6 +44,10 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
   const plan = planSubject(subject);
   const readiness = subjectReadiness(subject, studySets);
   const ownSets = studySets.filter((s) => s.subjectId === subject.id);
+
+  // Opens a question with the order to go through them in
+  const practise = (ids: string[], first = ids[0]) => navigate(`/subjects/${subject.id}/q/${first}`, { state: { queue: ids } });
+  const idsOf = (qs: ExamQuestion[]) => qs.map((q) => q.id);
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'plan', label: isUz ? 'Bugun' : 'Сегодня' },
@@ -100,39 +105,55 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
           ) : days < 0 ? (
             <p className="text-sm text-muted-foreground">{isUz ? 'Bu fan imtihoni o\'tib ketgan.' : 'Экзамен по этому предмету уже прошёл.'}</p>
           ) : (
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h3 className="font-serif font-bold text-lg text-foreground">
                     {plan.isReviewDay ? (isUz ? 'Ertaga imtihon: umumiy takrorlash' : 'Экзамен завтра: общее повторение') : (isUz ? 'Bugungi savollar' : 'Вопросы на сегодня')}
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    {isUz
-                      ? `${plan.remaining} ta savol hali o'zlashtirilmagan (${PASS_SCORE}% dan past). Kuniga ~${plan.perDay} ta.`
-                      : `Не выучено вопросов (ниже ${PASS_SCORE}%): ${plan.remaining}. Примерно ${plan.perDay} в день.`}
+                    {plan.isReviewDay
+                      ? isUz ? `${plan.remaining} ta savol qoldi: hammasini ko'rib chiqing.` : `Осталось вопросов: ${plan.remaining}. Повторите все.`
+                      : isUz
+                        ? `Reja imtihonga ${plan.daysLeft} kun qolganiga qarab tuzilgan: kuniga ~${plan.perDay} ta savol. Bugun: ${plan.doneToday} / ${plan.perDay}.`
+                        : `План рассчитан на оставшиеся дни (${plan.daysLeft}): примерно ${plan.perDay} вопросов в день. Сегодня: ${plan.doneToday} / ${plan.perDay}.`}
                   </p>
                 </div>
                 {plan.today.length > 0 && (
-                  <Button variant="primary" size="md" icon={<Play size={15} />} onClick={() => navigate(`/subjects/${subject.id}/q/${plan.today[0].id}`)}>
+                  <Button variant="primary" size="md" icon={<Play size={15} />} onClick={() => practise(idsOf(plan.today))}>
                     {isUz ? 'Boshlash' : 'Начать'}
                   </Button>
                 )}
               </div>
-              {plan.today.length === 0 ? (
-                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
-                  {isUz ? 'Barcha savollar o\'zlashtirilgan! Test yoki kartalar bilan mustahkamlang.' : 'Все вопросы выучены! Закрепите тестами или карточками.'}
-                </p>
-              ) : (
+
+              {plan.today.length > 0 ? (
                 <ol className="space-y-2">
                   {plan.today.map((q) => (
                     <li key={q.id}>
-                      <button onClick={() => navigate(`/subjects/${subject.id}/q/${q.id}`)} className="w-full text-left flex items-center justify-between gap-3 p-3 rounded-xl border border-border hover:bg-secondary/50">
+                      <button onClick={() => practise(idsOf(plan.today), q.id)} className="w-full text-left flex items-center justify-between gap-3 p-3 rounded-xl border border-border hover:bg-secondary/50">
                         <span className="text-sm text-foreground">{q.text}</span>
                         <span className="text-xs text-muted-foreground shrink-0">{q.attempts.length ? `${questionScore(q)}%` : isUz ? 'yangi' : 'новый'}</span>
                       </button>
                     </li>
                   ))}
                 </ol>
+              ) : plan.remaining === 0 ? (
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
+                  {isUz ? 'Barcha savollar o\'zlashtirilgan! Test yoki kartalar bilan mustahkamlang.' : 'Все вопросы выучены! Закрепите тестами или карточками.'}
+                </p>
+              ) : (
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
+                  {isUz ? 'Bugungi reja bajarildi ✅ Ertaga yangi savollar chiqadi.' : 'План на сегодня выполнен ✅ Завтра появятся новые вопросы.'}
+                </p>
+              )}
+
+              {plan.more.length > 0 && (
+                <div className="pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">{isUz ? 'Ko\'proq shug\'ullanmoqchimisiz? Reja majburiy emas.' : 'Хотите заниматься больше? План не обязателен.'}</span>
+                  <Button variant="outline" size="sm" onClick={() => practise(idsOf(plan.more))}>
+                    {isUz ? `Yana ${plan.more.length} ta savol` : `Ещё вопросов: ${plan.more.length}`}
+                  </Button>
+                </div>
               )}
             </div>
           )}
@@ -150,7 +171,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
                 return (
                   <li key={q.id} className="flex items-center gap-3 p-3 rounded-xl border border-border">
                     <span className="text-xs text-muted-foreground w-6 shrink-0">{i + 1}.</span>
-                    <button onClick={() => navigate(`/subjects/${subject.id}/q/${q.id}`)} className="flex-1 text-left text-sm text-foreground hover:underline min-w-0">
+                    <button onClick={() => practise(idsOf(subject.questions), q.id)} className="flex-1 text-left text-sm text-foreground hover:underline min-w-0">
                       {q.text}
                     </button>
                     {q.attempts.length > 0 && (

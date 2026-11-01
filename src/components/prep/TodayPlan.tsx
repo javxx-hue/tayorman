@@ -46,7 +46,7 @@ export const TodayPlan: React.FC<TodayPlanProps> = ({ subjects, studySets, lang 
           {tasks.map(({ subject, plan }) => (
             <li key={subject.id}>
               <button
-                onClick={() => navigate(plan.today[0] ? `/subjects/${subject.id}/q/${plan.today[0].id}` : `/subjects/${subject.id}`)}
+                onClick={() => (plan.today[0] ? navigate(`/subjects/${subject.id}/q/${plan.today[0].id}`, { state: { queue: plan.today.map((q) => q.id) } }) : navigate(`/subjects/${subject.id}`))}
                 className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-secondary/50"
               >
                 <div className="flex-1 min-w-0">

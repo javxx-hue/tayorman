@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Mic, MicOff, Sparkles, BookOpen } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { toast } from '../components/ui/Toast';
@@ -16,6 +16,7 @@ import { describeGenerationError } from '../lib/ai';
 import { useDictation } from '../lib/useDictation';
 import { readinessColor } from './SubjectsPage';
 import { ReportIssue } from '../components/ReportIssue';
+import { nextInQueue, placeInQueue, queueOf, usableQueue } from '../lib/practiceQueue';
 
 interface QuestionPracticePageProps {
   subjects: Subject[];
@@ -26,6 +27,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   const { id, qid } = useParams();
   const navigate = useNavigate();
   const isUz = lang === 'uz';
+  const location = useLocation();
   const subject = subjects.find((s) => s.id === id);
   const question = subject?.questions.find((q) => q.id === qid);
 
@@ -46,9 +48,13 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
 
   const index = subject.questions.findIndex((q) => q.id === question.id);
   const last = question.attempts[question.attempts.length - 1];
-  // Next: today's plan first, otherwise the next question in the list
-  const todayIds = planSubject(subject).today.map((q) => q.id).filter((x) => x !== question.id);
-  const nextId = todayIds[0] ?? subject.questions[index + 1]?.id;
+  // "Next" follows the order this sitting was opened with (today's plan, the whole list, more practice).
+  // Opened without one (a bookmark, a reload that lost it), it goes through today's plan.
+  const existing = new Set(subject.questions.map((q) => q.id));
+  const opened = queueOf(location.state);
+  const queue = usableQueue(opened ?? [question.id, ...planSubject(subject).today.map((q) => q.id).filter((x) => x !== question.id)], existing);
+  const nextId = nextInQueue(queue, question.id);
+  const place = placeInQueue(queue, question.id);
 
   const saveQuestion = (patch: Partial<typeof question>) => {
     const latest = getSubjectById(subject.id);
@@ -119,7 +125,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   const goNext = () => {
     setAnswer('');
     setShowModel(false);
-    navigate(nextId ? `/subjects/${subject.id}/q/${nextId}` : `/subjects/${subject.id}`);
+    navigate(nextId ? `/subjects/${subject.id}/q/${nextId}` : `/subjects/${subject.id}`, nextId ? { state: { queue } } : undefined);
   };
 
   const gradedNow = last && last.answer === answer.trim();
@@ -132,7 +138,11 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
 
       <div className="rounded-3xl bg-card border border-border/80 p-5 sm:p-7 shadow-soft space-y-5">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{isUz ? `${index + 1}-savol / ${subject.questions.length}` : `Вопрос ${index + 1} / ${subject.questions.length}`}</span>
+          <span>
+            {opened && queue.length > 1
+              ? isUz ? `Mashq: ${place} / ${queue.length}` : `Практика: ${place} / ${queue.length}`
+              : isUz ? `${index + 1}-savol / ${subject.questions.length}` : `Вопрос ${index + 1} / ${subject.questions.length}`}
+          </span>
           {question.attempts.length > 0 && (
             <span>{isUz ? `Oxirgi natija: ${questionScore(question)}%` : `Последний результат: ${questionScore(question)}%`}</span>
           )}
@@ -235,7 +245,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
 
         <div className="pt-3 border-t border-border flex justify-end">
           <Button variant="secondary" size="md" onClick={goNext} icon={<ArrowRight size={15} />}>
-            {nextId ? (isUz ? 'Keyingi savol' : 'Следующий вопрос') : (isUz ? 'Fanga qaytish' : 'К предмету')}
+            {nextId ? (isUz ? 'Keyingi savol' : 'Следующий вопрос') : (isUz ? 'Tugatish' : 'Завершить')}
           </Button>
         </div>
       </div>
