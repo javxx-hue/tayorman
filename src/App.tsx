@@ -75,7 +75,7 @@ export default function App() {
   const [stats, setStats] = useState<UserStats>(getUserStats());
   const [subjects, setSubjects] = useState<Subject[]>(getSubjects());
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem(ONBOARDED_KEY) === '1');
-  const [forceDemo, setForceDemo] = useState(false);
+  const [allowBrowserAccess, setAllowBrowserAccess] = useState(false);
 
   useEffect(() => {
     initStorage();
@@ -120,7 +120,7 @@ export default function App() {
       </Centered>
     );
   }
-  if (status === 'outside' && !forceDemo) {
+  if (status === 'outside' && !allowBrowserAccess) {
     return (
       <Centered>
         <h1 className="text-2xl font-serif font-bold">Sessiyaga tayyorlan</h1>
@@ -133,10 +133,10 @@ export default function App() {
           </a>
         )}
         <button
-          onClick={() => setForceDemo(true)}
+          onClick={() => setAllowBrowserAccess(true)}
           className="text-xs text-muted-foreground underline pt-4 cursor-pointer hover:text-foreground"
         >
-          {tr(lang, "Brauzerda ko'rish (Demo)", 'Открыть в браузере (Демо)')}
+          {tr(lang, "Brauzerda davom etish", 'Продолжить в браузере')}
         </button>
       </Centered>
     );
