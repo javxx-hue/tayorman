@@ -6,7 +6,9 @@ import { ACCEPTED_FILES, materialFromFile } from '../../../../src/lib/materials'
 import { publishToLibrary } from '../../../../src/lib/library';
 import { AudiencePicker } from '../../components/AudiencePicker';
 import { Audience } from '../../lib/audience';
-import { questionsAsText, questionsKeepingAnswers } from '../../lib/content';
+import { listAsText, questionsAsText, questionsKeepingAnswers } from '../../lib/content';
+import { questionsFromMaterials, Mode } from '../../lib/sourceQuestions';
+import { parseQuestionList } from '../../../../src/lib/prep';
 import { Btn, Card } from '../../ui';
 
 const field = 'px-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary';
@@ -31,6 +33,8 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
   const [materials, setMaterials] = useState<Material[]>(initial?.materials ?? []);
   const [audience, setAudience] = useState<Audience>(initialAudience ?? { all: false, groups: [] });
   const [draft, setDraft] = useState(initialDraft ?? false);
+  const [count, setCount] = useState(15);
+  const [lang, setLang] = useState<'uz' | 'ru'>('uz');
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +54,24 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
     setBusy(null);
   };
 
+  // Questions from the lecture files: the list a document already has, or ones the AI writes. Added to what is typed.
+  const fillQuestions = async (mode: Mode) => {
+    setError(null);
+    setBusy(mode === 'extract' ? 'Fayldan savollar ajratilmoqda...' : 'AI savollar tuzmoqda...');
+    try {
+      const found = await questionsFromMaterials(materials, { mode, count, language: lang });
+      if (!found.length) {
+        setError(mode === 'extract' ? "Fayldan savollar ro'yxati topilmadi. «AI bilan tuzish» ni sinab ko'ring." : "AI savol tuza olmadi. Qayta urinib ko'ring.");
+        return;
+      }
+      setQuestionText(listAsText([...parseQuestionList(questionText), ...found]));
+    } catch (e) {
+      setError(describeGenerationError(e, 'uz'));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   // Files that came with a request are read once, when the form opens
   useEffect(() => {
     if (presetFiles?.length) addFiles(presetFiles);
@@ -60,7 +82,7 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
     const questions = questionsKeepingAnswers(questionText, initial?.questions ?? []);
     if (!name.trim()) return setError('Fan nomini yozing.');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(examDate)) return setError('Imtihon sanasini tanlang.');
-    if (!questions.length) return setError("Imtihon savollarini yozing (har biri alohida qatorda).");
+    if (!questions.length) return setError("Imtihon savollari bo'sh. Qo'lda yozing yoki yuqoridagi tugmalar bilan fayldan oling.");
     if (!draft && !audience.all && !audience.groups.length) return setError('Kimga ochilishini tanlang yoki qoralama sifatida saqlang.');
 
     const now = Date.now();
@@ -106,11 +128,6 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
         </div>
       </Card>
 
-      <Card title="Imtihon savollari">
-        <textarea value={questionText} rows={10} onChange={(e) => setQuestionText(e.target.value)} className={`${field} w-full`} placeholder={"1. Bozor iqtisodiyoti nima?\n2. Talab qonuni...\n\n(o'qituvchi bergan ro'yxatni shu yerga joylashtiring)"} />
-        <p className="text-xs text-muted-foreground mt-1">Har bir savol alohida qatorda. Raqamlar bo'lsa ham bo'ladi. O'zgarmagan savollar tayyor javobini saqlab qoladi.</p>
-      </Card>
-
       <Card title={`Ma'ruza materiallari (${materials.length})`}>
         <div className="space-y-2">
           <input type="file" multiple accept={ACCEPTED_FILES} onChange={(e) => { addFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }} className="text-sm" />
@@ -123,6 +140,23 @@ export const SubjectBuilder: React.FC<Props> = ({ initial, initialAudience, init
             </div>
           ))}
         </div>
+      </Card>
+
+      <Card title="Imtihon savollari">
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <Btn disabled={!!busy || !materials.length} onClick={() => fillQuestions('extract')}>Fayldagi savollar ro'yxatini olish</Btn>
+          <Btn disabled={!!busy || !materials.length} onClick={() => fillQuestions('generate')}>AI bilan savollar tuzish</Btn>
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            Soni <input type="number" min={5} max={50} value={count} onChange={(e) => setCount(Math.min(50, Math.max(5, Number(e.target.value) || 5)))} className={`${field} w-16`} />
+          </label>
+          <select value={lang} onChange={(e) => setLang(e.target.value as 'uz' | 'ru')} className={field}>
+            <option value="uz">O'zbekcha</option>
+            <option value="ru">Ruscha</option>
+          </select>
+        </div>
+        {!materials.length && <p className="text-xs text-muted-foreground mb-2">Savollarni fayldan olish uchun avval yuqoridagi «Ma'ruza materiallari» ga fayl qo'shing.</p>}
+        <textarea value={questionText} rows={10} onChange={(e) => setQuestionText(e.target.value)} className={`${field} w-full`} placeholder={"1. Bozor iqtisodiyoti nima?\n2. Talab qonuni...\n\n(o'qituvchi bergan ro'yxatni shu yerga joylashtiring)"} />
+        <p className="text-xs text-muted-foreground mt-1">Har bir savol alohida qatorda. Raqamlar bo'lsa ham bo'ladi. O'zgarmagan savollar tayyor javobini saqlab qoladi.</p>
       </Card>
 
       <Card title="Kimga ochiq">

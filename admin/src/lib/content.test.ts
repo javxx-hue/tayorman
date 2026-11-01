@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { ExamQuestion, QuizQuestion, StudySet } from '../../../src/types';
-import { checkCards, checkQuiz, copyOf, questionsAsText, questionsKeepingAnswers } from './content';
+import { checkCards, checkQuiz, copyOf, listAsText, questionsAsText, questionsKeepingAnswers } from './content';
+import { parseQuestionList } from '../../../src/lib/prep';
 
 const q = (over: Partial<QuizQuestion> = {}): QuizQuestion => ({ id: 'q1', question: 'Savol?', options: ['A', 'B', 'C', 'D'], correctAnswer: 1, hint: '', explanation: '', ...over });
 
@@ -46,6 +47,18 @@ describe('subject questions as text', () => {
     expect(next[0]).toBe(existing[0]);
     expect(next[1].id).not.toBe('q-b'); // the text changed, so it is a different question
     expect(next[1].attempts).toEqual([]);
+  });
+});
+
+describe('listAsText', () => {
+  it('numbers from 1 and reads back as the same questions', () => {
+    const list = ['Bozor nima?', 'Talab qonuni nima?'];
+    expect(listAsText(list)).toBe('1. Bozor nima?\n2. Talab qonuni nima?');
+    expect(parseQuestionList(listAsText(list))).toEqual(list);
+  });
+  it('renumbers a mix of old and new questions instead of leaving two styles', () => {
+    const merged = listAsText([...parseQuestionList('5. Eski savol bir?\n9. Eski savol ikki?'), 'Yangi savol?']);
+    expect(merged).toBe('1. Eski savol bir?\n2. Eski savol ikki?\n3. Yangi savol?');
   });
 });
 

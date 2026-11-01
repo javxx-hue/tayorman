@@ -31,7 +31,10 @@ export function questionsKeepingAnswers(text: string, existing: ExamQuestion[]):
   return parseQuestionList(text).map((t) => existing.find((q) => q.text === t) ?? { id: newId('q'), text: t, attempts: [] });
 }
 
-export const questionsAsText = (questions: ExamQuestion[]) => questions.map((q, i) => `${i + 1}. ${q.text}`).join('\n');
+// Always renumbered from 1, so old and new lines never mix numbered and plain styles
+export const listAsText = (texts: string[]) => texts.map((t, i) => `${i + 1}. ${t}`).join('\n');
+
+export const questionsAsText = (questions: ExamQuestion[]) => listAsText(questions.map((q) => q.text));
 
 // A copy to work on without touching the original; it starts as a draft
 export function copyOf<T extends StudySet | Subject>(doc: T): T {
