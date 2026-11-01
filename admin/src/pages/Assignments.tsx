@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
-import { covers, expand, tashkentToIso } from '../lib/audience';
+import { covers, expand, tashkentClock, tashkentToIso } from '../lib/audience';
 import { AudiencePicker } from '../components/AudiencePicker';
 import { Btn, Card, Pill, formatTime } from '../ui';
 
@@ -103,7 +103,7 @@ export const AssignmentsPage: React.FC = () => {
     if (!title.trim()) return setError('Topshiriq nomini yozing.');
     if (!toAll && !picked.length) return setError('Kamida bitta guruhni tanlang.');
     if (due && !dueIso) return setError("Muddat noto'g'ri.");
-    if (dueIso && new Date(dueIso).getTime() <= Date.now()) return setError("Muddat o'tib ketgan vaqtni ko'rsatmoqda.");
+    if (dueIso && new Date(dueIso).getTime() <= Date.now()) return setError(`Muddat o'tib ketgan vaqtni ko'rsatmoqda. Hozir Toshkentda ${tashkentClock()}.`);
 
     const wanted = { all: toAll, groups: picked };
     const current = { all: item.audience_all, groups: item.community_ids };
@@ -195,7 +195,7 @@ export const AssignmentsPage: React.FC = () => {
 
           <div className="flex flex-wrap items-end gap-4">
             <div>
-              <label className="block text-xs font-semibold text-muted-foreground mb-1">Muddat (Toshkent vaqti, ixtiyoriy)</label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">Muddat (Toshkent vaqti, hozir {tashkentClock()}; ixtiyoriy)</label>
               <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className={inputClass} />
             </div>
             <label className="flex items-center gap-2 text-sm pb-1.5">

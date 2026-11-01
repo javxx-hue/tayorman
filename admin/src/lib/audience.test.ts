@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { covers, expand, tashkentToIso } from './audience';
+import { covers, expand, tashkentClock, tashkentToIso } from './audience';
 
 describe('assignment audience vs library audience', () => {
   it('an item for everyone covers anything', () => {
@@ -18,6 +18,13 @@ describe('assignment audience vs library audience', () => {
     expect(expand({ all: false, groups: ['g1'] }, { all: false, groups: ['g1', 'g2'] })).toEqual({ all: false, groups: ['g1', 'g2'] });
     expect(expand({ all: false, groups: ['g1'] }, { all: true, groups: [] })).toEqual({ all: true, groups: [] });
     expect(expand({ all: true, groups: [] }, { all: false, groups: ['g2'] })).toEqual({ all: true, groups: [] });
+  });
+});
+
+describe('Tashkent clock', () => {
+  it('shows the time in Tashkent, whatever zone the computer is set to', () => {
+    expect(tashkentClock(Date.UTC(2026, 10, 1, 10, 37))).toBe('15:37');
+    expect(tashkentClock(Date.UTC(2026, 10, 1, 19, 5))).toBe('00:05'); // after midnight
   });
 });
 

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { AudiencePicker } from '../components/AudiencePicker';
-import { Audience, tashkentToIso } from '../lib/audience';
+import { Audience, tashkentClock, tashkentToIso } from '../lib/audience';
 import { Btn, Card, Pill, formatTime } from '../ui';
 
 interface Group {
@@ -89,7 +89,7 @@ export const BroadcastsPage: React.FC = () => {
     const scheduledAt = later ? tashkentToIso(when) : null;
     if (!text.trim()) return setError('Xabar matnini yozing.');
     if (!audience.all && !audience.groups.length) return setError('Kimga yuborilishini tanlang.');
-    if (later && (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())) return setError("Kelajakdagi vaqtni tanlang (Toshkent vaqti bilan).");
+    if (later && (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now())) return setError(`Bu vaqt o'tib ketgan yoki noto'g'ri. Hozir Toshkentda ${tashkentClock()}, undan keyingi vaqtni tanlang.`);
 
     const who = reach === null ? 'tanlangan' : `≈${reach} ta`;
     const question = later ? `Xabar ${formatTime(scheduledAt)} da ${who} talabaga yuboriladi. Tasdiqlaysizmi?` : `Xabar hoziroq ${who} talabaga yuboriladi. Tasdiqlaysizmi?`;
@@ -134,7 +134,7 @@ export const BroadcastsPage: React.FC = () => {
             </label>
             {later && (
               <label className="text-xs font-semibold text-muted-foreground">
-                Vaqt (Toshkent)
+                Vaqt (Toshkent vaqti, hozir {tashkentClock()})
                 <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} className={`${inputClass} block mt-1`} />
               </label>
             )}

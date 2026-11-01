@@ -16,6 +16,11 @@ export function expand(item: Audience, wanted: Audience): Audience {
   return { all: false, groups: [...new Set([...item.groups, ...wanted.groups])] };
 }
 
+// "15:37" in Tashkent right now; the computer's own clock may be set to another zone
+export function tashkentClock(now = Date.now()): string {
+  return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Tashkent', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(now);
+}
+
 // "2026-11-05T18:30" typed in the date field means Tashkent time, whatever the computer's clock says
 export function tashkentToIso(local: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(local)) return null;
