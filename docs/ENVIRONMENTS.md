@@ -13,13 +13,24 @@
 Muhitlar **hech narsani bo'lishmaydi**: bir muhitning tokeni, kaliti yoki bazasi ikkinchisida ishlatilmaydi. Bu tasodifan haqiqiy foydalanuvchilarga xabar yuborish yoki ularning ma'lumotini buzishdan saqlaydi.
 
 ### Yangi muhit ochish (production)
-1. Yangi Supabase loyihasi, `pg_cron` va `pg_net` yoqilgan.
-2. Migratsiyalar `0001`…`0005` tartib bilan (README, 2-bosqich).
-3. Yangi bot tokeni (BotFather), yangi tasodifiy `AUTH_SECRET`, `CRON_SECRET`, `TELEGRAM_WEBHOOK_SECRET`; `ADMIN_TELEGRAM_IDS`, `APP_URL`, `ADMIN_URL`, `ALLOWED_ORIGINS`, Gemini kaliti.
-4. `npm run deploy:functions -- --project <production-ref>`.
-5. Webhook (README, 4-bosqich) va ikkita cron ishi (5-bosqich) production manzillari bilan.
-6. `.env.production` (VITE_* qiymatlari) bilan `npm run deploy:app -- --env .env.production`, so'ng `npm run deploy:admin`.
-7. BotFather: Menu Button = production Mini App manzili.
+
+Qo'lda bajariladigan qismi (hisoblar, tokenlar) va skript bajaradigan qismi ajratilgan. Hammasi `<ref>` — production Supabase loyihasi identifikatori.
+
+**Qo'lda (siz yoki Sanjar):**
+1. Yangi Supabase loyihasi; Database → Extensions'da `pg_cron` va `pg_net` yoqilgan.
+2. BotFather'da production bot tokeni (eskisi `/revoke` qilingan bo'lsin) va yangi Gemini kaliti.
+3. Ikkita yangi Vercel loyihasi (Mini App va admin sayt), ularning manzillari.
+
+**Skript bilan:**
+4. `supabase/functions/.env.example` ni `supabase/functions/.env.production` ga nusxalang. Unga `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `ADMIN_TELEGRAM_IDS`, `APP_URL`, `ADMIN_URL`, `ALLOWED_ORIGINS` ni yozing (`GEMINI_MODEL` bo'sh qolsa, standart ishlaydi).
+5. `npm run setup:env -- --project <ref> --env supabase/functions/.env.production`: bo'sh `AUTH_SECRET`, `CRON_SECRET`, `TELEGRAM_WEBHOOK_SECRET` ga tasodifiy qiymat yozadi (borini o'zgartirmaydi), yana nima yetishmayotganini aytadi va cron SQL faylini yaratadi. Sirlar ekranga chiqmaydi.
+6. Migratsiyalar `0001`…`0005` tartib bilan (README, 2-bosqich).
+7. `npx supabase secrets set --env-file supabase/functions/.env.production --project-ref <ref>`
+8. `npm run deploy:functions -- --project <ref>`
+9. `supabase/functions/.env.production.cron.sql` ichidagini SQL Editor'da bir marta bajaring.
+10. `npm run setup:env -- --project <ref> --env supabase/functions/.env.production --webhook` (bot shu loyihaga ulanadi).
+11. `.env.production` (VITE_* qiymatlari) bilan `npm run deploy:app -- --env .env.production`, so'ng `npm run deploy:admin`.
+12. BotFather: Menu Button = production Mini App manzili.
 
 ## Ishga tushirishdan oldingi ro'yxat (haqiqiy talabalar kelishidan oldin)
 

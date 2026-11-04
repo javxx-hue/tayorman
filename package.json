@@ -13,7 +13,8 @@
     "build:admin": "vite build --config vite.admin.config.ts",
     "deploy:functions": "node scripts/deploy-functions.mjs",
     "deploy:app": "node scripts/deploy-app.mjs",
-    "deploy:admin": "node scripts/deploy-admin.mjs"
+    "deploy:admin": "node scripts/deploy-admin.mjs",
+    "setup:env": "node scripts/setup-environment.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
