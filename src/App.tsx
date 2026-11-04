@@ -120,7 +120,10 @@ export default function App() {
   // Students create nothing: whatever the admin published for them arrives (and updates) by itself
   useEffect(() => {
     if (!online || !synced || profile?.role !== 'student') return;
-    deliverLibrary().catch((e) => console.warn('Library delivery failed', e));
+    deliverLibrary().catch((e) => {
+      console.warn('Library delivery failed', e);
+      if (e instanceof Error && e.name === 'StorageFullError') toast.error(tr(lang, "Telefon xotirasi to'lgan: yangi fanlar yuklanmadi. Eski ma'lumotlarni tozalang.", 'Память телефона заполнена: новые предметы не загружены. Освободите место.'));
+    });
   }, [online, synced, profile?.id, profile?.role]);
 
   const isStudent = online && synced && profile?.role === 'student';

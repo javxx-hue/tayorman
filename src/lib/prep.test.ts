@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { parseQuestionList, planSubject, scoreToGrade, subjectReadiness, daysUntil, todayOverview } from './prep';
-import { buildMaterialContext, officeXmlToText } from './materials';
+import { buildMaterialContext, fitMaterials, officeXmlToText } from './materials';
 import { ExamQuestion, Subject, StudySet } from '../types';
 
 const q = (id: string, score?: number): ExamQuestion => ({
@@ -164,5 +164,25 @@ describe('planSubject: the day\'s share', () => {
     const plan = planSubject(subject('2026-11-06', [yesterday, ...base().slice(1)]), today);
     expect(plan.doneToday).toBe(0);
     expect(plan.today.map((x) => x.id)).toEqual(['1', '2']); // untouched ones come before the one answered badly yesterday
+  });
+});
+
+describe('fitMaterials', () => {
+  const m = (id: string, n: number) => ({ id, name: id, kind: 'text' as const, text: 'x'.repeat(n), createdAt: 0 });
+
+  it('keeps whole files while they fit, cuts the one that crosses the limit, drops the rest', () => {
+    const out = fitMaterials([m('a', 60), m('b', 60), m('c', 60)], 100);
+    expect(out.map((x) => [x.id, x.text.length])).toEqual([['a', 60], ['b', 40]]);
+  });
+
+  it('does not touch anything that fits, and handles none', () => {
+    const list = [m('a', 10), m('b', 10)];
+    expect(fitMaterials(list, 100)).toEqual(list);
+    expect(fitMaterials([], 100)).toEqual([]);
+  });
+
+  it('never gives the AI more than it reads anyway', () => {
+    const total = fitMaterials([m('a', 500_000)]).reduce((n, x) => n + x.text.length, 0);
+    expect(total).toBe(120_000);
   });
 });
