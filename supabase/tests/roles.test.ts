@@ -1,11 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { parseAdminIds, profileChanges, resolveRole } from '../functions/_shared/roles';
+import { isListedAdminUser, parseAdminIds, profileChanges, resolveRole } from '../functions/_shared/roles';
 
 describe('parseAdminIds', () => {
   it('reads a comma separated list and ignores junk', () => {
     expect([...parseAdminIds('100200300, 42 ,abc,,-5,1.5,0')]).toEqual([100200300, 42]);
     expect(parseAdminIds(undefined).size).toBe(0);
     expect(parseAdminIds('').size).toBe(0);
+  });
+});
+
+describe('isListedAdminUser', () => {
+  it('prefers the envAdmins list when defined', () => {
+    expect(isListedAdminUser(111, '111,222', [333])).toBe(true);
+    expect(isListedAdminUser(333, '111,222', [333])).toBe(false);
+  });
+
+  it('falls back to fallbackIds when envAdmins is undefined or null', () => {
+    expect(isListedAdminUser(333, undefined, [333])).toBe(true);
+    expect(isListedAdminUser(333, null, [333])).toBe(true);
+    expect(isListedAdminUser(444, undefined, [333])).toBe(false);
   });
 });
 

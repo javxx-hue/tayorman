@@ -3,7 +3,7 @@
 // normal Supabase session through signInWithPassword.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { admin } from './admin.ts';
-import { parseAdminIds, profileChanges, resolveRole } from './roles.ts';
+import { isListedAdminUser, parseAdminIds, profileChanges, resolveRole } from './roles.ts';
 
 import type { TelegramUser } from './types.ts';
 export type { TelegramUser };
@@ -41,8 +41,13 @@ export interface ProfileRow {
 
 export const DEFAULT_ADMIN_IDS = [7537966029, 7629355296];
 
-// Listed as an admin: in the ADMIN_TELEGRAM_IDS secret or in the built-in list above
-export const isListedAdmin = (telegramId: number) => parseAdminIds(Deno.env.get('ADMIN_TELEGRAM_IDS')).has(telegramId) || DEFAULT_ADMIN_IDS.includes(telegramId);
+// Listed as an admin: in the ADMIN_TELEGRAM_IDS secret if defined, otherwise in the fallback list
+export const isListedAdmin = (telegramId: number) =>
+  isListedAdminUser(
+    telegramId,
+    typeof Deno !== 'undefined' ? Deno.env.get('ADMIN_TELEGRAM_IDS') : process.env.ADMIN_TELEGRAM_IDS,
+    DEFAULT_ADMIN_IDS
+  );
 
 // The full profile of this Telegram account, creating the account on first contact. A known account costs one
 // read, and a write only when something changed (see profileChanges), so the bot answers sooner.

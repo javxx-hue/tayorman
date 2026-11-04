@@ -43,3 +43,6 @@ jobs:
 
       - name: Build Production Admin Web App
         run: npm run build:admin
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose config

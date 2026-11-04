@@ -11,6 +11,15 @@ export function parseAdminIds(raw: string | undefined): Set<number> {
   );
 }
 
+// Checks if telegramId is listed as admin. If envAdmins is defined, it takes precedence.
+// Fallback IDs are only used when envAdmins is undefined or null.
+export function isListedAdminUser(telegramId: number, envAdmins?: string | null, fallbackIds: number[] = []): boolean {
+  if (envAdmins !== undefined && envAdmins !== null) {
+    return parseAdminIds(envAdmins).has(telegramId);
+  }
+  return fallbackIds.includes(telegramId);
+}
+
 // ADMIN_TELEGRAM_IDS is the only source of the 'admin' role. Someone removed from the
 // list drops back to student; moderators (set in the admin panel) keep their role.
 export function resolveRole(listedAsAdmin: boolean, current?: string | null): Role {

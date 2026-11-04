@@ -1,22 +1,42 @@
 // Builds the admin site and deploys it as its own Vercel project ("tayyorman-admin").
 // The build folder is wiped on every build, so it is copied to .admin-deploy/ which keeps
 // the Vercel project link between deploys.
-// Usage: node scripts/deploy-admin.mjs
+// Usage: node scripts/deploy-admin.mjs [--env <file>] [--project <name>]
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
-const run = (cmd, args, cwd) => {
-  const r = spawnSync(cmd, args, { cwd, shell: true, stdio: 'inherit' });
+const args = process.argv.slice(2);
+const envFlag = args.indexOf('--env');
+const file = envFlag >= 0 ? args[envFlag + 1] : '.env';
+
+const projFlag = args.indexOf('--project');
+const projectName = projFlag >= 0 ? args[projFlag + 1] : 'tayyorman-admin';
+
+let extraEnv = {};
+if (existsSync(file)) {
+  extraEnv = Object.fromEntries(
+    readFileSync(file, 'utf8')
+      .split(/\r?\n/)
+      .filter((l) => /^VITE_[A-Z_]+=/.test(l))
+      .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()])
+  );
+}
+
+const run = (cmd, cmdArgs, cwd, env = process.env) => {
+  const r = spawnSync(cmd, cmdArgs, { cwd, shell: true, stdio: 'inherit', env });
   if (r.status !== 0) process.exit(r.status ?? 1);
 };
 
-run('npm', ['run', 'build:admin']);
+run('npm', ['run', 'build:admin'], undefined, { ...process.env, ...extraEnv });
 
 const target = '.admin-deploy';
 mkdirSync(target, { recursive: true });
 for (const entry of readdirSync(target)) if (entry !== '.vercel') rmSync(join(target, entry), { recursive: true, force: true });
 cpSync('dist-admin', target, { recursive: true });
 
-if (!existsSync(join(target, '.vercel'))) run('npx', ['vercel', 'link', '--yes', '--project', 'tayyorman-admin'], target);
-run('npx', ['vercel', 'deploy', '--prod', '--yes'], target);
+if (!existsSync(join(target, '.vercel'))) run('npx', ['vercel', 'link', '--yes', '--project', projectName], target);
+
+const deployArgs = ['vercel', 'deploy', '--prod', '--yes'];
+for (const [k, v] of Object.entries(extraEnv)) deployArgs.push('--build-env', `${k}=${v}`);
+run('npx', deployArgs, target);
