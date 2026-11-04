@@ -1,39 +1,69 @@
-// Admin site sign-in. The site sends the nonce it gave the bot; once an admin or moderator
-// has confirmed it in the bot, this returns a Supabase session (once, within 5 minutes).
-// Admin = listed in ADMIN_TELEGRAM_IDS. Deploy with --no-verify-jwt (the confirmation is the credential).
-// Secrets: ADMIN_TELEGRAM_IDS, AUTH_SECRET, ALLOWED_ORIGINS (incl. the admin site)
+// Admin site sign-in. Two ways in, both end in a session for an admin or moderator only:
+//  { initData }  the site was opened from the bot's "Admin" menu button, so it holds Telegram's own signed
+//                Mini App data, checked here with the bot token
+//  { nonce }     the site was opened in a normal browser: the admin confirmed the nonce in the bot, and it is
+//                handed over once, within 5 minutes
+// Admin = listed in ADMIN_TELEGRAM_IDS. Deploy with --no-verify-jwt (the proof above is the credential).
+// Secrets: TELEGRAM_BOT_TOKEN, ADMIN_TELEGRAM_IDS, AUTH_SECRET, ALLOWED_ORIGINS (incl. the admin site)
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { admin } from '../_shared/admin.ts';
-import { sessionFor } from '../_shared/users.ts';
+import { verifyInitData } from '../_shared/initData.ts';
+import { ensureUser, isListedAdmin, sessionFor } from '../_shared/users.ts';
 import { isFresh, NONCE_RE, nonceHash } from '../_shared/loginNonce.ts';
+import { isStaffRole } from '../_shared/staff.ts';
+
+// Who the request proves to be: a user id, or the answer to send instead
+type Identity = { userId: string } | { reply: Response };
+
+async function fromInitData(req: Request, initData: string, denied: () => Response): Promise<Identity> {
+  const verified = await verifyInitData(initData, Deno.env.get('TELEGRAM_BOT_TOKEN') ?? '');
+  if (!verified) return { reply: json(req, { error: 'Invalid Telegram data' }, 401) };
+
+  // No accounts for strangers: only listed admins or people who already use the bot may continue
+  const { data: known } = await admin.from('profiles').select('id').eq('telegram_id', verified.user.id).maybeSingle();
+  if (!isListedAdmin(verified.user.id) && !known) return { reply: denied() };
+  return { userId: await ensureUser(verified.user) }; // also syncs the role with ADMIN_TELEGRAM_IDS
+}
+
+async function fromNonce(req: Request, nonce: string): Promise<Identity> {
+  if (!NONCE_RE.test(nonce)) return { reply: json(req, { error: 'Bad request' }, 400) };
+  const hash = await nonceHash(nonce);
+  const { data: row } = await admin.from('admin_login_requests').select('user_id, approved_at, used_at').eq('nonce_hash', hash).maybeSingle();
+  if (!row) return { reply: json(req, { pending: true }) }; // not confirmed yet
+  if (row.used_at || !isFresh(row.approved_at)) return { reply: json(req, { error: 'Expired' }, 410) };
+
+  // Claim it: of two parallel requests only one gets the row back
+  const { data: claimed } = await admin
+    .from('admin_login_requests')
+    .update({ used_at: new Date().toISOString() })
+    .eq('nonce_hash', hash)
+    .is('used_at', null)
+    .select('user_id')
+    .maybeSingle();
+  if (!claimed) return { reply: json(req, { error: 'Expired' }, 410) };
+  return { userId: claimed.user_id };
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
   if (req.method !== 'POST') return json(req, { error: 'Method not allowed' }, 405);
 
   const body = await req.json().catch(() => null);
-  const nonce = typeof body?.nonce === 'string' ? body.nonce : '';
-  if (!NONCE_RE.test(nonce)) return json(req, { error: 'Bad request' }, 400);
+  // The same answer for "not allowed" whatever the reason, so the list of admins cannot be probed
+  const denied = () => json(req, { error: 'Access denied' }, 403);
 
   try {
-    const hash = await nonceHash(nonce);
-    const { data: row } = await admin.from('admin_login_requests').select('user_id, approved_at, used_at').eq('nonce_hash', hash).maybeSingle();
-    if (!row) return json(req, { pending: true }); // not confirmed yet
-    if (row.used_at || !isFresh(row.approved_at)) return json(req, { error: 'Expired' }, 410);
+    const who =
+      typeof body?.initData === 'string' && body.initData
+        ? await fromInitData(req, body.initData, denied)
+        : typeof body?.nonce === 'string'
+          ? await fromNonce(req, body.nonce)
+          : { reply: json(req, { error: 'Bad request' }, 400) };
+    if ('reply' in who) return who.reply;
 
-    // Claim it: of two parallel requests only one gets the row back
-    const { data: claimed } = await admin
-      .from('admin_login_requests')
-      .update({ used_at: new Date().toISOString() })
-      .eq('nonce_hash', hash)
-      .is('used_at', null)
-      .select('user_id')
-      .maybeSingle();
-    if (!claimed) return json(req, { error: 'Expired' }, 410);
-
-    // Role is checked again here, not only when the bot confirmed
-    const { data: profile } = await admin.from('profiles').select('id, telegram_id, first_name, role, blocked').eq('id', claimed.user_id).single();
-    if (!profile || profile.blocked || !['admin', 'moderator'].includes(profile.role)) return json(req, { error: 'Access denied' }, 403);
+    // The role is checked here, whichever way the person was identified
+    const { data: profile } = await admin.from('profiles').select('id, telegram_id, first_name, role, blocked').eq('id', who.userId).single();
+    if (!profile || profile.blocked || !isStaffRole(profile.role)) return denied();
 
     const session = await sessionFor({ id: profile.telegram_id });
     await admin.from('audit_log').insert({

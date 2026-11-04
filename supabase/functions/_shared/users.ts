@@ -28,9 +28,12 @@ const defaultLanguage = (code?: string) => (code === 'ru' ? 'ru' : 'uz');
 
 export const DEFAULT_ADMIN_IDS = [7537966029, 7629355296];
 
+// Listed as an admin: in the ADMIN_TELEGRAM_IDS secret or in the built-in list above
+export const isListedAdmin = (telegramId: number) => parseAdminIds(Deno.env.get('ADMIN_TELEGRAM_IDS')).has(telegramId) || DEFAULT_ADMIN_IDS.includes(telegramId);
+
 // Returns the auth user id for this Telegram account, creating it on first contact.
 export async function ensureUser(tg: TelegramUser): Promise<string> {
-  const listed = parseAdminIds(Deno.env.get('ADMIN_TELEGRAM_IDS')).has(tg.id) || DEFAULT_ADMIN_IDS.includes(tg.id);
+  const listed = isListedAdmin(tg.id);
   const { data: existing } = await admin.from('profiles').select('id, role').eq('telegram_id', tg.id).maybeSingle();
 
   if (existing) {

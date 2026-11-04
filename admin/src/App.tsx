@@ -90,7 +90,7 @@ const SignedOut: React.FC = () => {
           </>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">Telegram orqali kiring. Bot tasdiqlash so'raydi.</p>
+            <p className="text-sm text-muted-foreground">Telegram orqali kiring. Bot tasdiqlash so'raydi. Botdagi «Admin» tugmasi orqali ochsangiz, tasdiqlash shart emas.</p>
             <button onClick={start} className="w-full px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90">Telegram orqali kirish</button>
           </>
         )}

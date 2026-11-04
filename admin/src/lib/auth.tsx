@@ -1,7 +1,9 @@
-// Sign-in goes through the bot: the site opens t.me/<bot>?start=a_<nonce>, the admin confirms
-// there, and admin-login hands this site a session for that nonce (admins and moderators only).
+// Two ways in, both through the admin-login function and for admins and moderators only:
+//  - opened from the bot's "Admin" menu button: Telegram's own signed data identifies the person, no steps
+//  - opened in a normal browser: the site opens t.me/<bot>?start=a_<nonce>, the admin confirms there
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { configured, supabase } from './supabase';
+import { closeTelegram, prepareTelegram, telegramInitData } from './telegram';
 
 export type StaffRole = 'admin' | 'moderator';
 export interface Me {
@@ -42,10 +44,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(LOGIN_AT_KEY);
     setMe(null);
     setStatus('signed-out');
+    closeTelegram();
   }, []);
 
-  const signInWithNonce = useCallback(async (nonce: string): Promise<SignInResult> => {
-    const { data, error: fnError } = await supabase.functions.invoke('admin-login', { body: { nonce } });
+  const exchange = useCallback(async (body: { nonce: string } | { initData: string }): Promise<SignInResult> => {
+    const { data, error: fnError } = await supabase.functions.invoke('admin-login', { body });
     if (fnError) {
       const status = (fnError as { context?: Response }).context?.status;
       return status === 403 ? 'denied' : status === 410 ? 'gone' : 'error';
@@ -59,6 +62,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return 'ok';
   }, []);
 
+  const signInWithNonce = useCallback((nonce: string) => exchange({ nonce }), [exchange]);
+
   useEffect(() => {
     let cancelled = false;
     const done = (next: Status, who: Me | null = null, message: string | null = null) => {
@@ -70,6 +75,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const init = async () => {
       if (!configured) return done('signed-out', null, 'Sayt sozlanmagan: VITE_SUPABASE_URL va VITE_SUPABASE_ANON_KEY yo\'q.');
+
+      // Opened from the bot: Telegram has already said who this is, so sign in right away
+      prepareTelegram();
+      const initData = telegramInitData();
+      if (initData) {
+        const result = await exchange({ initData });
+        if (result === 'ok') return;
+        return done('signed-out', null, result === 'denied' ? "Bu Telegram hisobi uchun admin huquqi yo'q." : "Kirib bo'lmadi. Botdagi «Admin» tugmasini qayta bosing.");
+      }
 
       // An existing session that is still inside its 8 hours
       const { data: sessionData } = await supabase.auth.getSession();

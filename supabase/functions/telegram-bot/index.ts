@@ -1,6 +1,7 @@
 // Telegram bot webhook.
 //  /start [c_<code>]  welcome + Mini App button, optional community join
-//  /start a_<nonce>   admin site sign-in: shows a code and a Confirm button
+//  /start a_<nonce>   admin site sign-in from a browser: shows a code and a Confirm button
+//  admins and moderators also get an "Admin" menu button that opens the admin site inside Telegram
 //  /reja              today's plan       /til      switch language
 //  /eslatma           reminders on/off   /yordam   help
 //  any other message  (text, file, photo) is passed to the admins as a request
@@ -14,6 +15,7 @@ import { tg, sendMessage, openAppButton, downloadFile } from '../_shared/telegra
 import { submitRequest, TooManyRequests } from '../_shared/requests.ts';
 import { attachmentPath, MAX_FILE_BYTES, mimeForName, type Attachment } from '../_shared/attachments.ts';
 import { nonceCode, nonceFromStart, nonceHash } from '../_shared/loginNonce.ts';
+import { isStaffRole, menuButtonFor } from '../_shared/staff.ts';
 import { planLines } from '../_shared/plan.ts';
 import { bytesToBase64, callGemini, consumeQuota, QuotaError } from '../_shared/gemini.ts';
 
@@ -84,18 +86,27 @@ async function profileOf(tgUser: TelegramUser): Promise<{ id: string; language: 
 
 const appKeyboard = (lang: Lang, path = '') => ({ reply_markup: { inline_keyboard: [[openAppButton(t('open', lang), path)]] } });
 
+// Staff get the Admin button. Anyone else gets the normal menu back, but only when they start the bot:
+// one call is enough to take the button from someone who is no longer staff, and students are not bothered each time.
+async function syncMenuButton(chatId: number, role: string, isStart: boolean) {
+  if (!isStaffRole(role) && !isStart) return;
+  const button = menuButtonFor(role, Deno.env.get('ADMIN_URL'));
+  if (button) await tg('setChatMenuButton', { chat_id: chatId, menu_button: button });
+}
+
 // ---------------------------------------------------------------- commands
 async function onCommand(chatId: number, text: string, user: TelegramUser) {
   const profile = await profileOf(user);
   const lang = profile.language;
   const [command, arg] = text.split(/\s+/, 2);
+  await syncMenuButton(chatId, profile.role, command.replace(/@\w+$/, '') === '/start');
 
   switch (command.replace(/@\w+$/, '')) {
     case '/start': {
       const nonce = nonceFromStart(arg);
       if (nonce) {
         // Only admins and moderators get a Confirm button; everyone else just sees a plain refusal
-        if (!['admin', 'moderator'].includes(profile.role)) return void (await sendMessage(chatId, t('staffOnly', lang)));
+        if (!isStaffRole(profile.role)) return void (await sendMessage(chatId, t('staffOnly', lang)));
         return void (await sendMessage(chatId, t('loginAsk', lang)(nonceCode(nonce)), {
           reply_markup: { inline_keyboard: [[{ text: t('loginConfirm', lang), callback_data: `al:${nonce}` }]] },
         }));
@@ -161,6 +172,7 @@ async function storeFile(userId: string, m: Incoming): Promise<Attachment | 'bad
 async function onRequest(chatId: number, user: TelegramUser, m: Incoming) {
   const profile = await profileOf(user);
   const lang = profile.language;
+  await syncMenuButton(chatId, profile.role, false);
   const hasFile = !!(m.document || m.photo?.length);
   const label = m.document ? `📎 Fayl: ${m.document.file_name ?? 'file'}` : m.photo?.length ? '🖼 Rasm' : '';
   const text = [label, m.text ?? m.caption ?? ''].filter(Boolean).join(' — ');
@@ -190,7 +202,7 @@ async function onLoginConfirm(query: { id: string; data: string; from: TelegramU
   const lang = profile.language;
   await tg('answerCallbackQuery', { callback_query_id: query.id });
   const nonce = nonceFromStart(`a_${query.data.slice(3)}`);
-  if (!nonce || !['admin', 'moderator'].includes(profile.role)) return;
+  if (!nonce || !isStaffRole(profile.role)) return;
 
   await admin.from('admin_login_requests').upsert({ nonce_hash: await nonceHash(nonce), user_id: profile.id }, { onConflict: 'nonce_hash', ignoreDuplicates: true });
   // Old rows are of no use to anyone
