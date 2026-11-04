@@ -102,7 +102,7 @@ Bu SQL maxfiy qiymatni o'z ichiga oladi: uni git'ga yozmang va skrinshot qilmang
 
 ### 6. Mini App va admin saytni joylash
 ```bash
-# .env (yoki --env-file .env.production): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_TELEGRAM_BOT
+# .env (yoki --env .env.production): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_TELEGRAM_BOT
 npm run deploy:app
 npm run deploy:admin        # build + alohida Vercel loyihasi
 ```

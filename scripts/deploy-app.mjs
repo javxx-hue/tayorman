@@ -1,11 +1,11 @@
 // Builds and deploys the student Mini App to its Vercel project, with the public VITE_* values from an env file
-// (default .env; for production use --env-file .env.production). The values are not printed.
-// Usage: node scripts/deploy-app.mjs [--env-file <file>]
+// (default .env; for production use --env .env.production). The values are not printed.
+// Usage: node scripts/deploy-app.mjs [--env <file>]
 import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
 const args = process.argv.slice(2);
-const at = args.indexOf('--env-file');
+const at = args.indexOf('--env');
 const file = at >= 0 ? args[at + 1] : '.env';
 if (!existsSync(file)) {
   console.error(`No ${file}. It must hold VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_TELEGRAM_BOT.`);

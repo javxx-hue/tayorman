@@ -18,7 +18,7 @@ Muhitlar **hech narsani bo'lishmaydi**: bir muhitning tokeni, kaliti yoki bazasi
 3. Yangi bot tokeni (BotFather), yangi tasodifiy `AUTH_SECRET`, `CRON_SECRET`, `TELEGRAM_WEBHOOK_SECRET`; `ADMIN_TELEGRAM_IDS`, `APP_URL`, `ADMIN_URL`, `ALLOWED_ORIGINS`, Gemini kaliti.
 4. `npm run deploy:functions -- --project <production-ref>`.
 5. Webhook (README, 4-bosqich) va ikkita cron ishi (5-bosqich) production manzillari bilan.
-6. `.env.production` (VITE_* qiymatlari) bilan `npm run deploy:app -- --env-file .env.production`, so'ng `npm run deploy:admin`.
+6. `.env.production` (VITE_* qiymatlari) bilan `npm run deploy:app -- --env .env.production`, so'ng `npm run deploy:admin`.
 7. BotFather: Menu Button = production Mini App manzili.
 
 ## Ishga tushirishdan oldingi ro'yxat (haqiqiy talabalar kelishidan oldin)
