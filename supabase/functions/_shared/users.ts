@@ -69,12 +69,23 @@ export async function ensureUser(tg: TelegramUser): Promise<string> {
   return created.user.id;
 }
 
+// The email an existing account really has. The domain used for new accounts has changed over time, so
+// signing in with a computed email would lock out everyone created under an earlier one.
+async function emailOf(telegramId: number): Promise<string> {
+  const { data: profile } = await admin.from('profiles').select('id').eq('telegram_id', telegramId).maybeSingle();
+  if (profile) {
+    const { data } = await admin.auth.admin.getUserById(profile.id);
+    if (data.user?.email) return data.user.email;
+  }
+  return emailFor(telegramId);
+}
+
 // A regular Supabase session (access + refresh token) for the Mini App
 export async function sessionFor(tg: TelegramUser) {
   const anon = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data, error } = await anon.auth.signInWithPassword({ email: emailFor(tg.id), password: await passwordFor(tg.id) });
+  const { data, error } = await anon.auth.signInWithPassword({ email: await emailOf(tg.id), password: await passwordFor(tg.id) });
   if (error || !data.session) throw error ?? new Error('sign in failed');
   return data.session;
 }
