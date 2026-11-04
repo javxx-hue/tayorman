@@ -13,4 +13,13 @@ export default defineConfig({
   optimizeDeps: {
     include: ['pdfjs-dist'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+  },
 });

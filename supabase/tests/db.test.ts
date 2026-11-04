@@ -68,6 +68,7 @@ beforeAll(async () => {
   await db.exec(sql('0003_admin_login.sql'));
   await db.exec(sql('0004_request_files.sql'));
   await db.exec(sql('0005_funnel.sql'));
+  await db.exec(sql('0006_performance_indexes.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');

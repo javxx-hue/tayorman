@@ -1,17 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth, type SignInResult } from './lib/auth';
-import { DashboardPage } from './pages/Dashboard';
-import { UsersPage } from './pages/Users';
-import { AuditPage } from './pages/Audit';
-import { RequestsPage } from './pages/Requests';
-import { GroupDetailPage, GroupsPage } from './pages/Groups';
-import { AssignmentsPage } from './pages/Assignments';
-import { LibraryPage } from './pages/Library';
-import { BroadcastsPage } from './pages/Broadcasts';
-import { SettingsPage } from './pages/Settings';
-import { IssuesPage } from './pages/Issues';
 import { BOT } from './lib/config';
+
+// Code-split pages so the admin panel loads instantly without bundling heavy libraries (PDF, docx) upfront
+const DashboardPage = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.DashboardPage })));
+const UsersPage = lazy(() => import('./pages/Users').then((m) => ({ default: m.UsersPage })));
+const AuditPage = lazy(() => import('./pages/Audit').then((m) => ({ default: m.AuditPage })));
+const RequestsPage = lazy(() => import('./pages/Requests').then((m) => ({ default: m.RequestsPage })));
+const GroupsPage = lazy(() => import('./pages/Groups').then((m) => ({ default: m.GroupsPage })));
+const GroupDetailPage = lazy(() => import('./pages/Groups').then((m) => ({ default: m.GroupDetailPage })));
+const AssignmentsPage = lazy(() => import('./pages/Assignments').then((m) => ({ default: m.AssignmentsPage })));
+const LibraryPage = lazy(() => import('./pages/Library').then((m) => ({ default: m.LibraryPage })));
+const BroadcastsPage = lazy(() => import('./pages/Broadcasts').then((m) => ({ default: m.BroadcastsPage })));
+const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
+const IssuesPage = lazy(() => import('./pages/Issues').then((m) => ({ default: m.IssuesPage })));
 
 const NAV: { to: string; label: string; adminOnly?: boolean }[] = [
   { to: '/', label: 'Umumiy ko\'rinish', adminOnly: true },
@@ -126,20 +129,22 @@ const Shell: React.FC = () => {
         </div>
       </aside>
       <main className="flex-1 min-w-0 p-4 sm:p-6 max-w-6xl w-full">
-        <Routes>
-          <Route path="/" element={isAdmin ? <DashboardPage /> : <Navigate to={home} replace />} />
-          <Route path="/requests" element={isAdmin ? <RequestsPage /> : <Navigate to={home} replace />} />
-          <Route path="/issues" element={isAdmin ? <IssuesPage /> : <Navigate to={home} replace />} />
-          <Route path="/library" element={isAdmin ? <LibraryPage /> : <Navigate to={home} replace />} />
-          <Route path="/assignments" element={<AssignmentsPage />} />
-          <Route path="/broadcasts" element={isAdmin ? <BroadcastsPage /> : <Navigate to={home} replace />} />
-          <Route path="/groups" element={<GroupsPage />} />
-          <Route path="/groups/:id" element={<GroupDetailPage />} />
-          <Route path="/users" element={<UsersPage />} />
-          <Route path="/settings" element={isAdmin ? <SettingsPage /> : <Navigate to={home} replace />} />
-          <Route path="/audit" element={isAdmin ? <AuditPage /> : <Navigate to={home} replace />} />
-          <Route path="*" element={<Navigate to={home} replace />} />
-        </Routes>
+        <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Yuklanmoqda...</div>}>
+          <Routes>
+            <Route path="/" element={isAdmin ? <DashboardPage /> : <Navigate to={home} replace />} />
+            <Route path="/requests" element={isAdmin ? <RequestsPage /> : <Navigate to={home} replace />} />
+            <Route path="/issues" element={isAdmin ? <IssuesPage /> : <Navigate to={home} replace />} />
+            <Route path="/library" element={isAdmin ? <LibraryPage /> : <Navigate to={home} replace />} />
+            <Route path="/assignments" element={<AssignmentsPage />} />
+            <Route path="/broadcasts" element={isAdmin ? <BroadcastsPage /> : <Navigate to={home} replace />} />
+            <Route path="/groups" element={<GroupsPage />} />
+            <Route path="/groups/:id" element={<GroupDetailPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/settings" element={isAdmin ? <SettingsPage /> : <Navigate to={home} replace />} />
+            <Route path="/audit" element={isAdmin ? <AuditPage /> : <Navigate to={home} replace />} />
+            <Route path="*" element={<Navigate to={home} replace />} />
+          </Routes>
+        </Suspense>
       </main>
     </div>
   );

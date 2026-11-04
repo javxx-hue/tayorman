@@ -24,6 +24,17 @@ export default defineConfig({
   envDir: '..',
   plugins: [useAdminSupabaseClient(), react()],
   css: { postcss: path.resolve(__dirname) },
-  build: { outDir: '../dist-admin', emptyOutDir: true },
+  build: {
+    outDir: '../dist-admin',
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          supabase: ['@supabase/supabase-js'],
+        },
+      },
+    },
+  },
   server: { port: 5174 },
 });
