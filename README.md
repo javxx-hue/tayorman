@@ -60,7 +60,7 @@ Supabase → **SQL Editor** → migratsiyalarni **tartib bilan** ishga tushiring
 | `TELEGRAM_BOT_TOKEN` | bot tokeni |
 | `TELEGRAM_WEBHOOK_SECRET`, `CRON_SECRET`, `AUTH_SECRET` | tasodifiy uzun qiymatlar; **`AUTH_SECRET` ni keyin o'zgartirmang** |
 | `GEMINI_API_KEY` | AI kaliti |
-| `GEMINI_MODEL` | asosiy model (zaxira: `gemini-3.5-flash-lite`, asosiy 40 soniyada javob bermasa avtomatik o'tadi) |
+| `GEMINI_MODEL` | asosiy model. 6 soniyada javob bermasa, zaxira modellar (`gemini-3.5-flash-lite` va boshqalar) ham so'rovni boshlaydi; birinchi tayyor javob olinadi |
 | `ADMIN_TELEGRAM_IDS` | adminlar ID'lari, vergul bilan |
 | `APP_URL`, `ADMIN_URL` | Mini App va admin sayt manzillari (https) |
 | `ALLOWED_ORIGINS` | ikkala manzil, vergul bilan |
