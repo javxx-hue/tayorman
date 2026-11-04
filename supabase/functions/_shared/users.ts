@@ -3,7 +3,7 @@
 // normal Supabase session through signInWithPassword.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { admin } from './admin.ts';
-import { parseAdminIds, resolveRole } from './roles.ts';
+import { parseAdminIds, profileChanges, resolveRole } from './roles.ts';
 
 import type { TelegramUser } from './types.ts';
 export type { TelegramUser };
@@ -26,29 +26,35 @@ async function passwordFor(telegramId: number): Promise<string> {
 
 const defaultLanguage = (code?: string) => (code === 'ru' ? 'ru' : 'uz');
 
+const PROFILE_COLUMNS = 'id, first_name, last_name, username, role, language, reminders_enabled, blocked, last_seen_at';
+export interface ProfileRow {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  role: string;
+  language: 'uz' | 'ru';
+  reminders_enabled: boolean;
+  blocked: boolean;
+  last_seen_at: string;
+}
+
 export const DEFAULT_ADMIN_IDS = [7537966029, 7629355296];
 
 // Listed as an admin: in the ADMIN_TELEGRAM_IDS secret or in the built-in list above
 export const isListedAdmin = (telegramId: number) => parseAdminIds(Deno.env.get('ADMIN_TELEGRAM_IDS')).has(telegramId) || DEFAULT_ADMIN_IDS.includes(telegramId);
 
-// Returns the auth user id for this Telegram account, creating it on first contact.
-export async function ensureUser(tg: TelegramUser): Promise<string> {
+// The full profile of this Telegram account, creating the account on first contact. A known account costs one
+// read, and a write only when something changed (see profileChanges), so the bot answers sooner.
+export async function ensureProfile(tg: TelegramUser): Promise<ProfileRow> {
   const listed = isListedAdmin(tg.id);
-  const { data: existing } = await admin.from('profiles').select('id, role').eq('telegram_id', tg.id).maybeSingle();
+  const { data: existing } = await admin.from('profiles').select(PROFILE_COLUMNS).eq('telegram_id', tg.id).maybeSingle();
 
   if (existing) {
-    await admin
-      .from('profiles')
-      .update({
-        first_name: tg.first_name ?? null,
-        last_name: tg.last_name ?? null,
-        username: tg.username ?? null,
-        last_seen_at: new Date().toISOString(),
-        // ADMIN_TELEGRAM_IDS decides who is admin; moderators keep their role
-        role: resolveRole(listed, existing.role),
-      })
-      .eq('id', existing.id);
-    return existing.id;
+    const changes = profileChanges(existing, tg, listed, Date.now());
+    if (!changes) return existing as ProfileRow;
+    await admin.from('profiles').update(changes).eq('id', existing.id);
+    return { ...existing, ...changes } as ProfileRow;
   }
 
   const { data: created, error } = await admin.auth.admin.createUser({
@@ -69,8 +75,12 @@ export async function ensureUser(tg: TelegramUser): Promise<string> {
     role: resolveRole(listed, null),
   });
   if (profileError) throw profileError;
-  return created.user.id;
+  const { data: row, error: readError } = await admin.from('profiles').select(PROFILE_COLUMNS).eq('id', created.user.id).single();
+  if (readError) throw readError;
+  return row as ProfileRow;
 }
+
+export const ensureUser = async (tg: TelegramUser): Promise<string> => (await ensureProfile(tg)).id;
 
 // The email an existing account really has. The domain used for new accounts has changed over time, so
 // signing in with a computed email would lock out everyone created under an earlier one.

@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { RotateCw, ArrowLeft, ArrowRight, Shuffle, RotateCcw, Check, Trophy, Maximize, Minimize, Volume2, CalendarClock } from 'lucide-react';
 import { Language, getTranslations } from '../../lib/i18n';
 import { saveStudySet, recordStudyActivity } from '../../lib/storage';
+import { useSpeech } from '../../lib/speech';
 import { dueQueue, reviewCard, shouldRequeue, nextDueDate, previewIntervals, formatInterval, isMastered, ReviewRating } from '../../lib/srs';
 
 interface FlashcardPlayerProps {
@@ -26,6 +27,7 @@ const RATINGS: { key: ReviewRating; hotkey: string; className: string }[] = [
 export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ set, lang, onFinish }) => {
   const t = getTranslations(lang).flashcards;
   const isUz = lang === 'uz';
+  const speech = useSpeech(lang);
 
   const [deck, setDeck] = useState<Flashcard[]>(set.flashcards || []);
   const [mode, setMode] = useState<Mode>('review');
@@ -105,16 +107,6 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ set, lang, onF
       setPracticeIndex(0);
     }
     setIsFlipped(false);
-  };
-
-  const handleSpeak = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = isUz ? 'tr-TR' : 'ru-RU';
-      utterance.rate = 0.95;
-      window.speechSynthesis.speak(utterance);
-    }
   };
 
   useEffect(() => {
@@ -226,13 +218,15 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ set, lang, onF
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
-          <button
-            onClick={() => handleSpeak(isFlipped ? currentCard.back : currentCard.front)}
-            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-            title={isUz ? 'Ovozli eshitish' : 'Прослушать'}
-          >
-            <Volume2 size={16} />
-          </button>
+          {speech.available && (
+            <button
+              onClick={() => speech.speak(isFlipped ? currentCard.back : currentCard.front)}
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              title={isUz ? 'Ovozli eshitish' : 'Прослушать'}
+            >
+              <Volume2 size={16} />
+            </button>
+          )}
           <button
             onClick={toggleFullscreen}
             className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"

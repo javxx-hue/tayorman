@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { Check, X, Lightbulb, ArrowRight, RotateCcw, Trophy, Award, Sparkles, ChevronRight, HelpCircle, Clock, Volume2 } from 'lucide-react';
 import { Language, getTranslations } from '../../lib/i18n';
 import { recordQuizCompletion } from '../../lib/storage';
+import { useSpeech } from '../../lib/speech';
 import { ReportIssue } from '../ReportIssue';
 
 interface QuizRunnerProps {
@@ -15,6 +16,7 @@ interface QuizRunnerProps {
 
 export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onRetake }) => {
   const t = getTranslations(lang).quiz;
+  const speech = useSpeech(lang);
   const questions: QuizQuestion[] = set.questions || [];
   
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -92,17 +94,6 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
       const finalScore = Math.round(((score + (isCorrect ? 0 : 0)) / totalQ) * 100);
       recordQuizCompletion(finalScore, totalQ, set);
       setIsFinished(true);
-    }
-  };
-
-  // Read question aloud
-  const handleSpeakQuestion = () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(currentQ.question);
-      utterance.lang = lang === 'uz' ? 'tr-TR' : 'ru-RU';
-      utterance.rate = 0.95;
-      window.speechSynthesis.speak(utterance);
     }
   };
 
@@ -217,13 +208,15 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
           <h3 className="text-xl sm:text-2xl font-serif text-foreground leading-snug">
             {currentQ.question}
           </h3>
-          <button
-            onClick={handleSpeakQuestion}
-            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0 transition-colors"
-            title="Ovozli eshitish"
-          >
-            <Volume2 size={18} />
-          </button>
+          {speech.available && (
+            <button
+              onClick={() => speech.speak(currentQ.question)}
+              className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary shrink-0 transition-colors"
+              title={lang === 'uz' ? 'Ovozli eshitish' : 'Прослушать'}
+            >
+              <Volume2 size={18} />
+            </button>
+          )}
         </div>
 
         {/* Options */}

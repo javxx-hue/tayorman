@@ -10,7 +10,7 @@
 // Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, APP_URL, AUTH_SECRET,
 //          ADMIN_TELEGRAM_IDS, GEMINI_API_KEY, AI_DAILY_LIMIT
 import { admin } from '../_shared/admin.ts';
-import { ensureUser, joinCommunity, type TelegramUser } from '../_shared/users.ts';
+import { ensureProfile, joinCommunity, type TelegramUser } from '../_shared/users.ts';
 import { tg, sendMessage, openAppButton, downloadFile } from '../_shared/telegram.ts';
 import { submitRequest, TooManyRequests } from '../_shared/requests.ts';
 import { attachmentPath, MAX_FILE_BYTES, mimeForName, type Attachment } from '../_shared/attachments.ts';
@@ -77,11 +77,10 @@ const T = {
 
 const t = <K extends keyof typeof T>(key: K, lang: Lang) => T[key][lang];
 
-async function profileOf(tgUser: TelegramUser): Promise<{ id: string; language: Lang; reminders_enabled: boolean; role: string }> {
-  const id = await ensureUser(tgUser);
-  const { data } = await admin.from('profiles').select('id, language, reminders_enabled, role, blocked').eq('id', id).single();
-  if (data?.blocked) throw new BlockedError();
-  return data as { id: string; language: Lang; reminders_enabled: boolean; role: string };
+async function profileOf(tgUser: TelegramUser) {
+  const profile = await ensureProfile(tgUser);
+  if (profile.blocked) throw new BlockedError();
+  return profile;
 }
 
 const appKeyboard = (lang: Lang, path = '') => ({ reply_markup: { inline_keyboard: [[openAppButton(t('open', lang), path)]] } });
@@ -94,12 +93,24 @@ async function syncMenuButton(chatId: number, role: string, isStart: boolean) {
   if (button) await tg('setChatMenuButton', { chat_id: chatId, menu_button: button });
 }
 
+// The menu button is housekeeping: it runs next to the reply instead of before it, and a failure there never
+// stops the reply (the reply's own failure still does).
+async function alongside(housekeeping: Promise<void>, work: Promise<void>) {
+  housekeeping.catch((e) => console.warn('menu button failed', e));
+  await work;
+  await housekeeping.catch(() => {}); // let it finish before the function may be stopped
+}
+
 // ---------------------------------------------------------------- commands
 async function onCommand(chatId: number, text: string, user: TelegramUser) {
   const profile = await profileOf(user);
+  const isStart = text.split(/\s+/, 1)[0].replace(/@\w+$/, '') === '/start';
+  await alongside(syncMenuButton(chatId, profile.role, isStart), runCommand(chatId, text, user, profile));
+}
+
+async function runCommand(chatId: number, text: string, user: TelegramUser, profile: Awaited<ReturnType<typeof profileOf>>) {
   const lang = profile.language;
   const [command, arg] = text.split(/\s+/, 2);
-  await syncMenuButton(chatId, profile.role, command.replace(/@\w+$/, '') === '/start');
 
   switch (command.replace(/@\w+$/, '')) {
     case '/start': {
@@ -171,8 +182,11 @@ async function storeFile(userId: string, m: Incoming): Promise<Attachment | 'bad
 // Students cannot add content; whatever they send becomes a request for the admins
 async function onRequest(chatId: number, user: TelegramUser, m: Incoming) {
   const profile = await profileOf(user);
+  await alongside(syncMenuButton(chatId, profile.role, false), runRequest(chatId, profile, m));
+}
+
+async function runRequest(chatId: number, profile: Awaited<ReturnType<typeof profileOf>>, m: Incoming) {
   const lang = profile.language;
-  await syncMenuButton(chatId, profile.role, false);
   const hasFile = !!(m.document || m.photo?.length);
   const label = m.document ? `📎 Fayl: ${m.document.file_name ?? 'file'}` : m.photo?.length ? '🖼 Rasm' : '';
   const text = [label, m.text ?? m.caption ?? ''].filter(Boolean).join(' — ');

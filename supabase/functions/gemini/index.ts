@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
   try {
     await consumeQuota(user.id);
     const temperature = typeof body.temperature === 'number' ? Math.min(Math.max(body.temperature, 0), 1) : 0.4;
-    const text = await callGemini(body.parts, { json: !!body.json, temperature });
+    const text = await callGemini(body.parts, { json: !!body.json, temperature, tier: body.tier === 'fast' ? 'fast' : 'smart' });
     return json(req, { text });
   } catch (e) {
     if (e instanceof QuotaError) return json(req, { error: 'Daily AI limit reached' }, 429);

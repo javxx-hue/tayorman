@@ -87,7 +87,7 @@ export async function gradeAnswer(
   if (!answer.trim()) throw new GenerationError('EMPTY_SOURCE', 'Answer is empty.');
   const reference = question.modelAnswer
     ? `Reference answer:\n${question.modelAnswer.summary}\nExpected points:\n- ${question.modelAnswer.keyPoints.join('\n- ')}`
-    : `Lecture materials:\n${buildMaterialContext(subject.materials, 60_000)}`;
+    : `Lecture materials:\n${buildMaterialContext(subject.materials, 30_000)}`;
   const prompt = `
 You are a fair but demanding university examiner for "${subject.name}". ${FORMAT_HINT[subject.examFormat]}
 Grade the student's answer against the reference. Judge content, not spelling. Write feedback in ${langName(lang)},
@@ -105,7 +105,7 @@ ${answer.slice(0, 6000)}
 
 Return strict JSON:
 { "score": 0-100 integer, "feedback": "...", "missing": ["important points the student left out or got wrong"] }`;
-  const parsed = parseJson(await geminiGenerate([{ text: prompt }], { json: true, temperature: 0.1 }));
+  const parsed = parseJson(await geminiGenerate([{ text: prompt }], { json: true, temperature: 0.1, tier: 'fast' }));
   const score = Math.round(Number(parsed.score));
   if (!Number.isFinite(score) || score < 0 || score > 100) throw new GenerationError('BAD_RESPONSE', 'Invalid score.');
   return {

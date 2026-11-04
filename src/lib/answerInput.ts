@@ -58,10 +58,10 @@ const toBase64 = (blob: Blob) =>
 
 export async function transcribeAudio(recording: Blob, lang: Language): Promise<string> {
   const wav = await blobToWav(recording);
-  return cleanTranscript(await geminiGenerate([{ text: audioPrompt(lang) }, { inline_data: { mime_type: 'audio/wav', data: await toBase64(wav) } }], { temperature: 0 }));
+  return cleanTranscript(await geminiGenerate([{ text: audioPrompt(lang) }, { inline_data: { mime_type: 'audio/wav', data: await toBase64(wav) } }], { temperature: 0, tier: 'fast' }));
 }
 
 export async function transcribeHandwriting(photo: Blob, lang: Language): Promise<string> {
   const small = await shrinkImage(photo);
-  return cleanTranscript(await geminiGenerate([{ text: handwritingPrompt(lang) }, { inline_data: { mime_type: 'image/jpeg', data: await toBase64(small) } }], { temperature: 0 }));
+  return cleanTranscript(await geminiGenerate([{ text: handwritingPrompt(lang) }, { inline_data: { mime_type: 'image/jpeg', data: await toBase64(small) } }], { temperature: 0, tier: 'fast' }));
 }

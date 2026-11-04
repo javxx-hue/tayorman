@@ -18,3 +18,36 @@ export function resolveRole(listedAsAdmin: boolean, current?: string | null): Ro
   if (current === 'moderator') return 'moderator';
   return 'student';
 }
+
+export interface KnownProfile {
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  role: string;
+  last_seen_at: string;
+}
+
+// How long "last seen" may lag before it is written again; every message used to write it
+export const SEEN_REFRESH_MS = 10 * 60 * 1000;
+
+// What to write for someone we already know, or null when nothing changed and the profile row can be left alone.
+// This saves a database round trip on almost every message.
+export function profileChanges(
+  known: KnownProfile,
+  tg: { first_name?: string; last_name?: string; username?: string },
+  listedAsAdmin: boolean,
+  now: number
+): { first_name: string | null; last_name: string | null; username: string | null; role: Role; last_seen_at: string } | null {
+  const next = {
+    first_name: tg.first_name ?? null,
+    last_name: tg.last_name ?? null,
+    username: tg.username ?? null,
+    role: resolveRole(listedAsAdmin, known.role),
+  };
+  const same =
+    next.first_name === known.first_name && next.last_name === known.last_name && next.username === known.username && next.role === known.role;
+  const seen = Date.parse(known.last_seen_at);
+  const fresh = Number.isFinite(seen) && now - seen < SEEN_REFRESH_MS;
+  if (same && fresh) return null;
+  return { ...next, last_seen_at: new Date(now).toISOString() };
+}

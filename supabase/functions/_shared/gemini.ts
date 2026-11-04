@@ -1,5 +1,5 @@
 import { admin } from './admin.ts';
-import { ATTEMPT_TIMEOUT_MS, modelChain, shouldTryNext } from './geminiModels.ts';
+import { ATTEMPT_TIMEOUT_MS, Fatal, HEDGE_DELAY_MS, modelChain, raceStaggered, shouldTryNext, type Tier } from './geminiModels.ts';
 
 export type Part = { text: string } | { inline_data: { mime_type: string; data: string } };
 
@@ -12,8 +12,15 @@ export async function consumeQuota(userId: string): Promise<void> {
   if (!data) throw new QuotaError('Daily AI limit reached');
 }
 
-// Tries the configured model, then the fast backup, when one is slow, overloaded or failing
-export async function callGemini(parts: Part[], opts: { json?: boolean; temperature?: number } = {}): Promise<string> {
+interface Options {
+  json?: boolean;
+  temperature?: number;
+  tier?: Tier; // 'fast': grading and reading speech or handwriting; 'smart' (default): writing tests and answers
+}
+
+// Asks several models, staggered (see geminiModels.ts): the first good answer wins. One request is counted
+// against the user's limit however many models were asked.
+export async function callGemini(parts: Part[], opts: Options = {}): Promise<string> {
   const apiKey = Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
   const body = JSON.stringify({
@@ -21,31 +28,33 @@ export async function callGemini(parts: Part[], opts: { json?: boolean; temperat
     generationConfig: { temperature: opts.temperature ?? 0.4, ...(opts.json ? { responseMimeType: 'application/json' } : {}) },
   });
 
-  let lastError = 'no model tried';
-  for (const model of modelChain(Deno.env.get('GEMINI_MODEL'))) {
-    let status: number | 'timeout';
+  const attempt = (model: string) => async (cancel: AbortSignal): Promise<string> => {
+    let res: Response;
     try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body,
-        signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+        signal: AbortSignal.any([cancel, AbortSignal.timeout(ATTEMPT_TIMEOUT_MS)]),
       });
-      if (res.ok) {
-        const data = await res.json();
-        return (data?.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? '').join('');
-      }
-      status = res.status;
-      lastError = `${model} ${res.status}: ${(await res.text()).slice(0, 200)}`;
     } catch (e) {
-      if (!(e instanceof DOMException) || (e.name !== 'TimeoutError' && e.name !== 'AbortError')) throw e;
-      status = 'timeout';
-      lastError = `${model} gave no answer in ${ATTEMPT_TIMEOUT_MS / 1000}s`;
+      if (e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError')) throw new Error(`${model} gave no answer in time`);
+      throw e;
     }
-    console.warn('Gemini attempt failed:', lastError);
-    if (!shouldTryNext(status)) break;
+    if (!res.ok) {
+      const message = `${model} ${res.status}: ${(await res.text()).slice(0, 200)}`;
+      console.warn('Gemini attempt failed:', message);
+      throw shouldTryNext(res.status) ? new Error(message) : new Fatal(message);
+    }
+    const data = await res.json();
+    return (data?.candidates?.[0]?.content?.parts ?? []).map((p: { text?: string }) => p.text ?? '').join('');
+  };
+
+  try {
+    return await raceStaggered(modelChain(Deno.env.get('GEMINI_MODEL'), opts.tier).map(attempt), HEDGE_DELAY_MS);
+  } catch (e) {
+    throw new Error(`Gemini failed: ${e instanceof Error ? e.message : String(e)}`);
   }
-  throw new Error(`Gemini failed: ${lastError}`);
 }
 
 export function bytesToBase64(bytes: Uint8Array): string {
