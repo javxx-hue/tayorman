@@ -7,113 +7,122 @@ Sessiya va oraliq nazoratlarga tayyorlanish uchun **Telegram bot + Mini App**. H
 **Bot (chat):**
 - `/start` — salomlashish va Mini App tugmasi; `t.me/<bot>?start=c_<kod>` havolasi orqali guruhga qo'shilish.
 - Har qanday matn, fayl yoki rasm adminga so'rov bo'lib boradi (talaba o'zi fan yoki material yaratmaydi). Admin javobi botga keladi.
-- Ovozli javob: ilovada savolni oching → «Botda ovoz bilan» → botga ovozli xabar yuboring, AI tinglab baholaydi.
-- `/reja` (bugungi reja), `/til` (o'zbek/rus), `/eslatma`. Har kuni 08:00 da reja avtomatik keladi.
+- `/reja` (bugungi reja), `/til` (o'zbek/rus), `/eslatma`. Har kuni 08:00 da reja va yaqin topshiriq muddatlari avtomatik keladi.
+- Adminlar va moderatorlarda yozuv maydoni yonida **«Admin»** menyu tugmasi bor: admin saytni Telegram ichida ochadi.
 
-**Mini App:**
+**Mini App (talaba):**
 - **Bugun** — bugungi reja, ketma-ket kunlar, oxirgi to'plamlar.
 - **Topshiriq** — admin guruhga bergan vazifalar: muddat, holat (yangi, jarayonda, bajarildi), natija.
-- **Fanlar** — admin biriktirgan fanlar: imtihon sanasi, savollar ro'yxati, AI baholash yoki «Bilaman / Qisman / Bilmayman» (AI limiti tugaganda ham ishlaydi), test va kartalar (FSRS takrorlash), tayyorlik foizi. Talaba fan yaratmaydi: nashr qilingan narsa o'zi keladi va yangilanadi.
-- **So'rov** — adminga yozish (yangi fan, savol/material, xato); 5 tagacha manba fayl biriktiriladi; admin javobi botga keladi.
+- **Fanlar** — admin biriktirgan fanlar: imtihon sanasi, savollar, mashq (kunlik reja, «Yana 10 ta savol»), test va kartalar (FSRS takrorlash), tayyorlik foizi. Talaba fan yaratmaydi: nashr qilingan narsa o'zi keladi va yangilanadi, admin qaytarib olsa o'chadi.
+- Javobni **yozib, gapirib yoki qog'ozdagi javob rasmini yuklab** kiritish mumkin; AI matnni chiqaradi, talaba tekshirib tuzatadi, keyin baholanadi.
+- **So'rov** — adminga yozish (yangi fan, savol/material, xato); 5 tagacha manba fayl biriktiriladi.
 - **Profil** — til, OTM, guruhlar, eslatmalar.
 
-Barcha boshqaruv (fan va test tuzish, topshiriq, guruh, xabar, so'rovlarga javob) admin saytda; qarang: `docs/ADMIN_PLAN.md`.
+**Admin sayti** (`admin/`): umumiy ko'rinish, so'rovlar, kutubxona (test va fan tuzish), xatolar, topshiriqlar, xabarlar, guruhlar, foydalanuvchilar, sozlamalar, jurnal. Qarang: [docs/ADMIN_PLAN.md](docs/ADMIN_PLAN.md).
 
-AI kuniga har bir foydalanuvchiga 30 ta so'rov bilan cheklangan (`AI_DAILY_LIMIT`). Kalit faqat serverda.
+AI kuniga har bir foydalanuvchiga cheklangan (admin saytida: shaxsiy > guruh > umumiy). Kalit faqat serverda.
 
 ## Tuzilma
 
 ```
 src/                  Mini App (React + Vite + TypeScript)
-supabase/migrations/  ma'lumotlar bazasi sxemasi (RLS bilan)
-supabase/functions/   server: telegram-auth, telegram-bot, bot-action,
-                      gemini, admin-broadcast, telegram-reminders
+admin/                admin sayti (alohida Vite ilova, alohida Vercel loyiha)
+supabase/migrations/  ma'lumotlar bazasi sxemasi (RLS bilan), 0001 dan 0005 gacha ketma-ket
+supabase/functions/   server (Edge Functions); ro'yxati: scripts/functions.mjs
+scripts/              deploy skriptlari
+docs/                 reja va muhitlar qo'llanmasi
 ```
 
-Mini App ochilganda `telegram-auth` Telegram imzosini (initData) tekshiradi va Supabase sessiyasini beradi. Parol va email yo'q. Foydalanuvchi ma'lumotlari brauzerda saqlanadi va Supabase'ga nusxalanadi.
+Funksiyalar: `telegram-auth` (Mini App kirishi), `telegram-bot` (webhook), `telegram-reminders` va `broadcast-due` (cron), `admin-login`, `admin-broadcast`, `admin-reply`, `assignment-notify`, `request-admin`, `bot-action`, `gemini` (AI proksi).
 
-## Ishga tushirish (bir marta sozlash)
+Mini App ochilganda `telegram-auth` Telegram imzosini (initData) tekshiradi va Supabase sessiyasini beradi; parol yo'q. Ma'lumotlar telefonda saqlanadi va Supabase'ga nusxalanadi.
+
+## Muhitlar
+
+Development va production alohida bo'lishi kerak: har birining **o'z boti, Supabase loyihasi, sirlari va Vercel loyihasi** bor. To'liq qo'llanma va ishga tushirishdan oldingi ro'yxat: [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md).
+
+## Ishga tushirish (har muhit uchun bir marta)
 
 ### 1. Hisoblar
-- **Bot:** [@BotFather](https://t.me/BotFather) → `/newbot` → token. `/setdomain` shart emas. Mini App: `/newapp` yoki `/mybots` → Bot Settings → Menu Button → URL (deploydan keyin).
-- **Supabase:** [supabase.com](https://supabase.com) → yangi loyiha (region: Frankfurt).
+- **Bot:** [@BotFather](https://t.me/BotFather) → `/newbot` → token. Mini App: Bot Settings → Menu Button → Mini App manzili (deploydan keyin).
+- **Supabase:** yangi loyiha (region: Frankfurt). **Database → Extensions**: `pg_cron` va `pg_net` ni yoqing.
 - **Gemini kaliti:** [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey).
-- **Telegram ID'ingiz:** [@userinfobot](https://t.me/userinfobot) → raqam. Bu sizni admin qiladi.
+- **Telegram ID'ingiz:** [@userinfobot](https://t.me/userinfobot). Bu sizni admin qiladi.
 
 ### 2. Baza
-Supabase → **SQL Editor** → [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) ni ishga tushiring.
+Supabase → **SQL Editor** → migratsiyalarni **tartib bilan** ishga tushiring: `0001_init.sql`, `0002_admin.sql`, `0003_admin_login.sql`, `0004_request_files.sql`, `0005_funnel.sql`.
 
 ### 3. Sirlar
-`supabase/functions/.env` (shablon: `.env.example`) ni to'ldiring: `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `ADMIN_TELEGRAM_IDS`, `APP_URL` (Mini App manzili), `ALLOWED_ORIGINS` (xuddi shu manzil). `AUTH_SECRET`, `TELEGRAM_WEBHOOK_SECRET`, `CRON_SECRET` tasodifiy uzun qiymatlar; **`AUTH_SECRET` ni keyin o'zgartirmang**.
+`supabase/functions/.env.example` dan nusxa olib `supabase/functions/.env` ni to'ldiring:
+
+| Sir | Nima uchun |
+|---|---|
+| `TELEGRAM_BOT_TOKEN` | bot tokeni |
+| `TELEGRAM_WEBHOOK_SECRET`, `CRON_SECRET`, `AUTH_SECRET` | tasodifiy uzun qiymatlar; **`AUTH_SECRET` ni keyin o'zgartirmang** |
+| `GEMINI_API_KEY` | AI kaliti |
+| `GEMINI_MODEL` | asosiy model (zaxira: `gemini-3.5-flash-lite`, asosiy 40 soniyada javob bermasa avtomatik o'tadi) |
+| `ADMIN_TELEGRAM_IDS` | adminlar ID'lari, vergul bilan |
+| `APP_URL`, `ADMIN_URL` | Mini App va admin sayt manzillari (https) |
+| `ALLOWED_ORIGINS` | ikkala manzil, vergul bilan |
 
 ```bash
 npx supabase login
-npx supabase link --project-ref <loyiha-ref>
+npx supabase link --project-ref <ref>
 npx supabase secrets set --env-file supabase/functions/.env
-npx supabase functions deploy telegram-auth
-npx supabase functions deploy gemini
-npx supabase functions deploy bot-action
-npx supabase functions deploy admin-broadcast
-npx supabase functions deploy telegram-reminders
-npx supabase functions deploy telegram-bot --no-verify-jwt
+npm run deploy:functions -- --project <ref>      # hamma funksiya, to'g'ri bayroqlar bilan
 ```
+
+(`secrets set --env-file` ba'zan xato beradi; u holda sirlarni bittadan `npx supabase secrets set NOM=qiymat` bilan o'rnating.)
 
 ### 4. Botni ulash
 ```bash
-curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<loyiha-ref>.supabase.co/functions/v1/telegram-bot&secret_token=<TELEGRAM_WEBHOOK_SECRET>"
+curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<ref>.supabase.co/functions/v1/telegram-bot&secret_token=<TELEGRAM_WEBHOOK_SECRET>"
 ```
 
-### 5. Kunlik eslatma (08:00 Toshkent)
-**Database → Extensions**: `pg_cron` va `pg_net` ni yoqing, so'ng SQL Editor'da:
+### 5. Cron ishlari
+SQL Editor'da (`<CRON_SECRET>` — yuqoridagi sir):
 ```sql
+-- kunlik eslatma, 08:00 Toshkent
 select cron.schedule('daily-reminders', '0 3 * * *', $$
   select net.http_post(
-    url := 'https://<loyiha-ref>.supabase.co/functions/v1/telegram-reminders',
-    headers := jsonb_build_object('Authorization', 'Bearer <SERVICE_ROLE_KEY>', 'x-cron-secret', '<CRON_SECRET>')
+    url := 'https://<ref>.supabase.co/functions/v1/telegram-reminders',
+    headers := jsonb_build_object('x-cron-secret', '<CRON_SECRET>')
   );
 $$);
-```
 
-### 5b. Rejalashtirilgan xabarlar (har daqiqa)
-Admin saytdagi "Xabarlar" bo'limida vaqtga qo'yilgan xabarlar shu ish bilan yuboriladi. `broadcast-due` funksiyasini `--no-verify-jwt` bilan joylang va SQL Editor'da (`<CRON_SECRET>` — Supabase sirlaridagi qiymat):
-```sql
+-- rejalashtirilgan xabarlar, har daqiqa
 select cron.schedule('broadcasts-due', '* * * * *', $$
   select net.http_post(
-    url := 'https://<loyiha-ref>.supabase.co/functions/v1/broadcast-due',
+    url := 'https://<ref>.supabase.co/functions/v1/broadcast-due',
     headers := jsonb_build_object('x-cron-secret', '<CRON_SECRET>')
   );
 $$);
 ```
+Bu SQL maxfiy qiymatni o'z ichiga oladi: uni git'ga yozmang va skrinshot qilmang.
 
-### 6. Mini App'ni joylash
-`.env` ga `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_TELEGRAM_BOT` ni yozing. Vercel yoki Netlify'da: build `npm run build`, papka `dist`, barcha yo'llar `index.html` ga yo'naltirilsin (SPA rewrite), `VITE_*` qiymatlarni hosting sozlamalariga ham kiriting. Manzilni `APP_URL`, `ALLOWED_ORIGINS` va BotFather menyu tugmasiga qo'ying.
-
-## Admin sayti
-
-Alohida veb sahifa (`admin/`), talabalar ilovasidan butunlay ajratilgan. Kirish: saytdagi "Telegram orqali kirish" tugmasi botni ochadi, bot kodni ko'rsatib "Tasdiqlash" tugmasini yuboradi (parol yo'q, `/setdomain` kerak emas). Faqat `ADMIN_TELEGRAM_IDS` dagilar (admin) va ular tayinlagan moderatorlar kira oladi. Sessiya 8 soat.
-
+### 6. Mini App va admin saytni joylash
 ```bash
-npm run dev:admin        # http://localhost:5174
-node scripts/deploy-admin.mjs   # build + alohida Vercel loyihasi (tayyorman-admin)
+# .env (yoki --env-file .env.production): VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_TELEGRAM_BOT
+npm run deploy:app
+npm run deploy:admin        # build + alohida Vercel loyihasi
 ```
+Manzillarni `APP_URL`, `ADMIN_URL`, `ALLOWED_ORIGINS` va BotFather menyu tugmasiga qo'ying.
 
-Sozlash: baza uchun `supabase/migrations/0002_admin.sql`, so'ng `0003_admin_login.sql` ni SQL Editor'da ishga tushiring; `ALLOWED_ORIGINS` ga admin sayti manzilini qo'shing; `admin-login` funksiyasini `--no-verify-jwt` bilan joylang. `AI_DAILY_LIMIT` siri endi ishlatilmaydi: AI limiti admin saytida (foydalanuvchi > guruh > umumiy).
+## Admin saytiga kirish
 
-Reja va bosqichlar: [docs/ADMIN_PLAN.md](docs/ADMIN_PLAN.md).
+Sayt faqat adminlar (`ADMIN_TELEGRAM_IDS`) va ular tayinlagan moderatorlar uchun. Ikki yo'l: botdagi **«Admin»** tugmasi (Telegram ichida, tasdiqsiz) yoki oddiy brauzerda «Telegram orqali kirish» → botda kodni tasdiqlash. Boshqalarga sayt ochiladi, lekin kirish rad etiladi. Sessiya 8 soat.
 
 ## Ishlab chiqish
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173 — Telegramdan tashqarida lokal rejim (server yo'q)
-npm test           # vitest
+npm run dev          # Mini App, http://localhost:5173
+npm run dev:admin    # admin sayti, http://localhost:5174
+npm test             # vitest (bazaning ruxsatlari ham haqiqiy Postgres'da sinaladi)
 npm run typecheck
 ```
 
-Mini App faqat Telegram ichida to'liq ishlaydi; oddiy brauzerda production build «Telegram ichida oching» deb yozadi, dev build esa lokal ma'lumotlar bilan ochiladi.
-
 ## Eslatmalar
-- Bot nomi va brend «Sessiyaga tayyorlan».
 - To'lov yo'q: barcha rejimlar bepul. Keyin tarif qo'shish uchun `profiles` jadvaliga maydon qo'shiladi.
-- Bir martalik xabar yuborish (`admin-broadcast`) bitta so'rovda 2500 tagacha foydalanuvchiga ishlaydi; kattaroq auditoriya uchun bo'laklash kerak bo'ladi.
-- Ovozli javob 20 MB gacha (Telegram cheklovi).
+- Bir martalik xabar bitta so'rovda 2500 tagacha foydalanuvchiga ishlaydi; kattaroq auditoriya uchun bo'laklash kerak bo'ladi.
+- Yuklanadigan fayl 20 MB gacha (Telegram va ombor cheklovi).

@@ -10,7 +10,10 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "dev:admin": "vite --config vite.admin.config.ts",
-    "build:admin": "vite build --config vite.admin.config.ts"
+    "build:admin": "vite build --config vite.admin.config.ts",
+    "deploy:functions": "node scripts/deploy-functions.mjs",
+    "deploy:app": "node scripts/deploy-app.mjs",
+    "deploy:admin": "node scripts/deploy-admin.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
