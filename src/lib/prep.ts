@@ -171,7 +171,7 @@ export interface SubjectPlan {
   isReviewDay: boolean; // day before the exam: go over everything
 }
 
-export const MORE_PRACTICE = 10;
+const MORE_PRACTICE = 10;
 
 // Weakest questions first, spread evenly over the days left, keeping the
 // day before the exam free for a full review when there is room for it.

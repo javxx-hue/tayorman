@@ -35,7 +35,7 @@ export function fitWithin(width: number, height: number, max: number): { width: 
 }
 
 // Phone photos are several MB; the AI reads handwriting fine at this size and it is sent in seconds
-export async function shrinkImage(file: Blob, max = 1600, quality = 0.82): Promise<Blob> {
+async function shrinkImage(file: Blob, max = 1600, quality = 0.82): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const { width, height } = fitWithin(bitmap.width, bitmap.height, max);
   const canvas = document.createElement('canvas');
