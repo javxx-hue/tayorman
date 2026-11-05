@@ -5,6 +5,7 @@ services:
       target: web
       args:
         VITE_TELEGRAM_BOT: ${VITE_TELEGRAM_BOT:-}
+        VITE_ADMIN_URL: ${VITE_ADMIN_URL:-}
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
     container_name: tayyorman_web
@@ -23,6 +24,7 @@ services:
       context: .
       target: admin
       args:
+        ADMIN_BASE: /  # this service serves the admin site at its own port, not under /admin/
         VITE_TELEGRAM_BOT: ${VITE_TELEGRAM_BOT:-}
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}

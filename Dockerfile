@@ -15,10 +15,16 @@ RUN npm ci
 ARG VITE_SUPABASE_URL=""
 ARG VITE_SUPABASE_ANON_KEY=""
 ARG VITE_TELEGRAM_BOT="sessiyagatayyorlanbot"
+# The "Admin Panel" link in admins' profile (empty = no link)
+ARG VITE_ADMIN_URL=""
+# Where the admin site is served from: /admin/ behind the main domain, / when it has a port or domain of its own
+ARG ADMIN_BASE="/admin/"
 
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
 ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 ENV VITE_TELEGRAM_BOT=$VITE_TELEGRAM_BOT
+ENV VITE_ADMIN_URL=$VITE_ADMIN_URL
+ENV ADMIN_BASE=$ADMIN_BASE
 
 # Copy source code
 COPY . .
