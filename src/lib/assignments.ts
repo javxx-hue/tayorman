@@ -21,6 +21,15 @@ export interface Progress {
   score: number | null;
 }
 
+// What the assignments tab shows. Assignments are loaded for students only: an admin or moderator gives them on the
+// admin site and has none of their own, so for them "still loading" would never end.
+export type AssignmentsView = 'staff' | 'loading' | 'empty' | 'list';
+export function assignmentsView(staff: boolean, assignments: Assignment[] | null): AssignmentsView {
+  if (staff) return 'staff';
+  if (assignments === null) return 'loading';
+  return assignments.length === 0 ? 'empty' : 'list';
+}
+
 export async function fetchAssignments(): Promise<Assignment[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
