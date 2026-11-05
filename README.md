@@ -27,7 +27,7 @@ AI kuniga har bir foydalanuvchiga cheklangan (admin saytida: shaxsiy > guruh > u
 ```
 src/                  Mini App (React + Vite + TypeScript)
 admin/                admin sayti (alohida Vite ilova, alohida Vercel loyiha)
-supabase/migrations/  ma'lumotlar bazasi sxemasi (RLS bilan), 0001 dan 0006 gacha ketma-ket
+supabase/migrations/  ma'lumotlar bazasi sxemasi (RLS bilan), 0001 dan 0007 gacha ketma-ket
 supabase/functions/   server (Edge Functions); ro'yxati: scripts/functions.mjs
 scripts/              deploy skriptlari
 docs/                 reja va muhitlar qo'llanmasi
@@ -50,7 +50,7 @@ Development va production alohida bo'lishi kerak: har birining **o'z boti, Supab
 - **Telegram ID'ingiz:** [@userinfobot](https://t.me/userinfobot). Bu sizni admin qiladi.
 
 ### 2. Baza
-Supabase → **SQL Editor** → migratsiyalarni **tartib bilan** ishga tushiring: `0001_init.sql`, `0002_admin.sql`, `0003_admin_login.sql`, `0004_request_files.sql`, `0005_funnel.sql`, `0006_performance_indexes.sql`.
+Supabase → **SQL Editor** → migratsiyalarni **tartib bilan** ishga tushiring: `0001_init.sql`, `0002_admin.sql`, `0003_admin_login.sql`, `0004_request_files.sql`, `0005_funnel.sql`, `0006_performance_indexes.sql`, `0007_admin_credentials.sql`.
 
 ### 3. Sirlar
 `supabase/functions/.env.example` dan nusxa olib `supabase/functions/.env` ni to'ldiring:
@@ -62,6 +62,7 @@ Supabase → **SQL Editor** → migratsiyalarni **tartib bilan** ishga tushiring
 | `GEMINI_API_KEY` | AI kaliti |
 | `GEMINI_MODEL` | asosiy model. 6 soniyada javob bermasa, zaxira modellar (`gemini-3.5-flash-lite` va boshqalar) ham so'rovni boshlaydi; birinchi tayyor javob olinadi |
 | `ADMIN_TELEGRAM_IDS` | adminlar ID'lari, vergul bilan |
+| `OWNER_TELEGRAM_IDS` | ega ID'si (adminlar ichidan): faqat u boshqa adminlarga login va parol bera oladi. Bo'sh bo'lsa, hech kim bera olmaydi |
 | `APP_URL`, `ADMIN_URL` | Mini App va admin sayt manzillari (https) |
 | `ALLOWED_ORIGINS` | ikkala manzil, vergul bilan |
 
@@ -110,7 +111,7 @@ Manzillarni `APP_URL`, `ADMIN_URL`, `ALLOWED_ORIGINS` va BotFather menyu tugmasi
 
 ## Admin saytiga kirish
 
-Sayt faqat adminlar (`ADMIN_TELEGRAM_IDS`) va ular tayinlagan moderatorlar uchun. Ikki yo'l: botdagi **«Admin»** tugmasi (Telegram ichida, tasdiqsiz) yoki oddiy brauzerda «Telegram orqali kirish» → botda kodni tasdiqlash. Boshqalarga sayt ochiladi, lekin kirish rad etiladi. Sessiya 8 soat.
+Sayt faqat adminlar (`ADMIN_TELEGRAM_IDS`) va ular tayinlagan moderatorlar uchun. Ikki yo'l: botdagi **«Admin»** tugmasi (Telegram ichida, tasdiqsiz) yoki oddiy brauzerda «Telegram orqali kirish» → botda kodni tasdiqlash. Boshqalarga sayt ochiladi, lekin kirish rad etiladi. Uchinchi yo'l: **login va parol**; uni faqat ega (`OWNER_TELEGRAM_IDS`) saytdagi «Hisoblar» sahifasidan beradi. Parolni tizim o'zi yaratadi va bir marta ko'rsatadi (bazada faqat hash saqlanadi), 5 marta xato kiritilsa login 15 daqiqaga to'xtaydi. Login faqat mavjud admin yoki moderatorga beriladi; rol olib tashlansa, login ham ishlamaydi. Sessiya 8 soat.
 
 ## Ishlab chiqish
 

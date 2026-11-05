@@ -2,7 +2,7 @@
 // so they can be tested; scripts/setup-environment.mjs does the real work with them.
 
 export const GENERATED = ['AUTH_SECRET', 'CRON_SECRET', 'TELEGRAM_WEBHOOK_SECRET'];
-export const REQUIRED = ['GEMINI_API_KEY', 'TELEGRAM_BOT_TOKEN', 'ADMIN_TELEGRAM_IDS', 'APP_URL', 'ADMIN_URL', 'ALLOWED_ORIGINS', ...GENERATED];
+export const REQUIRED = ['GEMINI_API_KEY', 'TELEGRAM_BOT_TOKEN', 'ADMIN_TELEGRAM_IDS', 'OWNER_TELEGRAM_IDS', 'APP_URL', 'ADMIN_URL', 'ALLOWED_ORIGINS', ...GENERATED];
 
 // "A=1\n# note\nB=" -> { A: '1', B: '' }
 export function parseEnv(text) {

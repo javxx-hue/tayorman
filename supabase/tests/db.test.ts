@@ -69,6 +69,7 @@ beforeAll(async () => {
   await db.exec(sql('0004_request_files.sql'));
   await db.exec(sql('0005_funnel.sql'));
   await db.exec(sql('0006_performance_indexes.sql'));
+  await db.exec(sql('0007_admin_credentials.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');
@@ -110,6 +111,53 @@ describe('admin site sign-in table', () => {
   it('accepts only SHA-256 hex hashes and one row per nonce', async () => {
     await expect(db.exec(`insert into public.admin_login_requests (nonce_hash, user_id) values ('plain-nonce', '${U.admin}')`)).rejects.toThrow();
     await expect(db.exec(`insert into public.admin_login_requests (nonce_hash, user_id) values ('${HASH}', '${U.admin}')`)).rejects.toThrow(/duplicate|unique/i);
+  });
+});
+
+describe('admin logins (login + password)', () => {
+  const login = 'ali.admin';
+  const record = () =>
+    db.exec(`insert into public.admin_credentials (user_id, login, salt, hash, iterations) values ('${U.admin}', '${login}', 's', 'h', 1)`);
+  const state = async () => (await rows(`select failed_attempts, locked_until is not null as locked from public.admin_credentials where login = $1`, [login]))[0];
+  const fail = () => db.exec(`select public.admin_login_failed('${login}')`);
+
+  it('is closed to everyone except the server', async () => {
+    await record();
+    for (const uid of [U.admin, U.mod, U.s1, null]) {
+      await expect(as(uid, () => rows('select * from public.admin_credentials'))).rejects.toThrow(/permission denied/i);
+      await expect(as(uid, () => db.exec(`update public.admin_credentials set login = 'mine'`))).rejects.toThrow(/permission denied/i);
+      await expect(as(uid, () => db.exec(`select public.admin_login_failed('${login}')`))).rejects.toThrow(/permission denied/i);
+    }
+  });
+
+  it('keeps only plain logins and one login per person', async () => {
+    await expect(db.exec(`insert into public.admin_credentials (user_id, login, salt, hash, iterations) values ('${U.mod}', 'Not Valid', 's', 'h', 1)`)).rejects.toThrow();
+    await expect(db.exec(`insert into public.admin_credentials (user_id, login, salt, hash, iterations) values ('${U.mod}', '${login}', 's', 'h', 1)`)).rejects.toThrow(/duplicate|unique/i);
+  });
+
+  it('pauses the login after five wrong passwords in a row', async () => {
+    for (let i = 1; i <= 4; i++) {
+      await fail();
+      expect(await state()).toMatchObject({ failed_attempts: i, locked: false });
+    }
+    await fail();
+    expect(await state()).toMatchObject({ failed_attempts: 5, locked: true });
+  });
+
+  it('starts counting again once a pause has run out, and ignores unknown logins', async () => {
+    await db.exec(`update public.admin_credentials set locked_until = now() - interval '1 minute' where login = '${login}'`);
+    await fail();
+    expect(await state()).toMatchObject({ failed_attempts: 1 });
+    await expect(db.exec(`select public.admin_login_failed('nobody')`)).resolves.toBeDefined();
+  });
+
+  it('disappears with the profile', async () => {
+    await db.exec(`delete from public.admin_credentials`);
+    await record();
+    await db.exec(`insert into auth.users (id, email) values ('99999999-9999-4999-8999-999999999999', 'gone@x'); insert into public.profiles (id, telegram_id, first_name, role) values ('99999999-9999-4999-8999-999999999999', 99, 'Gone', 'moderator')`);
+    await db.exec(`insert into public.admin_credentials (user_id, login, salt, hash, iterations) values ('99999999-9999-4999-8999-999999999999', 'gone.mod', 's', 'h', 1)`);
+    await db.exec(`delete from public.profiles where id = '99999999-9999-4999-8999-999999999999'`);
+    expect(await rows(`select 1 from public.admin_credentials where login = 'gone.mod'`)).toHaveLength(0);
   });
 });
 

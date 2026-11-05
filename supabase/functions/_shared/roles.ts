@@ -28,6 +28,9 @@ export function resolveRole(listedAsAdmin: boolean, current?: string | null): Ro
   return 'student';
 }
 
+// The owner may give other admins a login and password; with no OWNER_TELEGRAM_IDS secret nobody is the owner
+export const isOwner = (telegramId: number, secret: string | undefined): boolean => parseAdminIds(secret).has(telegramId);
+
 export interface KnownProfile {
   first_name: string | null;
   last_name: string | null;

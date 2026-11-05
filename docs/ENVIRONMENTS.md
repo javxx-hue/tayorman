@@ -22,9 +22,9 @@ Qo'lda bajariladigan qismi (hisoblar, tokenlar) va skript bajaradigan qismi ajra
 3. Ikkita yangi Vercel loyihasi (Mini App va admin sayt), ularning manzillari.
 
 **Skript bilan:**
-4. `supabase/functions/.env.example` ni `supabase/functions/.env.production` ga nusxalang. Unga `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `ADMIN_TELEGRAM_IDS`, `APP_URL`, `ADMIN_URL`, `ALLOWED_ORIGINS` ni yozing (`GEMINI_MODEL` bo'sh qolsa, standart ishlaydi).
+4. `supabase/functions/.env.example` ni `supabase/functions/.env.production` ga nusxalang. Unga `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `ADMIN_TELEGRAM_IDS`, `OWNER_TELEGRAM_IDS` (ega, adminlardan biri), `APP_URL`, `ADMIN_URL`, `ALLOWED_ORIGINS` ni yozing (`GEMINI_MODEL` bo'sh qolsa, standart ishlaydi).
 5. `npm run setup:env -- --project <ref> --env supabase/functions/.env.production`: bo'sh `AUTH_SECRET`, `CRON_SECRET`, `TELEGRAM_WEBHOOK_SECRET` ga tasodifiy qiymat yozadi (borini o'zgartirmaydi), yana nima yetishmayotganini aytadi va cron SQL faylini yaratadi. Sirlar ekranga chiqmaydi.
-6. Migratsiyalar `0001`…`0006` tartib bilan (README, 2-bosqich).
+6. Migratsiyalar `0001`…`0007` tartib bilan (README, 2-bosqich).
 7. `npx supabase secrets set --env-file supabase/functions/.env.production --project-ref <ref>`
 8. `npm run deploy:functions -- --project <ref>`
 9. `supabase/functions/.env.production.cron.sql` ichidagini SQL Editor'da bir marta bajaring.
@@ -38,12 +38,13 @@ Qo'lda bajariladigan qismi (hisoblar, tokenlar) va skript bajaradigan qismi ajra
 - [ ] Git tarixida ochiq qolgan eski bot tokeni (bot ID `9088363125`) BotFather'da `/revoke` qilingan va yangi token faqat sirlarda turibdi.
 - [ ] Eski Gemini kaliti bekor qilingan.
 - [ ] Har bir muhitning `AUTH_SECRET` i o'zining; ular hech qayerda git'ga yozilmagan (`git log -p | grep` bilan tekshirish).
+- [ ] `OWNER_TELEGRAM_IDS` bitta ishonchli odam; u adminlar ro'yxatida ham bo'lishi shart. Faqat shu odam «Hisoblar» sahifasidan login va parol bera oladi.
 - [ ] `ADMIN_TELEGRAM_IDS` faqat haqiqiy adminlar. (Eslatma: Sanjar qo'shgan `DEFAULT_ADMIN_IDS` ro'yxati kodda ham turibdi, `supabase/functions/_shared/users.ts`.)
 - [ ] GitHub'da `main` uchun branch himoyasi: faqat Pull Request orqali, CI o'tishi shart.
 
 **Ma'lumot**
 - [ ] **Zaxira (backup):** Supabase bepul tarifida avtomatik zaxira yo'q. Pullik tarifga o'ting yoki haftada bir `npm run backup -- --project <ref>` qiling (Docker ishlab turishi va `npx supabase login` kerak; baza paroli kerak emas). Nusxa `backups/` papkasiga tushadi, git uni ko'rmaydi; ichida shaxsiy ma'lumot bor, xavfsiz joyga saqlang. Storage'dagi fayllar (so'rovlarga ilova qilinganlari) bu nusxaga kirmaydi. Bepul loyiha bir hafta faolsiz qolsa to'xtatiladi.
-- [ ] Migratsiyalar tartib bilan bajarilgan (`0001`…`0006`).
+- [ ] Migratsiyalar tartib bilan bajarilgan (`0001`…`0007`).
 - [ ] Ikkala cron ishi mavjud: `select jobname, schedule from cron.job;`
 
 **Tarif va cheklovlar**

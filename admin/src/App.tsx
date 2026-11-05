@@ -13,10 +13,11 @@ const GroupDetailPage = lazy(() => import('./pages/Groups').then((m) => ({ defau
 const AssignmentsPage = lazy(() => import('./pages/Assignments').then((m) => ({ default: m.AssignmentsPage })));
 const LibraryPage = lazy(() => import('./pages/Library').then((m) => ({ default: m.LibraryPage })));
 const BroadcastsPage = lazy(() => import('./pages/Broadcasts').then((m) => ({ default: m.BroadcastsPage })));
+const AccountsPage = lazy(() => import('./pages/Accounts').then((m) => ({ default: m.AccountsPage })));
 const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
 const IssuesPage = lazy(() => import('./pages/Issues').then((m) => ({ default: m.IssuesPage })));
 
-const NAV: { to: string; label: string; adminOnly?: boolean }[] = [
+const NAV: { to: string; label: string; adminOnly?: boolean; ownerOnly?: boolean }[] = [
   { to: '/', label: 'Umumiy ko\'rinish', adminOnly: true },
   { to: '/requests', label: "So'rovlar", adminOnly: true },
   { to: '/library', label: 'Kutubxona', adminOnly: true },
@@ -25,6 +26,7 @@ const NAV: { to: string; label: string; adminOnly?: boolean }[] = [
   { to: '/broadcasts', label: 'Xabarlar', adminOnly: true },
   { to: '/groups', label: 'Guruhlar' },
   { to: '/users', label: 'Foydalanuvchilar' },
+  { to: '/accounts', label: 'Hisoblar', adminOnly: true, ownerOnly: true },
   { to: '/settings', label: 'Sozlamalar', adminOnly: true },
   { to: '/audit', label: 'Jurnal', adminOnly: true },
 ];
@@ -38,6 +40,41 @@ const FAILED: Record<'denied' | 'gone' | 'error', string> = {
   denied: "Bu Telegram hisobi uchun admin huquqi yo'q.",
   gone: 'Tasdiq eskirdi. Qayta urinib ko\'ring.',
   error: "Kirib bo'lmadi. Qayta urinib ko'ring.",
+};
+
+// Login and password the owner has given: for people who cannot or do not want to open Telegram each time
+const PasswordForm: React.FC = () => {
+  const { signInWithPassword } = useAuth();
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    const result = await signInWithPassword(login, password);
+    setBusy(false);
+    if (result === 'ok') return;
+    setPassword('');
+    setMessage(
+      result === 'denied'
+        ? "Login yoki parol noto'g'ri. 5 marta xato kiritilsa, kirish 15 daqiqaga to'xtaydi."
+        : "Kirib bo'lmadi. Qayta urinib ko'ring."
+    );
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-2 text-left">
+      <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="Login" autoComplete="username" autoCapitalize="none" spellCheck={false} className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm" />
+      <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Parol" autoComplete="current-password" className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm" />
+      {message && <p className="text-xs text-rose-600" role="alert">{message}</p>}
+      <button type="submit" disabled={busy || !login.trim() || !password} className="w-full px-4 py-2.5 rounded-xl border border-border font-semibold text-sm hover:bg-secondary disabled:opacity-50">
+        {busy ? 'Tekshirilmoqda...' : 'Login va parol bilan kirish'}
+      </button>
+    </form>
+  );
 };
 
 const SignedOut: React.FC = () => {
@@ -95,18 +132,20 @@ const SignedOut: React.FC = () => {
           <>
             <p className="text-sm text-muted-foreground">Telegram orqali kiring. Bot tasdiqlash so'raydi. Botdagi «Admin» tugmasi orqali ochsangiz, tasdiqlash shart emas.</p>
             <button onClick={start} className="w-full px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90">Telegram orqali kirish</button>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex-1 border-t border-border" />yoki<span className="flex-1 border-t border-border" /></div>
+            <PasswordForm />
           </>
         )}
-        <p className="text-xs text-muted-foreground">Parol yo'q. Faqat administratorlar va moderatorlar kira oladi.</p>
+        <p className="text-xs text-muted-foreground">Faqat administratorlar va moderatorlar kira oladi. Login va parolni egasi beradi.</p>
       </div>
     </div>
   );
 };
 
 const Shell: React.FC = () => {
-  const { me, signOut } = useAuth();
+  const { me, owner, signOut } = useAuth();
   const isAdmin = me?.role === 'admin';
-  const items = NAV.filter((n) => isAdmin || !n.adminOnly);
+  const items = NAV.filter((n) => (isAdmin || !n.adminOnly) && (owner || !n.ownerOnly));
   const home = isAdmin ? '/' : '/users';
 
   return (
@@ -140,6 +179,7 @@ const Shell: React.FC = () => {
             <Route path="/groups" element={<GroupsPage />} />
             <Route path="/groups/:id" element={<GroupDetailPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/accounts" element={owner ? <AccountsPage /> : <Navigate to={home} replace />} />
             <Route path="/settings" element={isAdmin ? <SettingsPage /> : <Navigate to={home} replace />} />
             <Route path="/audit" element={isAdmin ? <AuditPage /> : <Navigate to={home} replace />} />
             <Route path="*" element={<Navigate to={home} replace />} />

@@ -1,6 +1,7 @@
-// Two ways in, both through the admin-login function and for admins and moderators only:
+// Three ways in, all through the admin-login function and for admins and moderators only:
 //  - opened from the bot's "Admin" menu button: Telegram's own signed data identifies the person, no steps
 //  - opened in a normal browser: the site opens t.me/<bot>?start=a_<nonce>, the admin confirms there
+//  - a login and password the owner has given them (see the "Hisoblar" page)
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { configured, supabase } from './supabase';
 import { closeTelegram, prepareTelegram, telegramInitData } from './telegram';
@@ -28,8 +29,10 @@ export type SignInResult = 'ok' | 'pending' | 'denied' | 'gone' | 'error';
 interface AuthValue {
   status: Status;
   me: Me | null;
+  owner: boolean; // the one person who may give other admins a login and password
   error: string | null;
   signInWithNonce: (nonce: string) => Promise<SignInResult>;
+  signInWithPassword: (login: string, password: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
 }
 const AuthContext = createContext<AuthValue | null>(null);
@@ -37,17 +40,19 @@ const AuthContext = createContext<AuthValue | null>(null);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [status, setStatus] = useState<Status>('loading');
   const [me, setMe] = useState<Me | null>(null);
+  const [owner, setOwner] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut().catch(() => {});
     localStorage.removeItem(LOGIN_AT_KEY);
     setMe(null);
+    setOwner(false);
     setStatus('signed-out');
     closeTelegram();
   }, []);
 
-  const exchange = useCallback(async (body: { nonce: string } | { initData: string }): Promise<SignInResult> => {
+  const exchange = useCallback(async (body: { nonce: string } | { initData: string } | { login: string; password: string }): Promise<SignInResult> => {
     const { data, error: fnError } = await supabase.functions.invoke('admin-login', { body });
     if (fnError) {
       const status = (fnError as { context?: Response }).context?.status;
@@ -63,6 +68,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signInWithNonce = useCallback((nonce: string) => exchange({ nonce }), [exchange]);
+  const signInWithPassword = useCallback((login: string, password: string) => exchange({ login, password }), [exchange]);
+
+  // Asked of the server, which alone knows who the owner is; anyone else just gets "no"
+  useEffect(() => {
+    if (status !== 'ready') return;
+    let cancelled = false;
+    supabase.functions
+      .invoke('admin-accounts', { body: { action: 'me' } })
+      .then(({ data }) => !cancelled && setOwner(data?.owner === true))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -118,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(timer);
   }, [status, signOut]);
 
-  return <AuthContext.Provider value={{ status, me, error, signInWithNonce, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ status, me, owner, error, signInWithNonce, signInWithPassword, signOut }}>{children}</AuthContext.Provider>;
 };
 
 export function useAuth(): AuthValue {
