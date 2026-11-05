@@ -111,7 +111,7 @@ Manzillarni `APP_URL`, `ADMIN_URL`, `ALLOWED_ORIGINS` va BotFather menyu tugmasi
 
 ## Admin saytiga kirish
 
-Sayt faqat adminlar (`ADMIN_TELEGRAM_IDS`) va ular tayinlagan moderatorlar uchun. Ikki yo'l: botdagi **«Admin»** tugmasi (Telegram ichida, tasdiqsiz) yoki oddiy brauzerda «Telegram orqali kirish» → botda kodni tasdiqlash. Boshqalarga sayt ochiladi, lekin kirish rad etiladi. Uchinchi yo'l: **login va parol**; uni faqat ega (`OWNER_TELEGRAM_IDS`) saytdagi «Hisoblar» sahifasidan beradi. Parolni tizim o'zi yaratadi va bir marta ko'rsatadi (bazada faqat hash saqlanadi), 5 marta xato kiritilsa login 15 daqiqaga to'xtaydi. Login faqat mavjud admin yoki moderatorga beriladi; rol olib tashlansa, login ham ishlamaydi. Sessiya 8 soat.
+Sayt faqat adminlar (`ADMIN_TELEGRAM_IDS`) va ular tayinlagan moderatorlar uchun. Sayt kirishda har safar **login va parol** so'raydi (8 soatlik sessiya tugamaguncha qayta so'ramaydi). Ularni faqat ega (`OWNER_TELEGRAM_IDS`) saytdagi «Hisoblar» sahifasidan beradi: loginni ham, parolni ham o'zi yozadi (parol kamida 10 belgi, oddiy emas) yoki parolni bo'sh qoldirib, tizimga yaratishni topshiradi. Bazada faqat hash saqlanadi, 5 marta xato kiritilsa login 15 daqiqaga to'xtaydi, rol olib tashlansa login ishlamaydi. Login yonida ikkita qo'shimcha yo'l bor: botdagi **«Admin»** tugmasidan ochilsa «Telegram hisobim bilan kirish» (bir bosish), oddiy brauzerda «Telegram orqali kirish» (botda kodni tasdiqlash). Sessiya 8 soat.
 
 ## Ishlab chiqish
 

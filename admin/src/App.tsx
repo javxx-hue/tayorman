@@ -70,15 +70,32 @@ const PasswordForm: React.FC = () => {
       <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="Login" autoComplete="username" autoCapitalize="none" spellCheck={false} className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm" />
       <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Parol" autoComplete="current-password" className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm" />
       {message && <p className="text-xs text-rose-600" role="alert">{message}</p>}
-      <button type="submit" disabled={busy || !login.trim() || !password} className="w-full px-4 py-2.5 rounded-xl border border-border font-semibold text-sm hover:bg-secondary disabled:opacity-50">
-        {busy ? 'Tekshirilmoqda...' : 'Login va parol bilan kirish'}
+      <button type="submit" disabled={busy || !login.trim() || !password} className="w-full px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 disabled:opacity-50">
+        {busy ? 'Tekshirilmoqda...' : 'Kirish'}
       </button>
     </form>
   );
 };
 
+// Opened from the bot's Admin button: Telegram already says who this is, so one tap is enough
+const TelegramButton: React.FC<{ onFailed: (message: string) => void }> = ({ onFailed }) => {
+  const { signInWithTelegram } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const tap = async () => {
+    setBusy(true);
+    const result = await signInWithTelegram();
+    setBusy(false);
+    if (result !== 'ok') onFailed(FAILED[result === 'denied' ? 'denied' : 'error']);
+  };
+  return (
+    <button onClick={tap} disabled={busy} className="w-full px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 disabled:opacity-50">
+      {busy ? 'Tekshirilmoqda...' : 'Telegram hisobim bilan kirish'}
+    </button>
+  );
+};
+
 const SignedOut: React.FC = () => {
-  const { error, signInWithNonce } = useAuth();
+  const { error, inTelegram, signInWithNonce } = useAuth();
   const [nonce, setNonce] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const signIn = useRef(signInWithNonce);
@@ -130,13 +147,17 @@ const SignedOut: React.FC = () => {
           </>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">Telegram orqali kiring. Bot tasdiqlash so'raydi. Botdagi «Admin» tugmasi orqali ochsangiz, tasdiqlash shart emas.</p>
-            <button onClick={start} className="w-full px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90">Telegram orqali kirish</button>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex-1 border-t border-border" />yoki<span className="flex-1 border-t border-border" /></div>
+            <p className="text-sm text-muted-foreground">Login va parolingizni kiriting. Ularni sayt egasi beradi.</p>
             <PasswordForm />
+            <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex-1 border-t border-border" />yoki<span className="flex-1 border-t border-border" /></div>
+            {inTelegram ? (
+              <TelegramButton onFailed={setFailed} />
+            ) : (
+              <button onClick={start} className="w-full px-4 py-2.5 rounded-xl border border-border font-semibold text-sm hover:bg-secondary">Telegram orqali kirish (bot tasdiqlaydi)</button>
+            )}
           </>
         )}
-        <p className="text-xs text-muted-foreground">Faqat administratorlar va moderatorlar kira oladi. Login va parolni egasi beradi.</p>
+        <p className="text-xs text-muted-foreground">Faqat administratorlar va moderatorlar kira oladi.</p>
       </div>
     </div>
   );

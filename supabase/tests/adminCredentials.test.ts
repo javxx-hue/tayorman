@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { isOwner } from '../functions/_shared/roles';
-import { generatePassword, hashPassword, normalizeLogin, spendTheSameTime, suggestLogin, validLogin, verifyPassword } from '../functions/_shared/adminCredentials';
+import { generatePassword, hashPassword, normalizeLogin, passwordProblem, spendTheSameTime, suggestLogin, validLogin, verifyPassword } from '../functions/_shared/adminCredentials';
 
 describe('logins', () => {
   it('accepts short plain logins and nothing else', () => {
@@ -40,6 +40,30 @@ describe('generatePassword', () => {
     let calls = 0;
     const source = (n: number) => (calls++ === 0 ? new Uint8Array(n).fill(255) : new Uint8Array(n).fill(7));
     expect(generatePassword(source)).toBe('h'.repeat(16)); // byte 7 -> index 7 of the alphabet, which is 'h'
+  });
+});
+
+describe('passwordProblem', () => {
+  it('accepts a long enough password that is not obvious', () => {
+    expect(passwordProblem('Zebra-Lamp-4821', 'ali')).toBeNull();
+    expect(passwordProblem('0123456789ab', 'x')).toBe('common'); // starts like a counting sequence
+    expect(passwordProblem('kitob qalam daftar', 'ali')).toBeNull();
+  });
+
+  it('refuses short and huge ones', () => {
+    expect(passwordProblem('Short1!', 'ali')).toBe('short');
+    expect(passwordProblem('a'.repeat(101), 'ali')).toBe('long');
+  });
+
+  it('refuses a password that contains the login', () => {
+    expect(passwordProblem('Sanjar-2026-ok', 'sanjar')).toBe('contains_login');
+    expect(passwordProblem('Zebra-Lamp-4821', 'zebra')).toBe('contains_login');
+  });
+
+  it('refuses the usual weak ones', () => {
+    for (const weak of ['1234567890', '12345678901', 'aaaaaaaaaaaa', 'abababababab', 'Password', 'administrator']) {
+      expect(['short', 'common']).toContain(passwordProblem(weak, 'zz'));
+    }
   });
 });
 

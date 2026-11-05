@@ -1,14 +1,16 @@
 // Login + password for existing admins and moderators. Only the OWNER (OWNER_TELEGRAM_IDS) can use this.
 //  { action: 'me' }                    -> { owner }   (so the site knows whether to show the page)
 //  { action: 'list' }                  -> every admin and moderator, with their login if they have one
-//  { action: 'issue', userId, login? } -> { login, password }  a new random password, shown this once;
-//                                         issuing again replaces the old password
+//  { action: 'issue', userId, login?, password? } -> { login, password }  the owner may type the login and the
+//                                         password (checked for strength); without a password one is made at
+//                                         random. Issuing again replaces the old password.
 //  { action: 'revoke', userId }        -> removes the login, they can still use Telegram
-// The owner never chooses a password: it is made here and is never stored, only its hash.
+// The password is never stored, only its hash. Errors for a typed password: password_short, password_long,
+// password_contains_login, password_common.
 // Secrets: OWNER_TELEGRAM_IDS, ALLOWED_ORIGINS
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { admin, requireUser } from '../_shared/admin.ts';
-import { generatePassword, hashPassword, normalizeLogin, suggestLogin, validLogin } from '../_shared/adminCredentials.ts';
+import { generatePassword, hashPassword, normalizeLogin, passwordProblem, suggestLogin, validLogin } from '../_shared/adminCredentials.ts';
 import { isOwner } from '../_shared/roles.ts';
 import { isStaffRole } from '../_shared/staff.ts';
 
@@ -34,7 +36,7 @@ async function list() {
   return (staff ?? []).map((s) => ({ ...s, credential: byUser.get(s.id) ?? null, suggested: suggestLogin(s.username, s.first_name) }));
 }
 
-async function issue(owner: Owner, userId: unknown, wantedLogin: unknown) {
+async function issue(owner: Owner, userId: unknown, wantedLogin: unknown, typedPassword: unknown) {
   if (typeof userId !== 'string') return { status: 400, body: { error: 'Bad request' } };
   const { data: target } = await admin.from('profiles').select('id, role, username, first_name, blocked').eq('id', userId).maybeSingle();
   if (!target || target.blocked || !isStaffRole(target.role)) return { status: 404, body: { error: 'Only an admin or moderator can get a login' } };
@@ -46,7 +48,14 @@ async function issue(owner: Owner, userId: unknown, wantedLogin: unknown) {
   const { data: taken } = await admin.from('admin_credentials').select('user_id').eq('login', login).maybeSingle();
   if (taken && taken.user_id !== userId) return { status: 409, body: { error: 'This login is already used' } };
 
-  const password = generatePassword();
+  let password: string;
+  if (typeof typedPassword === 'string' && typedPassword !== '') {
+    const problem = passwordProblem(typedPassword, login);
+    if (problem) return { status: 400, body: { error: `password_${problem}` } };
+    password = typedPassword;
+  } else {
+    password = generatePassword();
+  }
   const record = await hashPassword(password);
   const { error } = await admin.from('admin_credentials').upsert(
     {
@@ -91,7 +100,7 @@ Deno.serve(async (req) => {
   try {
     if (body?.action === 'list') return json(req, { accounts: await list() });
     if (body?.action === 'issue') {
-      const r = await issue(owner, body.userId, body.login);
+      const r = await issue(owner, body.userId, body.login, body.password);
       return json(req, r.body, r.status);
     }
     if (body?.action === 'revoke') {

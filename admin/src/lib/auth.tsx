@@ -1,7 +1,8 @@
-// Three ways in, all through the admin-login function and for admins and moderators only:
-//  - opened from the bot's "Admin" menu button: Telegram's own signed data identifies the person, no steps
-//  - opened in a normal browser: the site opens t.me/<bot>?start=a_<nonce>, the admin confirms there
+// Three ways in, all through the admin-login function and for admins and moderators only. The site always asks
+// first (a still-valid 8 hour session aside); the login form is the main way, the other two are offered next to it:
 //  - a login and password the owner has given them (see the "Hisoblar" page)
+//  - opened from the bot's "Admin" menu button: one tap, Telegram's own signed data identifies the person
+//  - opened in a normal browser: the site opens t.me/<bot>?start=a_<nonce>, the admin confirms there
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { configured, supabase } from './supabase';
 import { closeTelegram, prepareTelegram, telegramInitData } from './telegram';
@@ -30,9 +31,11 @@ interface AuthValue {
   status: Status;
   me: Me | null;
   owner: boolean; // the one person who may give other admins a login and password
+  inTelegram: boolean; // opened from the bot, so Telegram can vouch for the person
   error: string | null;
   signInWithNonce: (nonce: string) => Promise<SignInResult>;
   signInWithPassword: (login: string, password: string) => Promise<SignInResult>;
+  signInWithTelegram: () => Promise<SignInResult>;
   signOut: () => Promise<void>;
 }
 const AuthContext = createContext<AuthValue | null>(null);
@@ -41,6 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [status, setStatus] = useState<Status>('loading');
   const [me, setMe] = useState<Me | null>(null);
   const [owner, setOwner] = useState(false);
+  const [inTelegram, setInTelegram] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const signOut = useCallback(async () => {
@@ -69,6 +73,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithNonce = useCallback((nonce: string) => exchange({ nonce }), [exchange]);
   const signInWithPassword = useCallback((login: string, password: string) => exchange({ login, password }), [exchange]);
+  const signInWithTelegram = useCallback(() => {
+    const initData = telegramInitData();
+    return initData ? exchange({ initData }) : Promise.resolve<SignInResult>('error');
+  }, [exchange]);
 
   // Asked of the server, which alone knows who the owner is; anyone else just gets "no"
   useEffect(() => {
@@ -95,14 +103,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const init = async () => {
       if (!configured) return done('signed-out', null, 'Sayt sozlanmagan: VITE_SUPABASE_URL va VITE_SUPABASE_ANON_KEY yo\'q.');
 
-      // Opened from the bot: Telegram has already said who this is, so sign in right away
       prepareTelegram();
-      const initData = telegramInitData();
-      if (initData) {
-        const result = await exchange({ initData });
-        if (result === 'ok') return;
-        return done('signed-out', null, result === 'denied' ? "Bu Telegram hisobi uchun admin huquqi yo'q." : "Kirib bo'lmadi. Botdagi «Admin» tugmasini qayta bosing.");
-      }
+      if (!cancelled) setInTelegram(!!telegramInitData());
 
       // An existing session that is still inside its 8 hours
       const { data: sessionData } = await supabase.auth.getSession();
@@ -137,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => clearInterval(timer);
   }, [status, signOut]);
 
-  return <AuthContext.Provider value={{ status, me, owner, error, signInWithNonce, signInWithPassword, signOut }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ status, me, owner, inTelegram, error, signInWithNonce, signInWithPassword, signInWithTelegram, signOut }}>{children}</AuthContext.Provider>;
 };
 
 export function useAuth(): AuthValue {

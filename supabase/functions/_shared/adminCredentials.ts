@@ -12,7 +12,23 @@ export const normalizeLogin = (raw: unknown): string => (typeof raw === 'string'
 const ALPHABET = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const PASSWORD_LENGTH = 16; // about 93 bits
 
-// The owner decides the person, never the password: every password is made here, at random
+export type PasswordProblem = 'short' | 'long' | 'contains_login' | 'common';
+export const MIN_PASSWORD = 10;
+const COMMON = ['password', 'parol', 'qwerty', 'qwertyuiop', 'admin', 'administrator', 'letmein', 'welcome', 'iloveyou', 'tayyorman', 'sessiya'];
+
+// A password the owner types must be at least a decent one; null means it is fine. Brute force is limited anyway
+// (5 wrong tries pause the login), but nobody should be able to sign in with "1234567890".
+export function passwordProblem(password: string, login: string): PasswordProblem | null {
+  if (password.length < MIN_PASSWORD) return 'short';
+  if (password.length > 100) return 'long';
+  const lower = password.toLowerCase();
+  if (login.length >= 3 && lower.includes(login.toLowerCase())) return 'contains_login';
+  const stripped = lower.replace(/[^a-z]/g, '');
+  if (new Set(password).size < 4 || /^(?:0123456789|1234567890|123456789|12345678)/.test(password) || COMMON.some((c) => stripped === c || lower === c)) return 'common';
+  return null;
+}
+
+// Without a typed password the server makes one at random
 export function generatePassword(randomBytes: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n))): string {
   const limit = 256 - (256 % ALPHABET.length); // bytes above this would favour the first letters
   let out = '';
