@@ -41,10 +41,10 @@ export function applyEnv(text, values) {
 }
 
 // The two scheduled jobs from the README (step 5). The secret is inside, so the file is never committed.
-export function cronSql(projectRef, cronSecret) {
+export function cronSql(baseUrl, cronSecret) {
   const job = (name, schedule, fn) => `select cron.schedule('${name}', '${schedule}', $$
   select net.http_post(
-    url := 'https://${projectRef}.supabase.co/functions/v1/${fn}',
+    url := '${baseUrl}/functions/v1/${fn}',
     headers := jsonb_build_object('x-cron-secret', '${cronSecret}')
   );
 $$);`;
@@ -56,10 +56,33 @@ $$);`;
   ].join('\n\n');
 }
 
-export const webhookUrl = (projectRef) => `https://${projectRef}.supabase.co/functions/v1/telegram-bot`;
+// The address functions are served from: https://<ref>.supabase.co on the hosted Supabase, or the domain in front of a self-hosted one
+export const backendUrl = (projectRef, url) => (url ?? `https://${projectRef}.supabase.co`).replace(/\/+$/, '');
+export const webhookUrl = (baseUrl) => `${baseUrl}/functions/v1/telegram-bot`;
 
 // backups/<project>-2026-11-05-1530.sql (minutes included so two backups in a day do not overwrite each other)
 export function backupName(projectRef, date) {
   const p = (n) => String(n).padStart(2, '0');
   return `${projectRef}-${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}-${p(date.getHours())}${p(date.getMinutes())}.sql`;
+}
+
+// What an unauthenticated POST to a function tells us: 404 = it is not deployed; 5xx = deployed but broken;
+// anything else (401, 403, 400, 405) means it exists and refused us, which is exactly right.
+export function classifyFunction(status) {
+  if (status === 404) return 'missing';
+  if (status >= 500 || status === 0) return 'broken';
+  return 'ok';
+}
+
+// admin-login with a made-up login: the version that knows logins and passwords answers 403 (denied),
+// the older one does not understand the body and answers 400.
+export const adminLoginVersion = (status) => (status === 403 ? 'new' : status === 400 ? 'old' : 'unknown');
+
+// Telegram's getWebhookInfo against where the bot should point. An empty url usually means a long-polling
+// script (scripts/bot.mjs) took the bot over: it deletes the webhook when it starts.
+export function webhookVerdict(info, expectedUrl) {
+  if (!info?.url) return { ok: false, text: 'no webhook is set (is scripts/bot.mjs polling? it removes the webhook)' };
+  if (info.url !== expectedUrl) return { ok: false, text: `points to ${info.url}, expected ${expectedUrl}` };
+  if (info.last_error_message) return { ok: false, text: `set, but Telegram reports: ${info.last_error_message}` };
+  return { ok: true, text: `set${info.pending_update_count ? `, ${info.pending_update_count} updates waiting` : ''}` };
 }

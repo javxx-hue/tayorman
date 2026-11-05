@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 // @ts-expect-error plain JavaScript module shared with the setup script
-import { GENERATED, REQUIRED, applyEnv, backupName, cronSql, fillSecrets, missingKeys, parseEnv, webhookUrl } from './environment.mjs';
+import { GENERATED, REQUIRED, adminLoginVersion, applyEnv, backendUrl, backupName, classifyFunction, cronSql, fillSecrets, missingKeys, parseEnv, webhookUrl, webhookVerdict } from './environment.mjs';
 
 describe('parseEnv', () => {
   it('reads values and skips comments and blanks', () => {
@@ -41,7 +41,7 @@ describe('applyEnv', () => {
 
 describe('cron and webhook', () => {
   it('builds both jobs for this project with its secret', () => {
-    const sql = cronSql('abc123', 'S3CRET');
+    const sql = cronSql('https://abc123.supabase.co', 'S3CRET');
     expect(sql).toContain("cron.schedule('daily-reminders', '0 3 * * *'");
     expect(sql).toContain("cron.schedule('broadcasts-due', '* * * * *'");
     expect(sql).toContain('https://abc123.supabase.co/functions/v1/telegram-reminders');
@@ -50,12 +50,39 @@ describe('cron and webhook', () => {
   });
 
   it('points the webhook at the bot function', () => {
-    expect(webhookUrl('abc123')).toBe('https://abc123.supabase.co/functions/v1/telegram-bot');
+    expect(webhookUrl('https://abc123.supabase.co')).toBe('https://abc123.supabase.co/functions/v1/telegram-bot');
+    expect(webhookUrl(backendUrl('abc123'))).toBe('https://abc123.supabase.co/functions/v1/telegram-bot');
+    expect(webhookUrl(backendUrl(undefined, 'https://st.example.uz/'))).toBe('https://st.example.uz/functions/v1/telegram-bot'); // self-hosted, trailing slash tolerated
   });
 });
 
 describe('backupName', () => {
   it('names the file after the project and the minute', () => {
     expect(backupName('abc123', new Date(2026, 10, 5, 9, 7))).toBe('abc123-2026-11-05-0907.sql');
+  });
+});
+
+describe('environment check verdicts', () => {
+  it('reads what an unauthenticated call says about a function', () => {
+    expect(classifyFunction(404)).toBe('missing');
+    expect(classifyFunction(500)).toBe('broken');
+    expect(classifyFunction(0)).toBe('broken'); // no answer at all
+    for (const refused of [400, 401, 403, 405]) expect(classifyFunction(refused)).toBe('ok');
+  });
+
+  it('tells the new admin-login from the old one', () => {
+    expect(adminLoginVersion(403)).toBe('new');
+    expect(adminLoginVersion(400)).toBe('old');
+    expect(adminLoginVersion(200)).toBe('unknown');
+  });
+
+  it('judges the webhook', () => {
+    const want = 'https://x.supabase.co/functions/v1/telegram-bot';
+    expect(webhookVerdict({ url: want, pending_update_count: 0 }, want).ok).toBe(true);
+    expect(webhookVerdict({ url: want, pending_update_count: 3 }, want).text).toContain('3 updates');
+    expect(webhookVerdict({ url: '' }, want)).toMatchObject({ ok: false });
+    expect(webhookVerdict({ url: '' }, want).text).toContain('bot.mjs');
+    expect(webhookVerdict({ url: 'https://other/fn' }, want).ok).toBe(false);
+    expect(webhookVerdict({ url: want, last_error_message: 'Wrong response' }, want).text).toContain('Wrong response');
   });
 });

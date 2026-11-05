@@ -32,6 +32,19 @@ Qo'lda bajariladigan qismi (hisoblar, tokenlar) va skript bajaradigan qismi ajra
 11. `.env.production` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_TELEGRAM_BOT`, `VITE_ADMIN_URL`) bilan `npm run deploy:app -- --env .env.production`, so'ng `npm run deploy:admin`.
 12. BotFather: Menu Button = production Mini App manzili.
 
+### O'z serveri yo'li (Docker va o'z Supabase'i)
+
+Yuqoridagi qadamlar hosted Supabase (supabase.com) va Vercel uchun. Production o'z serverida (Docker, Caddy yoki nginx) va o'z Supabase'ida ishlasa, farqlar shular. Server tafsilotlari har xil bo'lishi mumkin; quyidagilar umumiy qoidalar.
+
+- **Mini App va admin sayt.** `docker compose build` qiymatlarni build argumentlaridan oladi: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_TELEGRAM_BOT`, `VITE_ADMIN_URL`. Ular serverdagi `.env` da bo'lmasa, sayt Supabase'siz build bo'ladi (kirish ishlamaydi). Build'dan keyin saytning JS fayllarida backend manzili ko'rinishi kerak.
+- **Bot: webhook yoki polling, ikkalasi emas.** Telegram bitta botni bir vaqtda ikki usulda xizmat qilmaydi. `scripts/bot.mjs` (polling) ishga tushganda webhookni o'chiradi. Production'da bizning funksiyali botimiz (`telegram-bot`) ishlashi uchun `bot.mjs` serverda to'xtatilgan bo'lishi va webhook o'rnatilgan bo'lishi shart: `npm run setup:env -- --url https://<domen> --env <fayl> --webhook` (webhook manzili `<domen>/functions/v1/telegram-bot` bo'ladi).
+- **Funksiyalar.** Hosted'dagi `npm run deploy:functions` self-hosted'ga to'g'ridan-to'g'ri tegishli emas: u yerda `supabase/functions` papkasi (`_shared` bilan) Edge Runtime konteyneri o'qiydigan papkaga nusxalanadi va konteyner qayta ishga tushiriladi. Funksiya ro'yxati `scripts/functions.mjs` da; `verifyJwt: false` bo'lganlari JWT tekshiruvisiz ishlashi kerak (Edge Runtime sozlamasida).
+- **Sirlar.** Funksiyalarning sirlari (`.env.example` dagi ro'yxat) Edge Runtime konteynerining muhit o'zgaruvchilariga beriladi. `OWNER_TELEGRAM_IDS` va `ADMIN_TELEGRAM_IDS` ni unutmang. Sirlarni o'zgartirgach, konteynerni qayta ishga tushiring.
+- **Migratsiyalar.** `0001`…`0009` ni Postgres'ga `psql` bilan (yoki Studio SQL muharriri orqali) tartib bilan bajaring. `pg_cron` va `pg_net` yoqilgan bo'lishi kerak, cron SQL fayli `setup:env -- --url https://<domen> --env <fayl>` dan keladi (manzillar o'z domeningiz bilan yoziladi).
+- **Tekshiruv.** Hammasi joyida ekanini bitta buyruq bilan ko'ring:
+  `npm run check:env -- --url https://<domen> --env <fayl>`
+  U funksiyalar mavjudligini, `admin-login` yangi versiyadaligini, env faylda bo'sh qiymatlar nomini va botning webhook manzilini ko'rsatadi. Hech narsani o'zgartirmaydi va sirlarni chiqarmaydi. Faqat o'zingizning muhitingizda ishlating.
+
 ## Ishga tushirishdan oldingi ro'yxat (haqiqiy talabalar kelishidan oldin)
 
 **Xavfsizlik**
@@ -51,7 +64,7 @@ Qo'lda bajariladigan qismi (hisoblar, tokenlar) va skript bajaradigan qismi ajra
 - [ ] Vercel Hobby tarifi tijoriy foydalanishga mo'ljallanmagan: daromad boshlanganda Pro'ga o'ting.
 - [ ] Supabase bepul tarif chegaralari (baza hajmi, funksiya chaqiruvlari) kuzatilmoqda.
 
-**Jonli tekshiruv** (har yangi muhitda, telefonda)
+**Jonli tekshiruv** (har yangi muhitda, telefonda; avval `npm run check:env`)
 - [ ] Talaba: kirish, guruhga qo'shilish, fan keladi, mashq, ovoz/rasm bilan javob, topshiriq, so'rov (fayl bilan).
 - [ ] Admin: botdagi «Admin» tugmasi (faqat adminda), kirish, kutubxonada test tuzish, topshiriq berish va botga xabar, xabarni rejalashtirish.
 - [ ] Ertalab 08:00 eslatma keldi (muddatli topshiriq bilan).
