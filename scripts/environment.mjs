@@ -79,9 +79,10 @@ export function classifyFunction(status) {
 export const adminLoginVersion = (status) => (status === 403 ? 'new' : status === 400 ? 'old' : 'unknown');
 
 // Telegram's getWebhookInfo against where the bot should point. An empty url usually means a long-polling
-// script (scripts/bot.mjs) took the bot over: it deletes the webhook when it starts.
+// script (the old scripts/bot.mjs, now removed from the repo, may still be running on a server) took the bot over:
+// it deletes the webhook when it starts.
 export function webhookVerdict(info, expectedUrl) {
-  if (!info?.url) return { ok: false, text: 'no webhook is set (is scripts/bot.mjs polling? it removes the webhook)' };
+  if (!info?.url) return { ok: false, text: 'no webhook is set (is the old bot.mjs polling script still running on the server? it removes the webhook)' };
   if (info.url !== expectedUrl) return { ok: false, text: `points to ${info.url}, expected ${expectedUrl}` };
   if (info.last_error_message) return { ok: false, text: `set, but Telegram reports: ${info.last_error_message}` };
   return { ok: true, text: `set${info.pending_update_count ? `, ${info.pending_update_count} updates waiting` : ''}` };
