@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ClipboardList, Clock, Loader2 } from 'lucide-react';
 import { Language, tr } from '../lib/i18n';
 import { StudySet, Subject } from '../types';
-import { Assignment, Progress, dueInfo, localItem, progressOf } from '../lib/assignments';
+import { Assignment, Progress, assignmentsView, dueInfo, localItem, progressOf } from '../lib/assignments';
+import { ADMIN_URL } from '../lib/telegram';
 
 interface Props {
   assignments: Assignment[] | null;
@@ -11,6 +12,7 @@ interface Props {
   subjects: Subject[];
   studySets: StudySet[];
   lang: Language;
+  staff: boolean; // admin or moderator: gives assignments on the admin site, has none of their own
 }
 
 function dueLabel(dueAt: string, lang: Language): { text: string; urgent: boolean } {
@@ -21,8 +23,9 @@ function dueLabel(dueAt: string, lang: Language): { text: string; urgent: boolea
 }
 
 // What the admin gave this student, with the deadline and how far they got
-export const AssignmentsPage: React.FC<Props> = ({ assignments, server, subjects, studySets, lang }) => {
+export const AssignmentsPage: React.FC<Props> = ({ assignments, server, subjects, studySets, lang, staff }) => {
   const navigate = useNavigate();
+  const view = assignmentsView(staff, assignments);
 
   const rows = (assignments ?? [])
     .map((a) => {
@@ -52,9 +55,21 @@ export const AssignmentsPage: React.FC<Props> = ({ assignments, server, subjects
         {tr(lang, "Administrator guruhingizga bergan vazifalar. Natijangiz faqat sizga va administratorga ko'rinadi.", 'Задания администратора для вашей группы. Результат видите вы и администратор.')}
       </p>
 
-      {assignments === null ? (
+      {view === 'staff' ? (
+        <div className="rounded-2xl border border-dashed border-border p-8 text-center bg-card space-y-3">
+          <ClipboardList size={32} className="mx-auto text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            {tr(lang, "Siz administrator yoki moderatorsiz: topshiriqlarni admin saytda berasiz va natijalarni o'sha yerda ko'rasiz. Bu bo'lim talabalar uchun.", 'Вы администратор или модератор: задания вы выдаёте на сайте администратора и там же смотрите результаты. Этот раздел для студентов.')}
+          </p>
+          {ADMIN_URL && (
+            <a href={ADMIN_URL} target="_blank" rel="noopener noreferrer" className="inline-block px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90">
+              {tr(lang, 'Admin saytni ochish', 'Открыть сайт администратора')}
+            </a>
+          )}
+        </div>
+      ) : view === 'loading' ? (
         <div className="py-12 text-center text-muted-foreground"><Loader2 className="mx-auto animate-spin" /></div>
-      ) : rows.length === 0 ? (
+      ) : view === 'empty' ? (
         <div className="rounded-2xl border border-dashed border-border p-8 text-center bg-card">
           <ClipboardList size={32} className="mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">{tr(lang, "Hozircha topshiriq yo'q. Yangisi chiqsa, botdan xabar keladi.", 'Заданий пока нет. Когда появится новое, бот сообщит.')}</p>

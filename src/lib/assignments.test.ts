@@ -3,7 +3,7 @@ import type { StudySet, Subject } from '../types';
 
 vi.mock('./supabase', () => ({ supabase: null }));
 
-import { dueInfo, localItem, needsSync, progressOf, type Assignment } from './assignments';
+import { assignmentsView, dueInfo, localItem, needsSync, progressOf, type Assignment } from './assignments';
 
 const attempt = (score: number) => ({ at: 1, answer: 'x', score, feedback: '', missing: [] });
 const subject = (scores: (number | null)[]): Subject =>
@@ -61,5 +61,20 @@ describe('deadline', () => {
     expect(dueInfo('2026-11-04T12:00:00Z', now)).toMatchObject({ overdue: false, days: 3 });
     expect(dueInfo('2026-11-01T17:30:00Z', now)).toMatchObject({ overdue: false, days: 0, hours: 6 });
     expect(dueInfo('2026-11-01T11:00:00Z', now)).toMatchObject({ overdue: true, days: 0, hours: 0 });
+  });
+});
+
+describe('assignments tab view', () => {
+  const one = { id: 'a1', title: 'T', note: null, library_item_id: 'l1', due_at: null, created_at: '2026-01-01T00:00:00Z' } as Assignment;
+
+  it('an admin or moderator never waits for assignments they do not have', () => {
+    expect(assignmentsView(true, null)).toBe('staff'); // this used to spin forever
+    expect(assignmentsView(true, [one])).toBe('staff');
+  });
+
+  it('a student sees loading, then an empty message or the list', () => {
+    expect(assignmentsView(false, null)).toBe('loading');
+    expect(assignmentsView(false, [])).toBe('empty');
+    expect(assignmentsView(false, [one])).toBe('list');
   });
 });
