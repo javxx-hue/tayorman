@@ -1,16 +1,18 @@
 # Muhitlar va ishga tushirishdan oldingi ro'yxat
 
-Production botni haqiqiy talabalarga ochish uchun tartibli qadamlar: [LAUNCH.md](LAUNCH.md).
+Botni haqiqiy talabalarga ochish uchun tartibli qadamlar: [LAUNCH.md](LAUNCH.md) (A: bizning muhit, B: Sanjarning serveri).
 
-## Ikki muhit
+## Muhitlar
 
-| | Development | Production |
-|---|---|---|
-| Bot | `@tayormanbot` | Sanjarning boti |
-| Supabase loyihasi | `tayorman` (hozirgi) | **alohida** loyiha |
-| Vercel loyihalari | `tayyorman` (Mini App), `tayyorman-admin` | alohida ikkitasi |
-| Sirlar | `supabase/functions/.env` | alohida to'plam; `AUTH_SECRET`, tokenlar boshqa |
-| Kod | `feature/*` branchlari | `main` (PR orqali) |
+Qaror (2026-11-06): talabalar uchun **asosiy muhit bizniki**. Sanjarning serveri qo'shimcha variant (kerak bo'lganda o'tiladi).
+
+| | Asosiy (hozir, bizniki) | Sinov (tavsiya, hali ochilmagan) | Qo'shimcha: Sanjarning serveri |
+|---|---|---|---|
+| Bot | `@tayormanbot` | alohida bot | `@sessiyagatayyorlanbot` |
+| Supabase | `tayorman` (ref `ysibxpifzylaqtqyykij`), hosted | alohida bepul loyiha | o'z serveri, self-hosted |
+| Saytlar | Vercel: `tayyorman-eight`, `tayyorman-admin` | alohida | `st.uzbek-talim.uz`, `/admin/` |
+| Sirlar | `supabase/functions/.env` | alohida to'plam | Sanjarning serverida |
+| Kod | `main` (PR orqali, CI yashil bo'lishi shart) | `feature/*` branchlari | `production` branchi |
 
 Muhitlar **hech narsani bo'lishmaydi**: bir muhitning tokeni, kaliti yoki bazasi ikkinchisida ishlatilmaydi. Bu tasodifan haqiqiy foydalanuvchilarga xabar yuborish yoki ularning ma'lumotini buzishdan saqlaydi.
 

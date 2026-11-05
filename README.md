@@ -39,7 +39,7 @@ Mini App ochilganda `telegram-auth` Telegram imzosini (initData) tekshiradi va S
 
 ## Muhitlar
 
-Development va production alohida bo'lishi kerak: har birining **o'z boti, Supabase loyihasi, sirlari va Vercel loyihasi** bor. To'liq qo'llanma va ishga tushirishdan oldingi ro'yxat: [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md). Production botni talabalarga ochish kuni qadamlari: [docs/LAUNCH.md](docs/LAUNCH.md).
+Development va production alohida bo'lishi kerak: har birining **o'z boti, Supabase loyihasi, sirlari va Vercel loyihasi** bor. To'liq qo'llanma va ishga tushirishdan oldingi ro'yxat: [docs/ENVIRONMENTS.md](docs/ENVIRONMENTS.md). Botni talabalarga ochish kuni qadamlari (asosiy: bizning muhit, qo'shimcha: Sanjarning serveri): [docs/LAUNCH.md](docs/LAUNCH.md).
 
 ## Ishga tushirish (har muhit uchun bir marta)
 
