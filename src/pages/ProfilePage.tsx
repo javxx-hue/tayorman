@@ -5,6 +5,8 @@ import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { Language, tr } from '../lib/i18n';
 import { ADMIN_URL, BOT_USERNAME } from '../lib/telegram';
+import { PrivacyPoints } from '../components/PrivacyNotice';
+import { privacyText } from '../lib/privacy';
 
 export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
   const { profile, online, updateProfile, isAdmin } = useAuth();
@@ -136,6 +138,13 @@ export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
           </span>
         </div>
       )}
+
+      <details className={card}>
+        <summary className="cursor-pointer text-sm font-semibold text-foreground">{privacyText(lang).title}</summary>
+        <div className="mt-3">
+          <PrivacyPoints lang={lang} />
+        </div>
+      </details>
     </div>
   );
 };
