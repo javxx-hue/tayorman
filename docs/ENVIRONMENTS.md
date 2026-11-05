@@ -60,6 +60,7 @@ Yuqoridagi qadamlar hosted Supabase (supabase.com) va Vercel uchun. Production o
 - [ ] GitHub'da `main` uchun branch himoyasi: faqat Pull Request orqali, CI o'tishi shart.
 
 **Ma'lumot**
+- [ ] **Haftalik zaxira (bizning muhit):** `npm run backup:copy -- --project ysibxpifzylaqtqyykij --to E:	ayyorman-backups` (Docker yoqilgan bo'lishi kerak). U zaxirani oladi, fleshkaga ko'chiradi, nusxa asl bilan bir xilligini tekshiradi va 12 tadan eskisini o'chiradi.
 - [ ] **Zaxira (backup):** o'z serverida `scripts/backup-selfhosted.sh` cron'da turibdi va bitta nusxa boshqa joyga ko'chiriladi. Hosted Supabase'ning bepul tarifida avtomatik zaxira yo'q. Pullik tarifga o'ting yoki haftada bir `npm run backup -- --project <ref>` qiling (Docker ishlab turishi va `npx supabase login` kerak; baza paroli kerak emas). Nusxa `backups/` papkasiga tushadi, git uni ko'rmaydi; ichida shaxsiy ma'lumot bor, xavfsiz joyga saqlang. Storage'dagi fayllar (so'rovlarga ilova qilinganlari) bu nusxaga kirmaydi. Bepul loyiha bir hafta faolsiz qolsa to'xtatiladi.
 - [ ] Migratsiyalar tartib bilan bajarilgan (`0001`…`0009`).
 - [ ] Ikkala cron ishi mavjud: `select jobname, schedule from cron.job;`

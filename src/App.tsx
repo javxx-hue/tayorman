@@ -13,6 +13,8 @@ import { deliverLibrary } from './lib/library';
 import { useAssignments } from './lib/useAssignments';
 import { localItem, progressOf } from './lib/assignments';
 import { track } from './lib/track';
+import { markPrivacySeen, privacySeen } from './lib/privacy';
+import { PrivacyNotice } from './components/PrivacyNotice';
 import { startTelegram, applyTelegramTheme, useTelegramBackButton, BOT_USERNAME } from './lib/telegram';
 
 // Pages load on demand to keep the first download small on mobile data
@@ -103,6 +105,15 @@ export default function App() {
   // Mirror local data to Supabase while signed in
   // Content is delivered only after the first sync has finished, or an old cloud copy of something
   // the admin has since taken back could come down again. Not waiting forever if the network is slow.
+  // The data notice is shown once, before the student uses anything
+  const privacyStore = (() => {
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  })();
+  const [privacyOk, setPrivacyOk] = useState(() => privacySeen(privacyStore));
   const [synced, setSynced] = useState(false);
   useEffect(() => {
     if (!online) return;
@@ -221,6 +232,15 @@ export default function App() {
         </Suspense>
       </main>
       <BottomNav lang={lang} openAssignments={openAssignments} />
+      {online && !privacyOk && (
+        <PrivacyNotice
+          lang={lang}
+          onAccept={() => {
+            markPrivacySeen(privacyStore);
+            setPrivacyOk(true);
+          }}
+        />
+      )}
       <ToastContainer />
     </div>
   );
