@@ -15,6 +15,7 @@ const SUPABASE_STUBS = `
   create schema auth;
   create schema extensions;
   create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb default '{}');
+  create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users (id) on delete cascade);
   create function auth.uid() returns uuid language sql stable
     as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   create function extensions.gen_random_bytes(n int) returns bytea language sql
@@ -22,7 +23,7 @@ const SUPABASE_STUBS = `
   grant usage on schema public, auth, extensions to anon, authenticated, service_role;
   create schema storage;
   create table storage.buckets (id text primary key, name text, public boolean default false, file_size_limit bigint, allowed_mime_types text[]);
-  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text, owner uuid);
+  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text, owner uuid, created_at timestamptz default now());
   alter table storage.objects enable row level security;
   create function storage.foldername(name text) returns text[] language plpgsql as $$
     declare parts text[];
@@ -70,6 +71,7 @@ beforeAll(async () => {
   await db.exec(sql('0005_funnel.sql'));
   await db.exec(sql('0006_performance_indexes.sql'));
   await db.exec(sql('0007_admin_credentials.sql'));
+  await db.exec(sql('0008_blocked_and_uploads.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');
@@ -158,6 +160,34 @@ describe('admin logins (login + password)', () => {
     await db.exec(`insert into public.admin_credentials (user_id, login, salt, hash, iterations) values ('99999999-9999-4999-8999-999999999999', 'gone.mod', 's', 'h', 1)`);
     await db.exec(`delete from public.profiles where id = '99999999-9999-4999-8999-999999999999'`);
     expect(await rows(`select 1 from public.admin_credentials where login = 'gone.mod'`)).toHaveLength(0);
+  });
+});
+
+describe('blocked users', () => {
+  it('see and change nothing once blocked, even with a token that is still valid', async () => {
+    expect((await as(U.s1, () => rows('select 1 from public.library_items'))).length).toBe(1);
+    expect((await as(U.blocked, () => rows('select 1 from public.library_items'))).length).toBe(0);
+    expect(await as(U.blocked, () => rows('select 1 from public.profiles'))).toEqual([]); // not even their own row
+    await expect(as(U.blocked, () => db.exec(`insert into public.suggestions (kind, text) values ('other', 'hello')`))).rejects.toThrow(/row-level security/i);
+  });
+
+  it('are signed out the moment they are blocked, and only then', async () => {
+    await db.exec(`insert into auth.sessions (user_id) values ('${U.s2}'), ('${U.s2}'), ('${U.s1}')`);
+    await db.exec(`update public.profiles set first_name = 'Renamed' where id = '${U.s2}'`);
+    expect(await rows(`select 1 from auth.sessions where user_id = '${U.s2}'`)).toHaveLength(2); // other updates leave sessions alone
+    await db.exec(`update public.profiles set blocked = true where id = '${U.s2}'`);
+    expect(await rows(`select 1 from auth.sessions where user_id = '${U.s2}'`)).toHaveLength(0);
+    expect(await rows(`select 1 from auth.sessions where user_id = '${U.s1}'`)).toHaveLength(1); // nobody else is touched
+    await db.exec(`update public.profiles set blocked = false, first_name = 'Student2' where id = '${U.s2}'; delete from auth.sessions`);
+  });
+
+  it('are refused by every table a signed-in user can reach (a new table must be added to migration 0008)', async () => {
+    const server = ['admin_credentials', 'admin_login_requests', 'bot_pending']; // closed to everyone but the server
+    const tables = await rows(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity order by 1`);
+    const guarded = await rows(`select tablename from pg_policies where schemaname = 'public' and policyname = 'blocked users: no access' and permissive = 'RESTRICTIVE'`);
+    const open = tables.map((t) => t.relname).filter((t) => !server.includes(t));
+    expect(guarded.map((g) => g.tablename).sort()).toEqual(open);
   });
 });
 
@@ -295,6 +325,40 @@ describe('assignments', () => {
     expect(stats).toMatchObject({ audience: 1, started: 1, done: 1, avg_score: 80 });
     expect(stats.by_community).toEqual([{ name: 'Group 1', members: 1, done: 1 }]);
     await expect(as(U.s1, () => rows('select public.assignment_stats($1)', [assignmentG1]))).rejects.toThrow(/forbidden/);
+  });
+});
+
+describe('request file upload limits', () => {
+  const folder = (uid: string) => `${uid}/f`;
+  const seed = (uid: string, count: number, hoursAgo: number) =>
+    db.exec(`insert into storage.objects (bucket_id, name, owner, created_at) select 'request-files', '${folder(uid)}-${hoursAgo}-' || g || '.pdf', '${uid}', now() - interval '${hoursAgo} hours' from generate_series(1, ${count}) g`);
+  const upload = (uid: string, name: string) => as(uid, () => db.exec(`insert into storage.objects (bucket_id, name, owner) values ('request-files', '${uid}/${name}', '${uid}')`));
+  const clear = (uid: string) => db.exec(`delete from storage.objects where name like '${uid}/%'`);
+
+  it('allows 30 uploads in 24 hours and refuses the 31st', async () => {
+    await clear(U.s1);
+    await seed(U.s1, 29, 1);
+    await upload(U.s1, 'thirtieth.pdf');
+    await expect(upload(U.s1, 'thirty-first.pdf')).rejects.toThrow(/row-level security/i);
+    await clear(U.s1);
+  });
+
+  it('does not count uploads older than 24 hours, but stops at 100 in all', async () => {
+    await clear(U.s1);
+    await seed(U.s1, 90, 48); // old: not part of today's count
+    await upload(U.s1, 'today.pdf'); // 91 in all
+    await seed(U.s1, 8, 30); // 99 in all
+    await upload(U.s1, 'hundredth.pdf');
+    await expect(upload(U.s1, 'one-too-many.pdf')).rejects.toThrow(/row-level security/i);
+    await clear(U.s1);
+  });
+
+  it('counts each student separately and refuses blocked ones', async () => {
+    await seed(U.s1, 30, 1);
+    await upload(U.s2, 'mine.pdf');
+    await expect(upload(U.blocked, 'blocked.pdf')).rejects.toThrow(/row-level security/i);
+    await clear(U.s1);
+    await clear(U.s2);
   });
 });
 

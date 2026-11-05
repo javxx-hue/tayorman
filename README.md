@@ -27,7 +27,7 @@ AI kuniga har bir foydalanuvchiga cheklangan (admin saytida: shaxsiy > guruh > u
 ```
 src/                  Mini App (React + Vite + TypeScript)
 admin/                admin sayti (alohida Vite ilova, alohida Vercel loyiha)
-supabase/migrations/  ma'lumotlar bazasi sxemasi (RLS bilan), 0001 dan 0007 gacha ketma-ket
+supabase/migrations/  ma'lumotlar bazasi sxemasi (RLS bilan), 0001 dan 0008 gacha ketma-ket
 supabase/functions/   server (Edge Functions); ro'yxati: scripts/functions.mjs
 scripts/              deploy skriptlari
 docs/                 reja va muhitlar qo'llanmasi
@@ -50,7 +50,7 @@ Development va production alohida bo'lishi kerak: har birining **o'z boti, Supab
 - **Telegram ID'ingiz:** [@userinfobot](https://t.me/userinfobot). Bu sizni admin qiladi.
 
 ### 2. Baza
-Supabase → **SQL Editor** → migratsiyalarni **tartib bilan** ishga tushiring: `0001_init.sql`, `0002_admin.sql`, `0003_admin_login.sql`, `0004_request_files.sql`, `0005_funnel.sql`, `0006_performance_indexes.sql`, `0007_admin_credentials.sql`.
+Supabase → **SQL Editor** → migratsiyalarni **tartib bilan** ishga tushiring: `0001_init.sql`, `0002_admin.sql`, `0003_admin_login.sql`, `0004_request_files.sql`, `0005_funnel.sql`, `0006_performance_indexes.sql`, `0007_admin_credentials.sql`, `0008_blocked_and_uploads.sql`.
 
 ### 3. Sirlar
 `supabase/functions/.env.example` dan nusxa olib `supabase/functions/.env` ni to'ldiring:
