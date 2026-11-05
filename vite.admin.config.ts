@@ -20,6 +20,7 @@ const useAdminSupabaseClient = (): Plugin => ({
 // The admin site is a separate app (admin/) built to dist-admin and deployed on its own,
 // so none of its code ships inside the student Mini App.
 export default defineConfig({
+  base: '/admin/',
   root: 'admin',
   envDir: '..',
   plugins: [useAdminSupabaseClient(), react()],
