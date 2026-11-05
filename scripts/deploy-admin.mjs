@@ -28,7 +28,8 @@ const run = (cmd, cmdArgs, cwd, env = process.env) => {
   if (r.status !== 0) process.exit(r.status ?? 1);
 };
 
-run('npm', ['run', 'build:admin'], undefined, { ...process.env, ...extraEnv });
+// Vercel serves the admin site at the root of its own domain (the own-server build uses /admin/, see vite.admin.config.ts)
+run('npm', ['run', 'build:admin'], undefined, { ...process.env, ...extraEnv, ADMIN_BASE: '/' });
 
 const target = '.admin-deploy';
 mkdirSync(target, { recursive: true });

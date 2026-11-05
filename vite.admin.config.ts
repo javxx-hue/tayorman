@@ -20,7 +20,9 @@ const useAdminSupabaseClient = (): Plugin => ({
 // The admin site is a separate app (admin/) built to dist-admin and deployed on its own,
 // so none of its code ships inside the student Mini App.
 export default defineConfig({
-  base: '/admin/',
+  // Where the site is served from: /admin/ on the own server (one domain, two sites); the Vercel project serves it at the
+  // root, so scripts/deploy-admin.mjs builds with ADMIN_BASE=/
+  base: process.env.ADMIN_BASE ?? '/admin/',
   root: 'admin',
   envDir: '..',
   plugins: [useAdminSupabaseClient(), react()],
