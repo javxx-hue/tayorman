@@ -56,12 +56,8 @@ export const AnswerInput: React.FC<Props> = ({ lang, disabled, onText }) => {
     if (!files?.length) return;
     const list = Array.from(files).slice(0, MAX_PHOTOS);
     if (files.length > MAX_PHOTOS) toast.error(tr(lang, `Eng ko'pi bilan ${MAX_PHOTOS} ta rasm`, `Не больше фото: ${MAX_PHOTOS}`));
-    // pages are read in the order they were chosen, one after the other
-    run('photo', async () => {
-      const pages: string[] = [];
-      for (const file of list) pages.push(await transcribeHandwriting(file, lang));
-      return pages.filter(Boolean).join('\n\n');
-    });
+    // all pages are read at once; the text keeps the order they were chosen in
+    run('photo', async () => (await Promise.all(list.map((file) => transcribeHandwriting(file, lang)))).filter(Boolean).join('\n\n'));
   };
 
   const busy = working !== null;

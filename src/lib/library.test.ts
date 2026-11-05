@@ -1,19 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { StudySet, Subject } from '../types';
 
-const saved: { subjects: Subject[]; sets: StudySet[] } = { subjects: [], sets: [] };
+const saved: { subjects: Subject[]; sets: StudySet[]; deleted: string[]; fullAfter: number } = { subjects: [], sets: [], deleted: [], fullAfter: Infinity };
 vi.mock('./supabase', () => ({ supabase: null }));
 vi.mock('./storage', () => ({
   getSubjects: () => saved.subjects,
   getStudySets: () => saved.sets,
-  saveSubject: (s: Subject) => saved.subjects.push(s),
+  saveSubject: (s: Subject) => {
+    if (saved.subjects.length >= saved.fullAfter) throw Object.assign(new Error('Browser storage is full'), { name: 'StorageFullError' });
+    saved.subjects.push(s);
+  },
   saveStudySet: (s: StudySet) => saved.sets.push(s),
-  deleteSubject: () => {},
+  deleteSubject: (id: string) => void saved.deleted.push(id),
   deleteStudySet: () => {},
   newId: (p: string) => `${p}-new`,
 }));
 
-import { deliver, withdrawn, type LibraryItem } from './library';
+import { applyLibrary, deliver, withdrawn, type LibraryItem } from './library';
 
 const subjectItem = (updated_at: string, questions: Subject['questions']): LibraryItem => ({
   id: 'lib-1',
@@ -31,6 +34,8 @@ const q = (id: string, attempts: Subject['questions'][number]['attempts'] = []) 
 beforeEach(() => {
   saved.subjects = [];
   saved.sets = [];
+  saved.deleted = [];
+  saved.fullAfter = Infinity;
 });
 
 describe('library delivery to students', () => {
@@ -91,5 +96,48 @@ describe('items the admin took back', () => {
 
   it('removes everything delivered when nothing is visible any more (e.g. left the group)', () => {
     expect(withdrawn(new Set(), [own('a', 'x')], [own('b', 'y')])).toEqual({ subjects: ['a'], sets: ['b'] });
+  });
+});
+
+describe('a student\'s phone', () => {
+  const text = (n: number) => 'x'.repeat(n);
+  const material = (id: string, n: number) => ({ id, name: id, kind: 'text' as const, text: text(n), createdAt: 1 });
+
+  it('gets the lecture text the AI can use, not more', () => {
+    const big = { ...subjectItem('v1', [q('a')]) };
+    (big.data as Subject).materials = [material('m1', 100_000), material('m2', 100_000), material('m3', 50_000)];
+    deliver(big, [], []);
+    const got = saved.subjects[0].materials;
+    expect(got.map((m) => m.id)).toEqual(['m1', 'm2']); // the third no longer fits
+    expect(got.reduce((n, m) => n + m.text.length, 0)).toBe(120_000);
+    expect(got[1].text).toHaveLength(20_000); // the second is cut to what is left
+  });
+
+  it('keeps small subjects exactly as they are', () => {
+    const small = subjectItem('v1', [q('a')]);
+    (small.data as Subject).materials = [material('m1', 500)];
+    deliver(small, [], []);
+    expect(saved.subjects[0].materials).toEqual([material('m1', 500)]);
+  });
+});
+
+describe('applying the library to a phone', () => {
+  const item = (id: string): LibraryItem => ({ ...subjectItem('v1', [q('a')]), id });
+
+  it('takes back what was withdrawn before it delivers anything new', () => {
+    saved.subjects = [{ id: 'old', libraryId: 'lib-gone', questions: [] } as unknown as Subject];
+    expect(applyLibrary([item('lib-new')])).toBe(2); // one removed, one added
+    expect(saved.deleted).toEqual(['old']);
+    expect(saved.subjects.map((x) => x.libraryId)).toContain('lib-new');
+  });
+
+  it('keeps what fit, stops at the first thing that does not, and says so', () => {
+    saved.fullAfter = 1;
+    expect(() => applyLibrary([item('lib-1'), item('lib-2'), item('lib-3')])).toThrow(/storage is full/);
+    expect(saved.subjects.map((x) => x.libraryId)).toEqual(['lib-1']);
+  });
+
+  it('does not hide other failures as a full phone', () => {
+    expect(() => applyLibrary([{ ...item('lib-1'), data: null as never }])).toThrow(TypeError); // broken data, not a full phone
   });
 });

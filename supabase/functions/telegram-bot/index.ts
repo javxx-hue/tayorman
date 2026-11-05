@@ -1,6 +1,7 @@
 // Telegram bot webhook.
 //  /start [c_<code>]  welcome + Mini App button, optional community join
-//  /start a_<nonce>   admin site sign-in: shows a code and a Confirm button
+//  /start a_<nonce>   admin site sign-in from a browser: shows a code and a Confirm button
+//  admins and moderators also get an "Admin" menu button that opens the admin site inside Telegram
 //  /reja              today's plan       /til      switch language
 //  /eslatma           reminders on/off   /yordam   help
 //  any other message  (text, file, photo) is passed to the admins as a request
@@ -9,13 +10,15 @@
 // Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, APP_URL, AUTH_SECRET,
 //          ADMIN_TELEGRAM_IDS, GEMINI_API_KEY, AI_DAILY_LIMIT
 import { admin } from '../_shared/admin.ts';
-import { ensureUser, joinCommunity, type TelegramUser } from '../_shared/users.ts';
+import { ensureProfile, joinCommunity, type TelegramUser } from '../_shared/users.ts';
 import { tg, sendMessage, openAppButton, downloadFile } from '../_shared/telegram.ts';
 import { submitRequest, TooManyRequests } from '../_shared/requests.ts';
 import { attachmentPath, MAX_FILE_BYTES, mimeForName, type Attachment } from '../_shared/attachments.ts';
 import { nonceCode, nonceFromStart, nonceHash } from '../_shared/loginNonce.ts';
+import { isStaffRole, menuButtonFor } from '../_shared/staff.ts';
 import { planLines } from '../_shared/plan.ts';
-import { bytesToBase64, callGemini, consumeQuota, QuotaError } from '../_shared/gemini.ts';
+import { bytesToBase64, callGemini, consumeQuota, GeminiRejected, QuotaError, refundQuota } from '../_shared/gemini.ts';
+import { sameSecret } from '../_shared/secrets.ts';
 
 class BlockedError extends Error {}
 
@@ -75,18 +78,38 @@ const T = {
 
 const t = <K extends keyof typeof T>(key: K, lang: Lang) => T[key][lang];
 
-async function profileOf(tgUser: TelegramUser): Promise<{ id: string; language: Lang; reminders_enabled: boolean; role: string }> {
-  const id = await ensureUser(tgUser);
-  const { data } = await admin.from('profiles').select('id, language, reminders_enabled, role, blocked').eq('id', id).single();
-  if (data?.blocked) throw new BlockedError();
-  return data as { id: string; language: Lang; reminders_enabled: boolean; role: string };
+async function profileOf(tgUser: TelegramUser) {
+  const profile = await ensureProfile(tgUser);
+  if (profile.blocked) throw new BlockedError();
+  return profile;
 }
 
 const appKeyboard = (lang: Lang, path = '') => ({ reply_markup: { inline_keyboard: [[openAppButton(t('open', lang), path)]] } });
 
+// Staff get the Admin button. Anyone else gets the normal menu back, but only when they start the bot:
+// one call is enough to take the button from someone who is no longer staff, and students are not bothered each time.
+async function syncMenuButton(chatId: number, role: string, isStart: boolean) {
+  if (!isStaffRole(role) && !isStart) return;
+  const button = menuButtonFor(role, Deno.env.get('ADMIN_URL'));
+  if (button) await tg('setChatMenuButton', { chat_id: chatId, menu_button: button });
+}
+
+// The menu button is housekeeping: it runs next to the reply instead of before it, and a failure there never
+// stops the reply (the reply's own failure still does).
+async function alongside(housekeeping: Promise<void>, work: Promise<void>) {
+  housekeeping.catch((e) => console.warn('menu button failed', e));
+  await work;
+  await housekeeping.catch(() => {}); // let it finish before the function may be stopped
+}
+
 // ---------------------------------------------------------------- commands
 async function onCommand(chatId: number, text: string, user: TelegramUser) {
   const profile = await profileOf(user);
+  const isStart = text.split(/\s+/, 1)[0].replace(/@\w+$/, '') === '/start';
+  await alongside(syncMenuButton(chatId, profile.role, isStart), runCommand(chatId, text, user, profile));
+}
+
+async function runCommand(chatId: number, text: string, user: TelegramUser, profile: Awaited<ReturnType<typeof profileOf>>) {
   const lang = profile.language;
   const [command, arg] = text.split(/\s+/, 2);
 
@@ -95,7 +118,7 @@ async function onCommand(chatId: number, text: string, user: TelegramUser) {
       const nonce = nonceFromStart(arg);
       if (nonce) {
         // Only admins and moderators get a Confirm button; everyone else just sees a plain refusal
-        if (!['admin', 'moderator'].includes(profile.role)) return void (await sendMessage(chatId, t('staffOnly', lang)));
+        if (!isStaffRole(profile.role)) return void (await sendMessage(chatId, t('staffOnly', lang)));
         return void (await sendMessage(chatId, t('loginAsk', lang)(nonceCode(nonce)), {
           reply_markup: { inline_keyboard: [[{ text: t('loginConfirm', lang), callback_data: `al:${nonce}` }]] },
         }));
@@ -160,6 +183,10 @@ async function storeFile(userId: string, m: Incoming): Promise<Attachment | 'bad
 // Students cannot add content; whatever they send becomes a request for the admins
 async function onRequest(chatId: number, user: TelegramUser, m: Incoming) {
   const profile = await profileOf(user);
+  await alongside(syncMenuButton(chatId, profile.role, false), runRequest(chatId, profile, m));
+}
+
+async function runRequest(chatId: number, profile: Awaited<ReturnType<typeof profileOf>>, m: Incoming) {
   const lang = profile.language;
   const hasFile = !!(m.document || m.photo?.length);
   const label = m.document ? `📎 Fayl: ${m.document.file_name ?? 'file'}` : m.photo?.length ? '🖼 Rasm' : '';
@@ -190,7 +217,7 @@ async function onLoginConfirm(query: { id: string; data: string; from: TelegramU
   const lang = profile.language;
   await tg('answerCallbackQuery', { callback_query_id: query.id });
   const nonce = nonceFromStart(`a_${query.data.slice(3)}`);
-  if (!nonce || !['admin', 'moderator'].includes(profile.role)) return;
+  if (!nonce || !isStaffRole(profile.role)) return;
 
   await admin.from('admin_login_requests').upsert({ nonce_hash: await nonceHash(nonce), user_id: profile.id }, { onConflict: 'nonce_hash', ignoreDuplicates: true });
   // Old rows are of no use to anyone
@@ -214,8 +241,10 @@ async function onVoice(chatId: number, user: TelegramUser, fileId: string, mime:
   if (!row || !question) return void (await sendMessage(chatId, t('expired', lang)));
 
   await sendMessage(chatId, t('grading', lang));
+  let consumed = false;
   try {
     await consumeQuota(profile.id);
+    consumed = true;
     const audio = await downloadFile(fileId);
     if (!audio) throw new Error('download failed');
 
@@ -265,13 +294,15 @@ Return strict JSON: { "transcript": "...", "score": 0-100 integer, "feedback": "
     });
   } catch (e) {
     console.error('voice failed', e);
+    // The student did nothing wrong when it was our download or the AI that failed: the try is not counted
+    if (consumed && !(e instanceof GeminiRejected)) await refundQuota(profile.id).catch((err) => console.warn('refund failed', err));
     await sendMessage(chatId, e instanceof QuotaError ? t('limit', lang) : t('failed', lang));
   }
 }
 
 // ---------------------------------------------------------------- entry
 Deno.serve(async (req) => {
-  if (req.headers.get('x-telegram-bot-api-secret-token') !== Deno.env.get('TELEGRAM_WEBHOOK_SECRET')) {
+  if (!sameSecret(req.headers.get('x-telegram-bot-api-secret-token'), Deno.env.get('TELEGRAM_WEBHOOK_SECRET'))) {
     return new Response('forbidden', { status: 403 });
   }
   const update = await req.json().catch(() => null);

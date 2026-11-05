@@ -103,6 +103,21 @@ export async function materialFromFile(file: File): Promise<Material> {
 
 // All materials of a subject as one prompt context, each under its file name,
 // trimmed to fit (Gemini Flash handles long context, but cost grows with size)
+// The AI never reads more than this much of a subject's lecture text (see buildMaterialContext), so a
+// student's phone does not need more either: whole files while they fit, the last one cut, the rest left out.
+export const MATERIAL_BUDGET = 120_000;
+
+export function fitMaterials(materials: Material[], budget = MATERIAL_BUDGET): Material[] {
+  const out: Material[] = [];
+  let left = budget;
+  for (const m of materials) {
+    if (left <= 0) break;
+    out.push(m.text.length <= left ? m : { ...m, text: m.text.slice(0, left) });
+    left -= m.text.length;
+  }
+  return out;
+}
+
 export function buildMaterialContext(materials: Material[], maxChars = 120_000): string {
   let out = '';
   for (const m of materials) {

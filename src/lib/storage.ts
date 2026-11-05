@@ -1,11 +1,10 @@
-import { StudySet, UserStats, Subject, Language } from '../types';
+import { StudySet, UserStats, Subject } from '../types';
 
 const STORAGE_KEYS = {
   SETS: 'sessiyagatayyorlan_study_sets',
   SUBJECTS: 'sessiyagatayyorlan_subjects',
   STATS: 'sessiyagatayyorlan_user_stats',
   LANG: 'sessiyagatayyorlan_language',
-  THEME: 'sessiyagatayyorlan_theme',
 };
 
 // Listeners for reactive updates
@@ -207,85 +206,4 @@ export function recordQuizCompletion(scorePercentage: number, questionsCount: nu
 export function recordStudyActivity(): void {
   localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(withStudyDay(getUserStats())));
   notifyListeners();
-}
-
-// Language
-export function getSavedLanguage(): Language {
-  if (typeof window === 'undefined') return 'uz';
-  return (localStorage.getItem(STORAGE_KEYS.LANG) as Language) || 'uz';
-}
-
-export function setSavedLanguage(lang: Language): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.LANG, lang);
-  notifyListeners();
-}
-
-// Theme
-export function getSavedTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light';
-  return (localStorage.getItem(STORAGE_KEYS.THEME) as 'light' | 'dark') || 'light';
-}
-
-export function setSavedTheme(theme: 'light' | 'dark'): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS.THEME, theme);
-  if (theme === 'dark') {
-    document.documentElement.classList.add('dark');
-  } else {
-    document.documentElement.classList.remove('dark');
-  }
-  notifyListeners();
-}
-
-// -------------------------------------------------------------
-// Data Export & Import Helpers
-// -------------------------------------------------------------
-export function exportSetsToJson(): void {
-  const sets = getStudySets();
-  const blob = new Blob([JSON.stringify(sets, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `sessiyagatayyorlan-study-sets-${new Date().toISOString().split('T')[0]}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-export function importSetsFromJson(jsonContent: string): { success: boolean; count: number } {
-  try {
-    const parsed = JSON.parse(jsonContent);
-    if (!Array.isArray(parsed)) return { success: false, count: 0 };
-
-    const current = getStudySets();
-    const currentIds = new Set(current.map((s) => s.id));
-    
-    // Add new sets
-    const newSets = parsed.filter((s) => s.id && !currentIds.has(s.id));
-    const merged = [...newSets, ...current];
-    localStorage.setItem(STORAGE_KEYS.SETS, JSON.stringify(merged));
-    notifyListeners();
-    return { success: true, count: newSets.length };
-  } catch {
-    return { success: false, count: 0 };
-  }
-}
-
-export function exportFlashcardsToCsv(set: StudySet): void {
-  if (!set.flashcards || set.flashcards.length === 0) return;
-  
-  const rows = set.flashcards.map((fc) => {
-    const front = `"${(fc.front || '').replace(/"/g, '""')}"`;
-    const back = `"${(fc.back || '').replace(/"/g, '""')}"`;
-    return `${front},${back}`;
-  });
-
-  const csvContent = 'Front,Back\n' + rows.join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${set.title.replace(/\s+/g, '-').toLowerCase()}-anki-cards.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
 }

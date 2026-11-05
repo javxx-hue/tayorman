@@ -1,0 +1,88 @@
+import { describe, it, expect } from 'vitest';
+// @ts-expect-error plain JavaScript module shared with the setup script
+import { GENERATED, REQUIRED, adminLoginVersion, applyEnv, backendUrl, backupName, classifyFunction, cronSql, fillSecrets, missingKeys, parseEnv, webhookUrl, webhookVerdict } from './environment.mjs';
+
+describe('parseEnv', () => {
+  it('reads values and skips comments and blanks', () => {
+    expect(parseEnv('# note\nA=1\n\nB=\nc = x\r\nD=a=b\n')).toEqual({ A: '1', B: '', D: 'a=b' });
+  });
+});
+
+describe('fillSecrets', () => {
+  it('fills only the empty generated secrets and never replaces one that exists', () => {
+    const { env, created } = fillSecrets({ AUTH_SECRET: 'keep-me', CRON_SECRET: '' }, () => 'new');
+    expect(env.AUTH_SECRET).toBe('keep-me');
+    expect(env.CRON_SECRET).toBe('new');
+    expect(env.TELEGRAM_WEBHOOK_SECRET).toBe('new');
+    expect(created).toEqual(['CRON_SECRET', 'TELEGRAM_WEBHOOK_SECRET']);
+  });
+
+  it('draws a separate value for each secret', () => {
+    let n = 0;
+    const { env } = fillSecrets({}, () => `v${n++}`);
+    expect(new Set(GENERATED.map((k: string) => env[k])).size).toBe(GENERATED.length);
+  });
+});
+
+describe('missingKeys', () => {
+  it('names what is empty', () => {
+    const all = Object.fromEntries(REQUIRED.map((k: string) => [k, 'x']));
+    expect(missingKeys(all)).toEqual([]);
+    expect(missingKeys({ ...all, APP_URL: '', GEMINI_API_KEY: '' })).toEqual(['GEMINI_API_KEY', 'APP_URL']);
+  });
+});
+
+describe('applyEnv', () => {
+  it('changes a line in place, keeps comments, appends unknown keys', () => {
+    const out = applyEnv('# secrets\nAUTH_SECRET=\nOTHER=1\n', { AUTH_SECRET: 'abc$&', NEW: 'z' });
+    expect(out).toBe('# secrets\nAUTH_SECRET=abc$&\nOTHER=1\nNEW=z\n');
+  });
+});
+
+describe('cron and webhook', () => {
+  it('builds both jobs for this project with its secret', () => {
+    const sql = cronSql('https://abc123.supabase.co', 'S3CRET');
+    expect(sql).toContain("cron.schedule('daily-reminders', '0 3 * * *'");
+    expect(sql).toContain("cron.schedule('broadcasts-due', '* * * * *'");
+    expect(sql).toContain('https://abc123.supabase.co/functions/v1/telegram-reminders');
+    expect(sql).toContain('https://abc123.supabase.co/functions/v1/broadcast-due');
+    expect(sql.match(/S3CRET/g)).toHaveLength(2);
+  });
+
+  it('points the webhook at the bot function', () => {
+    expect(webhookUrl('https://abc123.supabase.co')).toBe('https://abc123.supabase.co/functions/v1/telegram-bot');
+    expect(webhookUrl(backendUrl('abc123'))).toBe('https://abc123.supabase.co/functions/v1/telegram-bot');
+    expect(webhookUrl(backendUrl(undefined, 'https://st.example.uz/'))).toBe('https://st.example.uz/functions/v1/telegram-bot'); // self-hosted, trailing slash tolerated
+  });
+});
+
+describe('backupName', () => {
+  it('names the file after the project and the minute', () => {
+    expect(backupName('abc123', new Date(2026, 10, 5, 9, 7))).toBe('abc123-2026-11-05-0907.sql');
+  });
+});
+
+describe('environment check verdicts', () => {
+  it('reads what an unauthenticated call says about a function', () => {
+    expect(classifyFunction(404)).toBe('missing');
+    expect(classifyFunction(500)).toBe('broken');
+    expect(classifyFunction(0)).toBe('broken'); // no answer at all
+    for (const refused of [400, 401, 403, 405]) expect(classifyFunction(refused)).toBe('ok');
+  });
+
+  it('tells the new admin-login from the old one', () => {
+    expect(adminLoginVersion(403)).toBe('new');
+    expect(adminLoginVersion(400)).toBe('old');
+    expect(adminLoginVersion(200)).toBe('unknown');
+  });
+
+  it('judges the webhook', () => {
+    const want = 'https://x.supabase.co/functions/v1/telegram-bot';
+    expect(webhookVerdict({ url: want, pending_update_count: 0 }, want).ok).toBe(true);
+    expect(webhookVerdict({ url: want, pending_update_count: 3 }, want).text).toContain('3 updates');
+    expect(webhookVerdict({ url: '' }, want)).toMatchObject({ ok: false });
+    expect(webhookVerdict({ url: '' }, want).text).toContain('bot.mjs');
+    expect(webhookVerdict({ url: 'https://other/fn' }, want).ok).toBe(false);
+    expect(webhookVerdict({ url: want, last_error_message: 'Wrong response' }, want).text).toContain('Wrong response');
+  });
+});

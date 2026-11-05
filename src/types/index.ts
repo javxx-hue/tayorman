@@ -74,14 +74,6 @@ export interface UserStats {
   averageScore: number;
 }
 
-export interface GenerationOptions {
-  type: StudySetType;
-  questionCount?: number;
-  difficulty?: Difficulty;
-  language?: Language;
-  topic?: string;
-}
-
 // ---------------------------------------------------------------
 // Session prep: subjects, their materials and exam question lists
 // ---------------------------------------------------------------

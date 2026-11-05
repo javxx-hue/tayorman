@@ -2,15 +2,36 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile
+      target: web
       args:
         VITE_TELEGRAM_BOT: ${VITE_TELEGRAM_BOT:-}
+        VITE_ADMIN_URL: ${VITE_ADMIN_URL:-}
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
     container_name: tayyorman_web
     restart: unless-stopped
     ports:
       - "${PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  admin:
+    build:
+      context: .
+      target: admin
+      args:
+        ADMIN_BASE: /  # this service serves the admin site at its own port, not under /admin/
+        VITE_TELEGRAM_BOT: ${VITE_TELEGRAM_BOT:-}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+    container_name: tayyorman_admin
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_PORT:-8081}:80"
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/ || exit 1"]
       interval: 15s

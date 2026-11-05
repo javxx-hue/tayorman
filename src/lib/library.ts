@@ -4,6 +4,7 @@
 import { StudySet, Subject } from '../types';
 import { supabase } from './supabase';
 import { track } from './track';
+import { fitMaterials } from './materials';
 import { deleteStudySet, deleteSubject, getStudySets, getSubjects, saveStudySet, saveSubject, newId } from './storage';
 
 export interface LibraryItem {
@@ -91,6 +92,7 @@ export function deliver(item: LibraryItem, subjects: Subject[], sets: StudySet[]
       libraryUpdatedAt: item.updated_at,
       createdAt: own?.createdAt ?? now,
       updatedAt: now,
+      materials: fitMaterials(incoming.materials ?? []),
       questions: incoming.questions.map((q) => {
         const old = own?.questions.find((o) => o.id === q.id);
         return old ? { ...q, attempts: old.attempts } : q;
@@ -125,21 +127,35 @@ export function withdrawn(visibleIds: Set<string>, subjects: Subject[], sets: St
   return { subjects: subjects.filter(gone).map((s) => s.id), sets: sets.filter(gone).map((s) => s.id) };
 }
 
-// Fetches everything published for this student, delivers it and takes back what was withdrawn.
-// Returns how many copies changed.
-export async function deliverLibrary(): Promise<number> {
-  const items = (await fetchLibrary()).filter((i) => i.published);
-  let changed = 0;
-  let arrived = 0;
-  for (const item of items) {
-    const result = deliver(item, getSubjects(), getStudySets());
-    if (result) changed++;
-    if (result === 'new') arrived++;
-  }
-  if (arrived) track('got_content', { oncePerSession: true });
+const isStorageFull = (e: unknown) => e instanceof Error && e.name === 'StorageFullError';
 
+// Takes back what was withdrawn (that frees space first), then delivers what is new or changed.
+// A full phone stops the delivery but is reported, not swallowed. Returns how many copies changed.
+export function applyLibrary(items: LibraryItem[]): number {
   const gone = withdrawn(new Set(items.map((i) => i.id)), getSubjects(), getStudySets());
   gone.subjects.forEach(deleteSubject);
   gone.sets.forEach(deleteStudySet);
-  return changed + gone.subjects.length + gone.sets.length;
+
+  let changed = gone.subjects.length + gone.sets.length;
+  let arrived = 0;
+  let full: unknown = null;
+  for (const item of items) {
+    try {
+      const result = deliver(item, getSubjects(), getStudySets());
+      if (result) changed++;
+      if (result === 'new') arrived++;
+    } catch (e) {
+      if (!isStorageFull(e)) throw e;
+      full = e;
+      break; // the next item would not fit either
+    }
+  }
+  if (arrived) track('got_content', { oncePerSession: true });
+  if (full) throw full;
+  return changed;
+}
+
+// Fetches everything published for this student and applies it.
+export async function deliverLibrary(): Promise<number> {
+  return applyLibrary((await fetchLibrary()).filter((i) => i.published));
 }

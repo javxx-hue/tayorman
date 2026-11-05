@@ -28,6 +28,7 @@ export type GeminiPart =
 export interface GeminiOptions {
   json?: boolean;
   temperature?: number;
+  tier?: 'fast' | 'smart'; // fast: grading and reading speech or handwriting; smart (default): writing tests and answers
 }
 
 // The key lives on the server (Edge Function "gemini"); each student has a daily limit.

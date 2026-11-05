@@ -15,6 +15,7 @@ const SUPABASE_STUBS = `
   create schema auth;
   create schema extensions;
   create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb default '{}');
+  create table auth.sessions (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users (id) on delete cascade);
   create function auth.uid() returns uuid language sql stable
     as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   create function extensions.gen_random_bytes(n int) returns bytea language sql
@@ -22,7 +23,7 @@ const SUPABASE_STUBS = `
   grant usage on schema public, auth, extensions to anon, authenticated, service_role;
   create schema storage;
   create table storage.buckets (id text primary key, name text, public boolean default false, file_size_limit bigint, allowed_mime_types text[]);
-  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text, owner uuid);
+  create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets (id), name text, owner uuid, created_at timestamptz default now());
   alter table storage.objects enable row level security;
   create function storage.foldername(name text) returns text[] language plpgsql as $$
     declare parts text[];
@@ -68,6 +69,10 @@ beforeAll(async () => {
   await db.exec(sql('0003_admin_login.sql'));
   await db.exec(sql('0004_request_files.sql'));
   await db.exec(sql('0005_funnel.sql'));
+  await db.exec(sql('0006_performance_indexes.sql'));
+  await db.exec(sql('0007_admin_credentials.sql'));
+  await db.exec(sql('0008_blocked_and_uploads.sql'));
+  await db.exec(sql('0009_quota_refund_and_helpers.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');
@@ -109,6 +114,127 @@ describe('admin site sign-in table', () => {
   it('accepts only SHA-256 hex hashes and one row per nonce', async () => {
     await expect(db.exec(`insert into public.admin_login_requests (nonce_hash, user_id) values ('plain-nonce', '${U.admin}')`)).rejects.toThrow();
     await expect(db.exec(`insert into public.admin_login_requests (nonce_hash, user_id) values ('${HASH}', '${U.admin}')`)).rejects.toThrow(/duplicate|unique/i);
+  });
+});
+
+describe('admin logins (login + password)', () => {
+  const login = 'ali.admin';
+  const record = () =>
+    db.exec(`insert into public.admin_credentials (user_id, login, salt, hash, iterations) values ('${U.admin}', '${login}', 's', 'h', 1)`);
+  const state = async () => (await rows(`select failed_attempts, locked_until is not null as locked from public.admin_credentials where login = $1`, [login]))[0];
+  const fail = () => db.exec(`select public.admin_login_failed('${login}')`);
+
+  it('is closed to everyone except the server', async () => {
+    await record();
+    for (const uid of [U.admin, U.mod, U.s1, null]) {
+      await expect(as(uid, () => rows('select * from public.admin_credentials'))).rejects.toThrow(/permission denied/i);
+      await expect(as(uid, () => db.exec(`update public.admin_credentials set login = 'mine'`))).rejects.toThrow(/permission denied/i);
+      await expect(as(uid, () => db.exec(`select public.admin_login_failed('${login}')`))).rejects.toThrow(/permission denied/i);
+    }
+  });
+
+  it('keeps only plain logins and one login per person', async () => {
+    await expect(db.exec(`insert into public.admin_credentials (user_id, login, salt, hash, iterations) values ('${U.mod}', 'Not Valid', 's', 'h', 1)`)).rejects.toThrow();
+    await expect(db.exec(`insert into public.admin_credentials (user_id, login, salt, hash, iterations) values ('${U.mod}', '${login}', 's', 'h', 1)`)).rejects.toThrow(/duplicate|unique/i);
+  });
+
+  it('pauses the login after five wrong passwords in a row', async () => {
+    for (let i = 1; i <= 4; i++) {
+      await fail();
+      expect(await state()).toMatchObject({ failed_attempts: i, locked: false });
+    }
+    await fail();
+    expect(await state()).toMatchObject({ failed_attempts: 5, locked: true });
+  });
+
+  it('starts counting again once a pause has run out, and ignores unknown logins', async () => {
+    await db.exec(`update public.admin_credentials set locked_until = now() - interval '1 minute' where login = '${login}'`);
+    await fail();
+    expect(await state()).toMatchObject({ failed_attempts: 1 });
+    await expect(db.exec(`select public.admin_login_failed('nobody')`)).resolves.toBeDefined();
+  });
+
+  it('disappears with the profile', async () => {
+    await db.exec(`delete from public.admin_credentials`);
+    await record();
+    await db.exec(`insert into auth.users (id, email) values ('99999999-9999-4999-8999-999999999999', 'gone@x'); insert into public.profiles (id, telegram_id, first_name, role) values ('99999999-9999-4999-8999-999999999999', 99, 'Gone', 'moderator')`);
+    await db.exec(`insert into public.admin_credentials (user_id, login, salt, hash, iterations) values ('99999999-9999-4999-8999-999999999999', 'gone.mod', 's', 'h', 1)`);
+    await db.exec(`delete from public.profiles where id = '99999999-9999-4999-8999-999999999999'`);
+    expect(await rows(`select 1 from public.admin_credentials where login = 'gone.mod'`)).toHaveLength(0);
+  });
+});
+
+describe('blocked users', () => {
+  it('see and change nothing once blocked, even with a token that is still valid', async () => {
+    expect((await as(U.s1, () => rows('select 1 from public.library_items'))).length).toBe(1);
+    expect((await as(U.blocked, () => rows('select 1 from public.library_items'))).length).toBe(0);
+    expect(await as(U.blocked, () => rows('select 1 from public.profiles'))).toEqual([]); // not even their own row
+    await expect(as(U.blocked, () => db.exec(`insert into public.suggestions (kind, text) values ('other', 'hello')`))).rejects.toThrow(/row-level security/i);
+  });
+
+  it('are signed out the moment they are blocked, and only then', async () => {
+    await db.exec(`insert into auth.sessions (user_id) values ('${U.s2}'), ('${U.s2}'), ('${U.s1}')`);
+    await db.exec(`update public.profiles set first_name = 'Renamed' where id = '${U.s2}'`);
+    expect(await rows(`select 1 from auth.sessions where user_id = '${U.s2}'`)).toHaveLength(2); // other updates leave sessions alone
+    await db.exec(`update public.profiles set blocked = true where id = '${U.s2}'`);
+    expect(await rows(`select 1 from auth.sessions where user_id = '${U.s2}'`)).toHaveLength(0);
+    expect(await rows(`select 1 from auth.sessions where user_id = '${U.s1}'`)).toHaveLength(1); // nobody else is touched
+    await db.exec(`update public.profiles set blocked = false, first_name = 'Student2' where id = '${U.s2}'; delete from auth.sessions`);
+  });
+
+  it('are refused by every table a signed-in user can reach (a new table must be added to migration 0008)', async () => {
+    const server = ['admin_credentials', 'admin_login_requests', 'bot_pending']; // closed to everyone but the server
+    const tables = await rows(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity order by 1`);
+    const guarded = await rows(`select tablename from pg_policies where schemaname = 'public' and policyname = 'blocked users: no access' and permissive = 'RESTRICTIVE'`);
+    const open = tables.map((t) => t.relname).filter((t) => !server.includes(t));
+    expect(guarded.map((g) => g.tablename).sort()).toEqual(open);
+  });
+});
+
+describe('AI quota refund', () => {
+  const today = `(now() at time zone 'Asia/Tashkent')::date`;
+  const count = async () => Number((await rows(`select count from public.ai_usage where user_id = '${U.s1}' and day = ${today}`))[0]?.count ?? 0);
+
+  it('gives back one counted try, never below zero', async () => {
+    await db.exec(`delete from public.ai_usage where user_id = '${U.s1}'`);
+    await db.exec(`select public.consume_ai_quota_auto('${U.s1}'); select public.consume_ai_quota_auto('${U.s1}')`);
+    expect(await count()).toBe(2);
+    await db.exec(`select public.refund_ai_quota('${U.s1}')`);
+    expect(await count()).toBe(1);
+    await db.exec(`select public.refund_ai_quota('${U.s1}'); select public.refund_ai_quota('${U.s1}'); select public.refund_ai_quota('${U.s1}')`);
+    expect(await count()).toBe(0);
+    await db.exec(`select public.refund_ai_quota('${U.s2}')`); // nothing counted today: nothing happens
+    await db.exec(`delete from public.ai_usage where user_id = '${U.s1}'`);
+  });
+
+  it('can be called by the server only', async () => {
+    for (const uid of [U.admin, U.s1, null]) {
+      await expect(as(uid, () => db.exec(`select public.refund_ai_quota('${U.s1}')`))).rejects.toThrow(/permission denied/i);
+    }
+  });
+});
+
+describe('policy helper functions', () => {
+  const can = async (role: string, fn: string) => (await rows(`select has_function_privilege('${role}', '${fn}', 'execute') as ok`))[0].ok;
+
+  it('are closed to visitors who are not signed in, and open to signed-in users and the server', async () => {
+    for (const fn of ['public.is_admin()', 'public.is_staff()', 'public.moderates(uuid)', 'public.moderates_all(uuid[])', 'public.moderates_assignment(uuid)', 'public.moderates_user(uuid)', 'public.in_audience(boolean, uuid[])']) {
+      expect(await can('anon', fn)).toBe(false);
+      expect(await can('authenticated', fn)).toBe(true);
+      expect(await can('service_role', fn)).toBe(true);
+    }
+  });
+
+  it('trigger functions are not callable by users at all', async () => {
+    for (const fn of ['public.audit_row()', 'public.limit_daily_inserts()']) {
+      for (const role of ['anon', 'authenticated']) expect(await can(role, fn)).toBe(false);
+    }
+  });
+
+  it('the policies still work for signed-in users after the change', async () => {
+    expect(await as(U.admin, () => rows('select public.is_admin() as a'))).toEqual([{ a: true }]);
+    expect((await as(U.s1, () => rows('select 1 from public.library_items'))).length).toBe(1);
   });
 });
 
@@ -246,6 +372,40 @@ describe('assignments', () => {
     expect(stats).toMatchObject({ audience: 1, started: 1, done: 1, avg_score: 80 });
     expect(stats.by_community).toEqual([{ name: 'Group 1', members: 1, done: 1 }]);
     await expect(as(U.s1, () => rows('select public.assignment_stats($1)', [assignmentG1]))).rejects.toThrow(/forbidden/);
+  });
+});
+
+describe('request file upload limits', () => {
+  const folder = (uid: string) => `${uid}/f`;
+  const seed = (uid: string, count: number, hoursAgo: number) =>
+    db.exec(`insert into storage.objects (bucket_id, name, owner, created_at) select 'request-files', '${folder(uid)}-${hoursAgo}-' || g || '.pdf', '${uid}', now() - interval '${hoursAgo} hours' from generate_series(1, ${count}) g`);
+  const upload = (uid: string, name: string) => as(uid, () => db.exec(`insert into storage.objects (bucket_id, name, owner) values ('request-files', '${uid}/${name}', '${uid}')`));
+  const clear = (uid: string) => db.exec(`delete from storage.objects where name like '${uid}/%'`);
+
+  it('allows 30 uploads in 24 hours and refuses the 31st', async () => {
+    await clear(U.s1);
+    await seed(U.s1, 29, 1);
+    await upload(U.s1, 'thirtieth.pdf');
+    await expect(upload(U.s1, 'thirty-first.pdf')).rejects.toThrow(/row-level security/i);
+    await clear(U.s1);
+  });
+
+  it('does not count uploads older than 24 hours, but stops at 100 in all', async () => {
+    await clear(U.s1);
+    await seed(U.s1, 90, 48); // old: not part of today's count
+    await upload(U.s1, 'today.pdf'); // 91 in all
+    await seed(U.s1, 8, 30); // 99 in all
+    await upload(U.s1, 'hundredth.pdf');
+    await expect(upload(U.s1, 'one-too-many.pdf')).rejects.toThrow(/row-level security/i);
+    await clear(U.s1);
+  });
+
+  it('counts each student separately and refuses blocked ones', async () => {
+    await seed(U.s1, 30, 1);
+    await upload(U.s2, 'mine.pdf');
+    await expect(upload(U.blocked, 'blocked.pdf')).rejects.toThrow(/row-level security/i);
+    await clear(U.s1);
+    await clear(U.s2);
   });
 });
 

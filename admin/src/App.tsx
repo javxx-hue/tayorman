@@ -1,19 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth, type SignInResult } from './lib/auth';
-import { DashboardPage } from './pages/Dashboard';
-import { UsersPage } from './pages/Users';
-import { AuditPage } from './pages/Audit';
-import { RequestsPage } from './pages/Requests';
-import { GroupDetailPage, GroupsPage } from './pages/Groups';
-import { AssignmentsPage } from './pages/Assignments';
-import { LibraryPage } from './pages/Library';
-import { BroadcastsPage } from './pages/Broadcasts';
-import { SettingsPage } from './pages/Settings';
-import { IssuesPage } from './pages/Issues';
 import { BOT } from './lib/config';
 
-const NAV: { to: string; label: string; adminOnly?: boolean }[] = [
+// Code-split pages so the admin panel loads instantly without bundling heavy libraries (PDF, docx) upfront
+const DashboardPage = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.DashboardPage })));
+const UsersPage = lazy(() => import('./pages/Users').then((m) => ({ default: m.UsersPage })));
+const AuditPage = lazy(() => import('./pages/Audit').then((m) => ({ default: m.AuditPage })));
+const RequestsPage = lazy(() => import('./pages/Requests').then((m) => ({ default: m.RequestsPage })));
+const GroupsPage = lazy(() => import('./pages/Groups').then((m) => ({ default: m.GroupsPage })));
+const GroupDetailPage = lazy(() => import('./pages/Groups').then((m) => ({ default: m.GroupDetailPage })));
+const AssignmentsPage = lazy(() => import('./pages/Assignments').then((m) => ({ default: m.AssignmentsPage })));
+const LibraryPage = lazy(() => import('./pages/Library').then((m) => ({ default: m.LibraryPage })));
+const BroadcastsPage = lazy(() => import('./pages/Broadcasts').then((m) => ({ default: m.BroadcastsPage })));
+const AccountsPage = lazy(() => import('./pages/Accounts').then((m) => ({ default: m.AccountsPage })));
+const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
+const IssuesPage = lazy(() => import('./pages/Issues').then((m) => ({ default: m.IssuesPage })));
+
+const NAV: { to: string; label: string; adminOnly?: boolean; ownerOnly?: boolean }[] = [
   { to: '/', label: 'Umumiy ko\'rinish', adminOnly: true },
   { to: '/requests', label: "So'rovlar", adminOnly: true },
   { to: '/library', label: 'Kutubxona', adminOnly: true },
@@ -22,6 +26,7 @@ const NAV: { to: string; label: string; adminOnly?: boolean }[] = [
   { to: '/broadcasts', label: 'Xabarlar', adminOnly: true },
   { to: '/groups', label: 'Guruhlar' },
   { to: '/users', label: 'Foydalanuvchilar' },
+  { to: '/accounts', label: 'Hisoblar', adminOnly: true, ownerOnly: true },
   { to: '/settings', label: 'Sozlamalar', adminOnly: true },
   { to: '/audit', label: 'Jurnal', adminOnly: true },
 ];
@@ -37,8 +42,60 @@ const FAILED: Record<'denied' | 'gone' | 'error', string> = {
   error: "Kirib bo'lmadi. Qayta urinib ko'ring.",
 };
 
+// Login and password the owner has given: for people who cannot or do not want to open Telegram each time
+const PasswordForm: React.FC = () => {
+  const { signInWithPassword } = useAuth();
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    const result = await signInWithPassword(login, password);
+    setBusy(false);
+    if (result === 'ok') return;
+    setPassword('');
+    setMessage(
+      result === 'denied'
+        ? "Login yoki parol noto'g'ri. 5 marta xato kiritilsa, kirish 15 daqiqaga to'xtaydi."
+        : "Kirib bo'lmadi. Qayta urinib ko'ring."
+    );
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-2 text-left">
+      <input value={login} onChange={(e) => setLogin(e.target.value)} placeholder="Login" autoComplete="username" autoCapitalize="none" spellCheck={false} className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm" />
+      <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Parol" autoComplete="current-password" className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm" />
+      {message && <p className="text-xs text-rose-600" role="alert">{message}</p>}
+      <button type="submit" disabled={busy || !login.trim() || !password} className="w-full px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 disabled:opacity-50">
+        {busy ? 'Tekshirilmoqda...' : 'Kirish'}
+      </button>
+    </form>
+  );
+};
+
+// Opened from the bot's Admin button: Telegram already says who this is, so one tap is enough
+const TelegramButton: React.FC<{ onFailed: (message: string) => void }> = ({ onFailed }) => {
+  const { signInWithTelegram } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const tap = async () => {
+    setBusy(true);
+    const result = await signInWithTelegram();
+    setBusy(false);
+    if (result !== 'ok') onFailed(FAILED[result === 'denied' ? 'denied' : 'error']);
+  };
+  return (
+    <button onClick={tap} disabled={busy} className="w-full px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 disabled:opacity-50">
+      {busy ? 'Tekshirilmoqda...' : 'Telegram hisobim bilan kirish'}
+    </button>
+  );
+};
+
 const SignedOut: React.FC = () => {
-  const { error, signInWithNonce } = useAuth();
+  const { error, inTelegram, signInWithNonce } = useAuth();
   const [nonce, setNonce] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const signIn = useRef(signInWithNonce);
@@ -90,20 +147,26 @@ const SignedOut: React.FC = () => {
           </>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">Telegram orqali kiring. Bot tasdiqlash so'raydi.</p>
-            <button onClick={start} className="w-full px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90">Telegram orqali kirish</button>
+            <p className="text-sm text-muted-foreground">Login va parolingizni kiriting. Ularni sayt egasi beradi.</p>
+            <PasswordForm />
+            <div className="flex items-center gap-3 text-xs text-muted-foreground"><span className="flex-1 border-t border-border" />yoki<span className="flex-1 border-t border-border" /></div>
+            {inTelegram ? (
+              <TelegramButton onFailed={setFailed} />
+            ) : (
+              <button onClick={start} className="w-full px-4 py-2.5 rounded-xl border border-border font-semibold text-sm hover:bg-secondary">Telegram orqali kirish (bot tasdiqlaydi)</button>
+            )}
           </>
         )}
-        <p className="text-xs text-muted-foreground">Parol yo'q. Faqat administratorlar va moderatorlar kira oladi.</p>
+        <p className="text-xs text-muted-foreground">Faqat administratorlar va moderatorlar kira oladi.</p>
       </div>
     </div>
   );
 };
 
 const Shell: React.FC = () => {
-  const { me, signOut } = useAuth();
+  const { me, owner, signOut } = useAuth();
   const isAdmin = me?.role === 'admin';
-  const items = NAV.filter((n) => isAdmin || !n.adminOnly);
+  const items = NAV.filter((n) => (isAdmin || !n.adminOnly) && (owner || !n.ownerOnly));
   const home = isAdmin ? '/' : '/users';
 
   return (
@@ -126,20 +189,23 @@ const Shell: React.FC = () => {
         </div>
       </aside>
       <main className="flex-1 min-w-0 p-4 sm:p-6 max-w-6xl w-full">
-        <Routes>
-          <Route path="/" element={isAdmin ? <DashboardPage /> : <Navigate to={home} replace />} />
-          <Route path="/requests" element={isAdmin ? <RequestsPage /> : <Navigate to={home} replace />} />
-          <Route path="/issues" element={isAdmin ? <IssuesPage /> : <Navigate to={home} replace />} />
-          <Route path="/library" element={isAdmin ? <LibraryPage /> : <Navigate to={home} replace />} />
-          <Route path="/assignments" element={<AssignmentsPage />} />
-          <Route path="/broadcasts" element={isAdmin ? <BroadcastsPage /> : <Navigate to={home} replace />} />
-          <Route path="/groups" element={<GroupsPage />} />
-          <Route path="/groups/:id" element={<GroupDetailPage />} />
-          <Route path="/users" element={<UsersPage />} />
-          <Route path="/settings" element={isAdmin ? <SettingsPage /> : <Navigate to={home} replace />} />
-          <Route path="/audit" element={isAdmin ? <AuditPage /> : <Navigate to={home} replace />} />
-          <Route path="*" element={<Navigate to={home} replace />} />
-        </Routes>
+        <Suspense fallback={<div className="p-8 text-center text-sm text-muted-foreground">Yuklanmoqda...</div>}>
+          <Routes>
+            <Route path="/" element={isAdmin ? <DashboardPage /> : <Navigate to={home} replace />} />
+            <Route path="/requests" element={isAdmin ? <RequestsPage /> : <Navigate to={home} replace />} />
+            <Route path="/issues" element={isAdmin ? <IssuesPage /> : <Navigate to={home} replace />} />
+            <Route path="/library" element={isAdmin ? <LibraryPage /> : <Navigate to={home} replace />} />
+            <Route path="/assignments" element={<AssignmentsPage />} />
+            <Route path="/broadcasts" element={isAdmin ? <BroadcastsPage /> : <Navigate to={home} replace />} />
+            <Route path="/groups" element={<GroupsPage />} />
+            <Route path="/groups/:id" element={<GroupDetailPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/accounts" element={owner ? <AccountsPage /> : <Navigate to={home} replace />} />
+            <Route path="/settings" element={isAdmin ? <SettingsPage /> : <Navigate to={home} replace />} />
+            <Route path="/audit" element={isAdmin ? <AuditPage /> : <Navigate to={home} replace />} />
+            <Route path="*" element={<Navigate to={home} replace />} />
+          </Routes>
+        </Suspense>
       </main>
     </div>
   );
@@ -153,7 +219,7 @@ const Gate: React.FC = () => {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <AuthProvider>
         <Gate />
       </AuthProvider>

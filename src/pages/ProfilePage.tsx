@@ -4,7 +4,7 @@ import { toast } from '../components/ui/Toast';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { Language, tr } from '../lib/i18n';
-import { BOT_USERNAME } from '../lib/telegram';
+import { ADMIN_URL, BOT_USERNAME } from '../lib/telegram';
 
 export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
   const { profile, online, updateProfile, isAdmin } = useAuth();
@@ -51,17 +51,19 @@ export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
               <ShieldCheck className="text-amber-500 shrink-0" size={20} />
               <div>
                 <div className="text-sm font-semibold text-foreground">Administrator</div>
-                <div className="text-xs text-muted-foreground">ID: {profile?.telegram_id || 7537966029} (To'liq huquq)</div>
+                <div className="text-xs text-muted-foreground">{profile?.telegram_id ? `ID: ${profile.telegram_id} ` : ''}(To'liq huquq)</div>
               </div>
             </div>
-            <a
-              href="https://tayyorman-admin.vercel.app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
-            >
-              Admin Panel
-            </a>
+            {ADMIN_URL && (
+              <a
+                href={ADMIN_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
+              >
+                Admin Panel
+              </a>
+            )}
           </div>
         </div>
       )}

@@ -3,7 +3,7 @@
 Asosiy qaror: **talaba hech narsa yaratmaydi.** Fan, test va materiallarni faqat admin tayyorlaydi; talaba ularni o'qiydi va kerak bo'lsa adminga so'rov yuboradi. Admin ishlari faqat admin saytda, Mini App esa faqat talaba uchun.
 
 ## Admin sayti (`admin/`, alohida Vercel loyiha)
-- **Kirish:** saytdagi tugma botni ochadi, bot 4 belgili kodni ko'rsatib «Tasdiqlash» tugmasini yuboradi. ID `ADMIN_TELEGRAM_IDS` ichida bo'lsa (admin) yoki moderator bo'lsa kiradi. Tasdiq 5 daqiqa, bir marta ishlaydi (`admin_login_requests`, faqat xesh saqlanadi). Sessiya 8 soat.
+- **Kirish:** sayt faqat adminlar va moderatorlar uchun. Ikki yo'l: (1) botdagi **«Admin» menyu tugmasi** (faqat ularning chatida ko'rinadi, ADMIN_URL siri orqali) saytni Telegram ichida ochadi va Telegram'ning imzolangan ma'lumoti bilan o'zi kiritadi; (2) oddiy brauzerda sayt botni ochadi, bot 4 belgili kodni ko'rsatib «Tasdiqlash» tugmasini yuboradi (tasdiq 5 daqiqa, bir marta, faqat xesh saqlanadi). ID ADMIN_TELEGRAM_IDS ichida bo'lsa (admin) yoki moderator bo'lsa kiradi, boshqalarga sayt ochiladi lekin kirish rad etiladi. Sessiya 8 soat.
 - **Umumiy ko'rinish:** foydalanuvchilar, kunlik faol, voronka (ro'yxatdan o'tdi → ochdi → material oldi → birinchi javob), AI sarfi, qiyin savollar.
 - **So'rovlar:** talabalar so'rovi (fayllari bilan), javob botga boradi, shu fayldan test yoki fan tuzish.
 - **Kutubxona:** test (fayldan AI bilan yoki Word/Hemis matnidan), fan (imtihon savollari va ma'ruza fayllari), tahrirlash, qoralama, nusxalash, kimga ochiq.
