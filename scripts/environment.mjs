@@ -57,3 +57,9 @@ $$);`;
 }
 
 export const webhookUrl = (projectRef) => `https://${projectRef}.supabase.co/functions/v1/telegram-bot`;
+
+// backups/<project>-2026-11-05-1530.sql (minutes included so two backups in a day do not overwrite each other)
+export function backupName(projectRef, date) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${projectRef}-${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}-${p(date.getHours())}${p(date.getMinutes())}.sql`;
+}

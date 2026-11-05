@@ -57,6 +57,7 @@ export function checkIsTelegram(): boolean {
 
 export const isTelegram = checkIsTelegram();
 export const BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT ?? '';
+export const ADMIN_URL = import.meta.env.VITE_ADMIN_URL ?? '';
 
 export function startTelegram(): void {
   if (!webApp) return;

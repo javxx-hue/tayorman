@@ -29,7 +29,7 @@ Qo'lda bajariladigan qismi (hisoblar, tokenlar) va skript bajaradigan qismi ajra
 8. `npm run deploy:functions -- --project <ref>`
 9. `supabase/functions/.env.production.cron.sql` ichidagini SQL Editor'da bir marta bajaring.
 10. `npm run setup:env -- --project <ref> --env supabase/functions/.env.production --webhook` (bot shu loyihaga ulanadi).
-11. `.env.production` (VITE_* qiymatlari) bilan `npm run deploy:app -- --env .env.production`, so'ng `npm run deploy:admin`.
+11. `.env.production` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_TELEGRAM_BOT`, `VITE_ADMIN_URL`) bilan `npm run deploy:app -- --env .env.production`, so'ng `npm run deploy:admin`.
 12. BotFather: Menu Button = production Mini App manzili.
 
 ## Ishga tushirishdan oldingi ro'yxat (haqiqiy talabalar kelishidan oldin)
@@ -42,7 +42,7 @@ Qo'lda bajariladigan qismi (hisoblar, tokenlar) va skript bajaradigan qismi ajra
 - [ ] GitHub'da `main` uchun branch himoyasi: faqat Pull Request orqali, CI o'tishi shart.
 
 **Ma'lumot**
-- [ ] **Zaxira (backup):** Supabase bepul tarifida avtomatik zaxira yo'q. Pullik tarifga o'ting yoki muntazam `npx supabase db dump` (DB paroli bilan) qiling va xavfsiz joyga saqlang. Bepul loyiha bir hafta faolsiz qolsa to'xtatiladi.
+- [ ] **Zaxira (backup):** Supabase bepul tarifida avtomatik zaxira yo'q. Pullik tarifga o'ting yoki haftada bir `npm run backup -- --project <ref>` qiling (Docker ishlab turishi va `npx supabase login` kerak; baza paroli kerak emas). Nusxa `backups/` papkasiga tushadi, git uni ko'rmaydi; ichida shaxsiy ma'lumot bor, xavfsiz joyga saqlang. Storage'dagi fayllar (so'rovlarga ilova qilinganlari) bu nusxaga kirmaydi. Bepul loyiha bir hafta faolsiz qolsa to'xtatiladi.
 - [ ] Migratsiyalar tartib bilan bajarilgan (`0001`…`0006`).
 - [ ] Ikkala cron ishi mavjud: `select jobname, schedule from cron.job;`
 

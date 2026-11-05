@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 // @ts-expect-error plain JavaScript module shared with the setup script
-import { GENERATED, REQUIRED, applyEnv, cronSql, fillSecrets, missingKeys, parseEnv, webhookUrl } from './environment.mjs';
+import { GENERATED, REQUIRED, applyEnv, backupName, cronSql, fillSecrets, missingKeys, parseEnv, webhookUrl } from './environment.mjs';
 
 describe('parseEnv', () => {
   it('reads values and skips comments and blanks', () => {
@@ -51,5 +51,11 @@ describe('cron and webhook', () => {
 
   it('points the webhook at the bot function', () => {
     expect(webhookUrl('abc123')).toBe('https://abc123.supabase.co/functions/v1/telegram-bot');
+  });
+});
+
+describe('backupName', () => {
+  it('names the file after the project and the minute', () => {
+    expect(backupName('abc123', new Date(2026, 10, 5, 9, 7))).toBe('abc123-2026-11-05-0907.sql');
   });
 });

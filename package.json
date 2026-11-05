@@ -14,7 +14,8 @@
     "deploy:functions": "node scripts/deploy-functions.mjs",
     "deploy:app": "node scripts/deploy-app.mjs",
     "deploy:admin": "node scripts/deploy-admin.mjs",
-    "setup:env": "node scripts/setup-environment.mjs"
+    "setup:env": "node scripts/setup-environment.mjs",
+    "backup": "node scripts/backup-db.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
