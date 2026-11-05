@@ -1,5 +1,7 @@
 # Muhitlar va ishga tushirishdan oldingi ro'yxat
 
+Production botni haqiqiy talabalarga ochish uchun tartibli qadamlar: [LAUNCH.md](LAUNCH.md).
+
 ## Ikki muhit
 
 | | Development | Production |
