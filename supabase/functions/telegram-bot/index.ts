@@ -17,7 +17,8 @@ import { attachmentPath, MAX_FILE_BYTES, mimeForName, type Attachment } from '..
 import { nonceCode, nonceFromStart, nonceHash } from '../_shared/loginNonce.ts';
 import { isStaffRole, menuButtonFor } from '../_shared/staff.ts';
 import { planLines } from '../_shared/plan.ts';
-import { bytesToBase64, callGemini, consumeQuota, QuotaError } from '../_shared/gemini.ts';
+import { bytesToBase64, callGemini, consumeQuota, GeminiRejected, QuotaError, refundQuota } from '../_shared/gemini.ts';
+import { sameSecret } from '../_shared/secrets.ts';
 
 class BlockedError extends Error {}
 
@@ -240,8 +241,10 @@ async function onVoice(chatId: number, user: TelegramUser, fileId: string, mime:
   if (!row || !question) return void (await sendMessage(chatId, t('expired', lang)));
 
   await sendMessage(chatId, t('grading', lang));
+  let consumed = false;
   try {
     await consumeQuota(profile.id);
+    consumed = true;
     const audio = await downloadFile(fileId);
     if (!audio) throw new Error('download failed');
 
@@ -291,13 +294,15 @@ Return strict JSON: { "transcript": "...", "score": 0-100 integer, "feedback": "
     });
   } catch (e) {
     console.error('voice failed', e);
+    // The student did nothing wrong when it was our download or the AI that failed: the try is not counted
+    if (consumed && !(e instanceof GeminiRejected)) await refundQuota(profile.id).catch((err) => console.warn('refund failed', err));
     await sendMessage(chatId, e instanceof QuotaError ? t('limit', lang) : t('failed', lang));
   }
 }
 
 // ---------------------------------------------------------------- entry
 Deno.serve(async (req) => {
-  if (req.headers.get('x-telegram-bot-api-secret-token') !== Deno.env.get('TELEGRAM_WEBHOOK_SECRET')) {
+  if (!sameSecret(req.headers.get('x-telegram-bot-api-secret-token'), Deno.env.get('TELEGRAM_WEBHOOK_SECRET'))) {
     return new Response('forbidden', { status: 403 });
   }
   const update = await req.json().catch(() => null);

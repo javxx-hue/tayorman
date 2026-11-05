@@ -5,9 +5,10 @@
 // Secrets: TELEGRAM_BOT_TOKEN, CRON_SECRET, APP_URL
 import { admin } from '../_shared/admin.ts';
 import { deliverBroadcast } from '../_shared/broadcast.ts';
+import { sameSecret } from '../_shared/secrets.ts';
 
 Deno.serve(async (req) => {
-  if (req.headers.get('x-cron-secret') !== Deno.env.get('CRON_SECRET')) {
+  if (!sameSecret(req.headers.get('x-cron-secret'), Deno.env.get('CRON_SECRET'))) {
     return new Response('forbidden', { status: 403 });
   }
 

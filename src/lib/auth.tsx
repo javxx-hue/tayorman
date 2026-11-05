@@ -6,8 +6,6 @@ import { supabase } from './supabase';
 import { webApp, isTelegram, checkIsTelegram } from './telegram';
 import { Language } from './i18n';
 
-const ADMIN_IDS = [7537966029, 7629355296];
-
 export interface Profile {
   id: string;
   telegram_id: number;
@@ -44,15 +42,14 @@ function buildFallbackProfile(): Profile {
   const u = webApp?.initDataUnsafe?.user;
   const userLang = (u?.language_code === 'ru' ? 'ru' : 'uz') as Language;
   const telegramId = u?.id ? Number(u.id) : 0;
-  const isAdmin = ADMIN_IDS.includes(telegramId);
   return {
     id: u?.id ? String(u.id) : 'local-user',
     telegram_id: telegramId,
-    first_name: u?.first_name || (isAdmin ? 'Admin' : 'Talaba'),
+    first_name: u?.first_name || 'Talaba',
     username: u?.username || null,
     language: userLang,
     university: 'samdu',
-    role: isAdmin ? 'admin' : 'student',
+    role: 'student', // the server alone decides who is an admin (ADMIN_TELEGRAM_IDS)
     reminders_enabled: true,
   };
 }
@@ -129,8 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [profile]
   );
 
-  const isUserAdmin =
-    profile?.role === 'admin' || (profile?.telegram_id ? ADMIN_IDS.includes(profile.telegram_id) : false);
+  const isUserAdmin = profile?.role === 'admin';
 
   const value: AuthContextValue = {
     status,

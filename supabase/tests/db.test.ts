@@ -72,6 +72,7 @@ beforeAll(async () => {
   await db.exec(sql('0006_performance_indexes.sql'));
   await db.exec(sql('0007_admin_credentials.sql'));
   await db.exec(sql('0008_blocked_and_uploads.sql'));
+  await db.exec(sql('0009_quota_refund_and_helpers.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');
@@ -188,6 +189,52 @@ describe('blocked users', () => {
     const guarded = await rows(`select tablename from pg_policies where schemaname = 'public' and policyname = 'blocked users: no access' and permissive = 'RESTRICTIVE'`);
     const open = tables.map((t) => t.relname).filter((t) => !server.includes(t));
     expect(guarded.map((g) => g.tablename).sort()).toEqual(open);
+  });
+});
+
+describe('AI quota refund', () => {
+  const today = `(now() at time zone 'Asia/Tashkent')::date`;
+  const count = async () => Number((await rows(`select count from public.ai_usage where user_id = '${U.s1}' and day = ${today}`))[0]?.count ?? 0);
+
+  it('gives back one counted try, never below zero', async () => {
+    await db.exec(`delete from public.ai_usage where user_id = '${U.s1}'`);
+    await db.exec(`select public.consume_ai_quota_auto('${U.s1}'); select public.consume_ai_quota_auto('${U.s1}')`);
+    expect(await count()).toBe(2);
+    await db.exec(`select public.refund_ai_quota('${U.s1}')`);
+    expect(await count()).toBe(1);
+    await db.exec(`select public.refund_ai_quota('${U.s1}'); select public.refund_ai_quota('${U.s1}'); select public.refund_ai_quota('${U.s1}')`);
+    expect(await count()).toBe(0);
+    await db.exec(`select public.refund_ai_quota('${U.s2}')`); // nothing counted today: nothing happens
+    await db.exec(`delete from public.ai_usage where user_id = '${U.s1}'`);
+  });
+
+  it('can be called by the server only', async () => {
+    for (const uid of [U.admin, U.s1, null]) {
+      await expect(as(uid, () => db.exec(`select public.refund_ai_quota('${U.s1}')`))).rejects.toThrow(/permission denied/i);
+    }
+  });
+});
+
+describe('policy helper functions', () => {
+  const can = async (role: string, fn: string) => (await rows(`select has_function_privilege('${role}', '${fn}', 'execute') as ok`))[0].ok;
+
+  it('are closed to visitors who are not signed in, and open to signed-in users and the server', async () => {
+    for (const fn of ['public.is_admin()', 'public.is_staff()', 'public.moderates(uuid)', 'public.moderates_all(uuid[])', 'public.moderates_assignment(uuid)', 'public.moderates_user(uuid)', 'public.in_audience(boolean, uuid[])']) {
+      expect(await can('anon', fn)).toBe(false);
+      expect(await can('authenticated', fn)).toBe(true);
+      expect(await can('service_role', fn)).toBe(true);
+    }
+  });
+
+  it('trigger functions are not callable by users at all', async () => {
+    for (const fn of ['public.audit_row()', 'public.limit_daily_inserts()']) {
+      for (const role of ['anon', 'authenticated']) expect(await can(role, fn)).toBe(false);
+    }
+  });
+
+  it('the policies still work for signed-in users after the change', async () => {
+    expect(await as(U.admin, () => rows('select public.is_admin() as a'))).toEqual([{ a: true }]);
+    expect((await as(U.s1, () => rows('select 1 from public.library_items'))).length).toBe(1);
   });
 });
 

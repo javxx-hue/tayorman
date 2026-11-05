@@ -5,6 +5,7 @@
 import { admin } from '../_shared/admin.ts';
 import { sendMessage, openAppButton } from '../_shared/telegram.ts';
 import { planLines } from '../_shared/plan.ts';
+import { sameSecret } from '../_shared/secrets.ts';
 import { deadlineLines, isForStudent, REMINDER_WINDOW_HOURS, type DueAssignment } from '../_shared/deadlines.ts';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -35,7 +36,7 @@ async function loadDeadlines(now: number) {
 }
 
 Deno.serve(async (req) => {
-  if (req.headers.get('x-cron-secret') !== Deno.env.get('CRON_SECRET')) {
+  if (!sameSecret(req.headers.get('x-cron-secret'), Deno.env.get('CRON_SECRET'))) {
     return new Response('forbidden', { status: 403 });
   }
 

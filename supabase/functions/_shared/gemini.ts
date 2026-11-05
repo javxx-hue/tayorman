@@ -4,6 +4,10 @@ import { ATTEMPT_TIMEOUT_MS, Fatal, HEDGE_DELAY_MS, modelChain, raceStaggered, s
 export type Part = { text: string } | { inline_data: { mime_type: string; data: string } };
 
 export class QuotaError extends Error {}
+// The AI refused the request itself (bad input, bad key): trying again would fail the same way
+export class GeminiRejected extends Error {}
+// None of the models could answer in time or at all: not the student's doing
+export class GeminiUnavailable extends Error {}
 
 // Counts one AI request against the user's daily limit (set in the admin panel; blocked users never pass)
 export async function consumeQuota(userId: string): Promise<void> {
@@ -16,6 +20,12 @@ interface Options {
   json?: boolean;
   temperature?: number;
   tier?: Tier; // 'fast': grading and reading speech or handwriting; 'smart' (default): writing tests and answers
+}
+
+// Gives back the try that consumeQuota counted, when the failure was ours and not the student's
+export async function refundQuota(userId: string): Promise<void> {
+  const { error } = await admin.rpc('refund_ai_quota', { p_user: userId });
+  if (error) throw error;
 }
 
 // Asks several models, staggered (see geminiModels.ts): the first good answer wins. One request is counted
@@ -53,7 +63,8 @@ export async function callGemini(parts: Part[], opts: Options = {}): Promise<str
   try {
     return await raceStaggered(modelChain(Deno.env.get('GEMINI_MODEL'), opts.tier).map(attempt), HEDGE_DELAY_MS);
   } catch (e) {
-    throw new Error(`Gemini failed: ${e instanceof Error ? e.message : String(e)}`);
+    const message = `Gemini failed: ${e instanceof Error ? e.message : String(e)}`;
+    throw e instanceof Fatal ? new GeminiRejected(message) : new GeminiUnavailable(message);
   }
 }
 

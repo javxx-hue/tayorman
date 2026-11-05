@@ -3,7 +3,7 @@
 // Secrets: GEMINI_API_KEY, GEMINI_MODEL, AI_DAILY_LIMIT, ALLOWED_ORIGINS
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { requireUser } from '../_shared/admin.ts';
-import { callGemini, consumeQuota, QuotaError, type Part } from '../_shared/gemini.ts';
+import { callGemini, consumeQuota, GeminiUnavailable, QuotaError, refundQuota, type Part } from '../_shared/gemini.ts';
 import { isAllowedInlineMime } from '../_shared/geminiParts.ts';
 
 const MAX_BODY_BYTES = 8 * 1024 * 1024; // photos and voice answers are sent inline as base64
@@ -36,6 +36,8 @@ Deno.serve(async (req) => {
   } catch (e) {
     if (e instanceof QuotaError) return json(req, { error: 'Daily AI limit reached' }, 429);
     console.error('gemini failed', e);
+    // No model could answer: that is not the student's try, so it is not counted
+    if (e instanceof GeminiUnavailable) await refundQuota(user.id).catch((err) => console.warn('refund failed', err));
     return json(req, { error: 'AI request failed' }, 502);
   }
 });

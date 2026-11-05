@@ -24,7 +24,7 @@ Qo'lda bajariladigan qismi (hisoblar, tokenlar) va skript bajaradigan qismi ajra
 **Skript bilan:**
 4. `supabase/functions/.env.example` ni `supabase/functions/.env.production` ga nusxalang. Unga `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`, `ADMIN_TELEGRAM_IDS`, `OWNER_TELEGRAM_IDS` (ega, adminlardan biri), `APP_URL`, `ADMIN_URL`, `ALLOWED_ORIGINS` ni yozing (`GEMINI_MODEL` bo'sh qolsa, standart ishlaydi).
 5. `npm run setup:env -- --project <ref> --env supabase/functions/.env.production`: bo'sh `AUTH_SECRET`, `CRON_SECRET`, `TELEGRAM_WEBHOOK_SECRET` ga tasodifiy qiymat yozadi (borini o'zgartirmaydi), yana nima yetishmayotganini aytadi va cron SQL faylini yaratadi. Sirlar ekranga chiqmaydi.
-6. Migratsiyalar `0001`…`0008` tartib bilan (README, 2-bosqich).
+6. Migratsiyalar `0001`…`0009` tartib bilan (README, 2-bosqich).
 7. `npx supabase secrets set --env-file supabase/functions/.env.production --project-ref <ref>`
 8. `npm run deploy:functions -- --project <ref>`
 9. `supabase/functions/.env.production.cron.sql` ichidagini SQL Editor'da bir marta bajaring.
@@ -44,7 +44,7 @@ Qo'lda bajariladigan qismi (hisoblar, tokenlar) va skript bajaradigan qismi ajra
 
 **Ma'lumot**
 - [ ] **Zaxira (backup):** Supabase bepul tarifida avtomatik zaxira yo'q. Pullik tarifga o'ting yoki haftada bir `npm run backup -- --project <ref>` qiling (Docker ishlab turishi va `npx supabase login` kerak; baza paroli kerak emas). Nusxa `backups/` papkasiga tushadi, git uni ko'rmaydi; ichida shaxsiy ma'lumot bor, xavfsiz joyga saqlang. Storage'dagi fayllar (so'rovlarga ilova qilinganlari) bu nusxaga kirmaydi. Bepul loyiha bir hafta faolsiz qolsa to'xtatiladi.
-- [ ] Migratsiyalar tartib bilan bajarilgan (`0001`…`0008`).
+- [ ] Migratsiyalar tartib bilan bajarilgan (`0001`…`0009`).
 - [ ] Ikkala cron ishi mavjud: `select jobname, schedule from cron.job;`
 
 **Tarif va cheklovlar**
