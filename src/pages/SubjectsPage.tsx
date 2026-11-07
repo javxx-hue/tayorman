@@ -53,8 +53,8 @@ export const SubjectsPage: React.FC<SubjectsPageProps> = ({ subjects, studySets,
           <h3 className="text-lg font-serif font-bold text-foreground mb-1">{isUz ? 'Hali fan biriktirilmagan' : 'Предметов пока нет'}</h3>
           <p className="text-sm text-muted-foreground mb-5 max-w-md mx-auto">
             {isUz
-              ? 'Administrator fanlarni sizga biriktirganda ular shu yerda paydo bo\'ladi. Kerakli fanni so\'rab yozing.'
-              : 'Когда администратор назначит вам предметы, они появятся здесь. Напишите, какой предмет нужен.'}
+              ? 'Fanlar guruhingizga biriktiriladi. Guruhingizning taklif havolasi bo\'lsa, botni shu havola orqali oching: guruh fanlari o\'zi keladi. Havola bo\'lmasa, kerakli fanni so\'rab yozing.'
+              : 'Предметы назначаются вашей группе. Если у вас есть пригласительная ссылка группы, откройте бота по ней: предметы группы появятся сами. Если ссылки нет, напишите, какой предмет нужен.'}
           </p>
           <Button variant="primary" size="md" onClick={() => navigate('/request')}>
             {isUz ? 'Fan so\'rash' : 'Запросить предмет'}
