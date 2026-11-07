@@ -43,7 +43,7 @@ describe('library delivery to students', () => {
     const item = subjectItem('v1', [q('a'), q('b')]);
     expect(deliver(item, [], [])).toBe('new');
     expect(saved.subjects).toHaveLength(1);
-    expect(saved.subjects[0]).toMatchObject({ id: 'sub-new', libraryId: 'lib-1', libraryUpdatedAt: 'v1' });
+    expect(saved.subjects[0]).toMatchObject({ id: 'sub-new', libraryId: 'lib-1', libraryUpdatedAt: 'v1', librarySourceId: 's1' });
     // The same version again does nothing
     expect(deliver(item, saved.subjects, [])).toBeNull();
     expect(saved.subjects).toHaveLength(1);

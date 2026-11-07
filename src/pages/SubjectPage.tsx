@@ -4,7 +4,7 @@ import { ArrowLeft, CalendarDays, Play } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Language } from '../lib/i18n';
 import { StudySet, Subject } from '../types';
-import { planSubject, questionScore, scoreToGrade, subjectReadiness, daysUntil } from '../lib/prep';
+import { planSubject, questionScore, setsOfSubject, scoreToGrade, subjectReadiness, daysUntil } from '../lib/prep';
 import { ExamQuestion } from '../types';
 import { FORMAT_LABELS, daysLeftLabel, readinessColor } from './SubjectsPage';
 
@@ -43,7 +43,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
   const days = daysUntil(subject.examDate);
   const plan = planSubject(subject);
   const readiness = subjectReadiness(subject, studySets);
-  const ownSets = studySets.filter((s) => s.subjectId === subject.id);
+  const ownSets = setsOfSubject(subject, studySets);
 
   // Opens a question with the order to go through them in
   const practise = (ids: string[], first = ids[0]) => navigate(`/subjects/${subject.id}/q/${first}`, { state: { queue: ids } });

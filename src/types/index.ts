@@ -121,4 +121,5 @@ export interface Subject {
   questions: ExamQuestion[];
   libraryId?: string; // copied from the admin library
   libraryUpdatedAt?: string; // library version this copy was last refreshed from
+  librarySourceId?: string; // id the admin's subject had; sets published with it name it in their subjectId
 }

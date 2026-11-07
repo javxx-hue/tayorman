@@ -90,6 +90,7 @@ export function deliver(item: LibraryItem, subjects: Subject[], sets: StudySet[]
       id: own?.id ?? newId('sub'),
       libraryId: item.id,
       libraryUpdatedAt: item.updated_at,
+      librarySourceId: incoming.id,
       createdAt: own?.createdAt ?? now,
       updatedAt: now,
       materials: fitMaterials(incoming.materials ?? []),
