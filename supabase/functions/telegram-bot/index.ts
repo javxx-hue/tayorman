@@ -8,7 +8,7 @@
 //  voice message      graded as an answer to the question chosen in the Mini App
 // Deploy with --no-verify-jwt; requests are checked against TELEGRAM_WEBHOOK_SECRET.
 // Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, APP_URL, AUTH_SECRET,
-//          ADMIN_TELEGRAM_IDS, GEMINI_API_KEY, AI_DAILY_LIMIT
+//          ADMIN_TELEGRAM_IDS, GEMINI_API_KEY
 import { admin } from '../_shared/admin.ts';
 import { ensureProfile, joinCommunity, type TelegramUser } from '../_shared/users.ts';
 import { tg, sendMessage, openAppButton, downloadFile } from '../_shared/telegram.ts';
