@@ -21,7 +21,7 @@ Qadamlarda: nima qilish, nega, qanday tekshirish.
 4. **Zaxira tartibi.** Haftada bir `npm run backup`, nusxani fleshkaga ko'chirish. Talabalar ko'payganda Supabase Pro (kunlik zaxira).
 5. **Tariflar.** Vercel Hobby tijoriy foydalanishga mo'ljallanmagan: daromad boshlanganda Pro. Supabase bepul tarifida loyiha uzoq faolsiz qolsa to'xtatiladi; faol foydalanishda bu xavf yo'q.
 6. **Qonuniy tomon.** Supabase Parijda (eu-west-3). 2026 yil o'zgarishlaridan keyin O'zbekistonda saqlash majburiyligi faqat biometrik/genetik va telekom ma'lumotlariga tegishli; ilova ovoz yoki rasmni saqlamaydi. Baribir joriy holatni huquqshunos yoki Lex.uz orqali tekshiring.
-7. **Sinov muhiti (tavsiya).** Hozir sinov va haqiqiy talabalar bitta bazada. Yangi funksiyalar talabalarga ta'sir qilmasligi uchun alohida bepul Supabase loyihasi va alohida bot oching (`npm run setup:env`, [ENVIRONMENTS.md](ENVIRONMENTS.md)).
+7. **Sinov muhiti: ochilgan.** `@tayyormantestbot`, Supabase `tayorman-test`, `tayyorman-test.vercel.app`. Yangi funksiyalar avval shu yerda sinaladi ([ENVIRONMENTS.md](ENVIRONMENTS.md), «Sinov muhitiga joylash»).
 
 ### Bosqichma-bosqich e'lon
 1. Avval 5–10 ta tanish talabaga bering, 1–2 kun kuzating: xatolar, sekinlik, Gemini limiti.

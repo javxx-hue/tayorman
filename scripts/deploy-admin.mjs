@@ -5,6 +5,7 @@
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { adminDeployDir } from './environment.mjs';
 
 const args = process.argv.slice(2);
 const envFlag = args.indexOf('--env');
@@ -12,6 +13,7 @@ const file = envFlag >= 0 ? args[envFlag + 1] : '.env';
 
 const projFlag = args.indexOf('--project');
 const projectName = projFlag >= 0 ? args[projFlag + 1] : 'tayyorman-admin';
+const deployDir = adminDeployDir(projFlag >= 0 ? projectName : undefined);
 
 let extraEnv = {};
 if (existsSync(file)) {
@@ -31,7 +33,7 @@ const run = (cmd, cmdArgs, cwd, env = process.env) => {
 // Vercel serves the admin site at the root of its own domain (the own-server build uses /admin/, see vite.admin.config.ts)
 run('npm', ['run', 'build:admin'], undefined, { ...process.env, ...extraEnv, ADMIN_BASE: '/' });
 
-const target = '.admin-deploy';
+const target = deployDir;
 mkdirSync(target, { recursive: true });
 for (const entry of readdirSync(target)) if (entry !== '.vercel') rmSync(join(target, entry), { recursive: true, force: true });
 cpSync('dist-admin', target, { recursive: true });

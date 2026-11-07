@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 // @ts-expect-error plain JavaScript module shared with the setup script
-import { GENERATED, REQUIRED, adminLoginVersion, applyEnv, backendUrl, backupName, classifyFunction, cronSql, fillSecrets, missingKeys, parseEnv, webhookUrl, webhookVerdict } from './environment.mjs';
+import { GENERATED, REQUIRED, adminDeployDir, adminLoginVersion, applyEnv, backendUrl, backupName, classifyFunction, cronSql, fillSecrets, missingKeys, parseEnv, parseProjectId, webhookUrl, webhookVerdict } from './environment.mjs';
 
 describe('parseEnv', () => {
   it('reads values and skips comments and blanks', () => {
@@ -84,5 +84,18 @@ describe('environment check verdicts', () => {
     expect(webhookVerdict({ url: '' }, want).text).toContain('bot.mjs');
     expect(webhookVerdict({ url: 'https://other/fn' }, want).ok).toBe(false);
     expect(webhookVerdict({ url: want, last_error_message: 'Wrong response' }, want).text).toContain('Wrong response');
+  });
+});
+
+describe('vercel helpers', () => {
+  it('reads the project id from the inspect output', () => {
+    const out = '> Found Project javoxx/tayyorman-test\n\n  General\n\n    ID\t\t\t\tprj_qCBPeAQNA2TwOF1PcTJD9w8CpHBd\n    Name\t\t\ttayyorman-test\n';
+    expect(parseProjectId(out)).toBe('prj_qCBPeAQNA2TwOF1PcTJD9w8CpHBd');
+    expect(parseProjectId('no id here')).toBeNull();
+  });
+
+  it('keeps a separate admin deploy folder per project', () => {
+    expect(adminDeployDir(undefined)).toBe('.admin-deploy');
+    expect(adminDeployDir('tayyorman-admin-test')).toBe('.admin-deploy-tayyorman-admin-test');
   });
 });

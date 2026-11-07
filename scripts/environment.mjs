@@ -87,3 +87,12 @@ export function webhookVerdict(info, expectedUrl) {
   if (info.last_error_message) return { ok: false, text: `set, but Telegram reports: ${info.last_error_message}` };
   return { ok: true, text: `set${info.pending_update_count ? `, ${info.pending_update_count} updates waiting` : ''}` };
 }
+
+// "ID    prj_xxxx" out of `vercel project inspect <name>`
+export function parseProjectId(text) {
+  return text.match(/\bID\s+(prj_[A-Za-z0-9]+)/)?.[1] ?? null;
+}
+
+// Each Vercel project gets its own folder for the admin site's deploy link, so deploying to a test project never
+// replaces the link of the real one
+export const adminDeployDir = (projectName) => (projectName ? `.admin-deploy-${projectName}` : '.admin-deploy');
