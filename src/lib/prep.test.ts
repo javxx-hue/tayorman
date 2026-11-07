@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { parseQuestionList, planSubject, scoreToGrade, subjectReadiness, daysUntil, todayOverview } from './prep';
+import { parseQuestionList, planSubject, scoreToGrade, setsOfSubject, subjectReadiness, daysUntil, todayOverview } from './prep';
 import { buildMaterialContext, fitMaterials, officeXmlToText } from './materials';
 import { ExamQuestion, Subject, StudySet } from '../types';
 
@@ -94,6 +94,38 @@ describe('subjectReadiness', () => {
 
   it('is 0 with nothing done yet', () => {
     expect(subjectReadiness(subject('2026-12-01', []), [])).toBe(0);
+  });
+});
+
+describe('setsOfSubject', () => {
+  const set = (over: Partial<StudySet>) => ({ type: 'quiz', ...over }) as StudySet;
+
+  it('finds a student\'s own sets by the subject\'s local id', () => {
+    expect(setsOfSubject(subject('2026-12-01', []), [set({ id: 'a', subjectId: 'sub1' }), set({ id: 'b', subjectId: 'other' })]).map((s) => s.id)).toEqual(['a']);
+  });
+
+  it('finds sets from the library through the admin\'s subject id the delivered subject remembers', () => {
+    const s = { ...subject('2026-12-01', []), id: 'sub-local', libraryId: 'lib-1', librarySourceId: 'sub-lib-tarmoq' };
+    const sets = [
+      set({ id: 'quiz', libraryId: 'lib-2', subjectId: 'sub-lib-tarmoq' }),
+      set({ id: 'cards', libraryId: 'lib-3', subjectId: 'sub-lib-tarmoq' }),
+      set({ id: 'other-subject', libraryId: 'lib-4', subjectId: 'sub-lib-baza' }),
+      set({ id: 'loose', libraryId: 'lib-5' }),
+    ];
+    expect(setsOfSubject(s, sets).map((x) => x.id)).toEqual(['quiz', 'cards']);
+  });
+
+  it('does not match when the subject has no library id, or the set did not come from the library', () => {
+    const noSource = subject('2026-12-01', []);
+    expect(setsOfSubject(noSource, [set({ id: 'x', libraryId: 'lib-2', subjectId: 'undefined' })])).toEqual([]);
+    const withSource = { ...subject('2026-12-01', []), librarySourceId: 'sub-lib-x' };
+    expect(setsOfSubject(withSource, [set({ id: 'y', subjectId: 'sub-lib-x' })])).toEqual([]);
+  });
+
+  it('counts library quizzes toward readiness', () => {
+    const s = { ...subject('2026-12-01', [q('a', 100)]), id: 'sub-local', librarySourceId: 'sub-lib-x' };
+    const quiz = set({ id: 'z', libraryId: 'lib-9', subjectId: 'sub-lib-x', lastScore: 50 });
+    expect(subjectReadiness(s, [quiz])).toBe(Math.round((100 * 3 + 50) / 4));
   });
 });
 

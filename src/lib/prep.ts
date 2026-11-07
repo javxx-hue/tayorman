@@ -132,9 +132,17 @@ export function questionScore(q: ExamQuestion): number {
   return q.attempts.length ? q.attempts[q.attempts.length - 1].score : 0;
 }
 
+// The tests and cards that belong to a subject. A student's own sets name the subject by its local id;
+// sets that came from the library name the admin's subject id, which the delivered subject keeps as librarySourceId.
+export function setsOfSubject(subject: Subject, sets: StudySet[]): StudySet[] {
+  return sets.filter(
+    (s) => s.subjectId === subject.id || (!!s.libraryId && !!subject.librarySourceId && s.subjectId === subject.librarySourceId)
+  );
+}
+
 // 0-100. Question list counts most; quizzes and flashcards of the subject fill in
 export function subjectReadiness(subject: Subject, sets: StudySet[]): number {
-  const own = sets.filter((s) => s.subjectId === subject.id);
+  const own = setsOfSubject(subject, sets);
   const parts: { value: number; weight: number }[] = [];
 
   if (subject.questions.length) {
