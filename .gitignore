@@ -14,3 +14,4 @@ dist-admin
 .admin-deploy
 
 backups
+.admin-deploy-*

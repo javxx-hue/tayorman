@@ -6,13 +6,28 @@ Botni haqiqiy talabalarga ochish uchun tartibli qadamlar: [LAUNCH.md](LAUNCH.md)
 
 Qaror (2026-11-06): talabalar uchun **asosiy muhit bizniki**. Sanjarning serveri qo'shimcha variant (kerak bo'lganda o'tiladi).
 
-| | Asosiy (hozir, bizniki) | Sinov (tavsiya, hali ochilmagan) | Qo'shimcha: Sanjarning serveri |
+| | Asosiy (talabalar, bizniki) | Sinov (yangi funksiyalar) | Qo'shimcha: Sanjarning serveri |
 |---|---|---|---|
-| Bot | `@tayormanbot` | alohida bot | `@sessiyagatayyorlanbot` |
-| Supabase | `tayorman` (ref `ysibxpifzylaqtqyykij`), hosted | alohida bepul loyiha | o'z serveri, self-hosted |
-| Saytlar | Vercel: `tayyorman-eight`, `tayyorman-admin` | alohida | `st.uzbek-talim.uz`, `/admin/` |
-| Sirlar | `supabase/functions/.env` | alohida to'plam | Sanjarning serverida |
+| Bot | `@tayormanbot` | `@tayyormantestbot` | `@sessiyagatayyorlanbot` |
+| Supabase | `tayorman` (ref `ysibxpifzylaqtqyykij`), hosted | `tayorman-test` (ref `nbgyiqipwtblqvgqqjre`), hosted | o'z serveri, self-hosted |
+| Saytlar | Vercel: `tayyorman-eight.vercel.app`, `tayyorman-admin.vercel.app` | Vercel: `tayyorman-test.vercel.app`, `tayyorman-admin-test.vercel.app` | `st.uzbek-talim.uz`, `/admin/` |
+| Sirlar | `supabase/functions/.env` | `supabase/functions/.env.test`, `.env.testbot` (frontend) | Sanjarning serverida |
 | Kod | `main` (PR orqali, CI yashil bo'lishi shart) | `feature/*` branchlari | `production` branchi |
+
+### Sinov muhitiga joylash
+Qoida: yangi funksiya **avval sinovda** sinaladi, keyin asosiyga o'tadi. Sinov muhiti haqiqiy talabalarga tegmaydi.
+```bash
+# server funksiyalari
+npm run deploy:functions -- --project nbgyiqipwtblqvgqqjre
+# migratsiya (har birini alohida)
+npx supabase db query --remote=nbgyiqipwtblqvgqqjre --yes -f supabase/migrations/<fayl>.sql
+# Mini App va admin sayt
+node scripts/deploy-app.mjs --env .env.testbot --project tayyorman-test
+node scripts/deploy-admin.mjs --env .env.testbot --project tayyorman-admin-test
+# holatni tekshirish
+npm run check:env -- --url https://nbgyiqipwtblqvgqqjre.supabase.co --env supabase/functions/.env.test
+```
+Sinov muhitida sirlar va bazaning boshqa muhitlarga aloqasi yo'q. Gemini kaliti hozircha asosiy bilan bir xil (sinov uchun yetadi).
 
 Muhitlar **hech narsani bo'lishmaydi**: bir muhitning tokeni, kaliti yoki bazasi ikkinchisida ishlatilmaydi. Bu tasodifan haqiqiy foydalanuvchilarga xabar yuborish yoki ularning ma'lumotini buzishdan saqlaydi.
 
