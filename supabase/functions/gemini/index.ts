@@ -1,6 +1,6 @@
 // Gemini proxy for the Mini App: the API key stays on the server and each
-// student has a daily limit (AI_DAILY_LIMIT, default 30).
-// Secrets: GEMINI_API_KEY, GEMINI_MODEL, AI_DAILY_LIMIT, ALLOWED_ORIGINS
+// student has a daily limit (set in the admin site: personal > group > everyone, default 30).
+// Secrets: GEMINI_API_KEY, GEMINI_MODEL, ALLOWED_ORIGINS
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { requireUser } from '../_shared/admin.ts';
 import { callGemini, consumeQuota, GeminiUnavailable, QuotaError, refundQuota, type Part } from '../_shared/gemini.ts';
