@@ -108,9 +108,46 @@ export async function sessionFor(tg: TelegramUser) {
   return data.session;
 }
 
-export async function joinCommunity(userId: string, inviteCode: string): Promise<string | null> {
-  const { data: community } = await admin.from('communities').select('id, name').eq('invite_code', inviteCode).eq('invite_enabled', true).maybeSingle();
-  if (!community) return null;
-  await admin.from('community_members').upsert({ community_id: community.id, user_id: userId }, { onConflict: 'community_id,user_id' });
-  return community.name;
+export type JoinResult = { status: 'joined'; name: string } | { status: 'unknown_code' } | { status: 'failed' };
+
+const recordEvent = (userId: string, type: string) =>
+  admin.from('events').insert({ user_id: userId, type }).then(({ error }) => error && console.warn('event not recorded', type, error.message));
+
+// Joins the group behind an invite code. "joined" is only returned when the membership is really in the database:
+// a write that failed quietly used to be reported to the student as a success.
+export async function joinCommunity(userId: string, inviteCode: string): Promise<JoinResult> {
+  const { data: community, error: lookupError } = await admin
+    .from('communities')
+    .select('id, name')
+    .eq('invite_code', inviteCode)
+    .eq('invite_enabled', true)
+    .maybeSingle();
+  if (lookupError) {
+    console.error('group lookup failed', lookupError.message);
+    await recordEvent(userId, 'group_join_failed');
+    return { status: 'failed' };
+  }
+  if (!community) return { status: 'unknown_code' };
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const { error } = await admin.from('community_members').upsert({ community_id: community.id, user_id: userId }, { onConflict: 'community_id,user_id' });
+    if (error) {
+      console.error(`group join failed (try ${attempt})`, error.message);
+      continue;
+    }
+    const { data: row } = await admin.from('community_members').select('user_id').eq('community_id', community.id).eq('user_id', userId).maybeSingle();
+    if (row) {
+      await recordEvent(userId, 'group_joined');
+      return { status: 'joined', name: community.name };
+    }
+    console.error(`group join not found after write (try ${attempt})`);
+  }
+  await recordEvent(userId, 'group_join_failed');
+  return { status: 'failed' };
+}
+
+// Whether this person belongs to any group
+export async function hasGroup(userId: string): Promise<boolean> {
+  const { count } = await admin.from('community_members').select('user_id', { count: 'exact', head: true }).eq('user_id', userId);
+  return (count ?? 0) > 0;
 }
