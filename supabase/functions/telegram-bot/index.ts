@@ -11,7 +11,7 @@
 // Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET, APP_URL, AUTH_SECRET,
 //          ADMIN_TELEGRAM_IDS, GEMINI_API_KEY
 import { admin } from '../_shared/admin.ts';
-import { ensureProfile, hasGroup, joinCommunity, type TelegramUser } from '../_shared/users.ts';
+import { ensureProfile, joinCommunity, type TelegramUser } from '../_shared/users.ts';
 import { tg, sendMessage, openAppButton, downloadFile } from '../_shared/telegram.ts';
 import { submitRequest, TooManyRequests } from '../_shared/requests.ts';
 import { attachmentPath, MAX_FILE_BYTES, mimeForName, type Attachment } from '../_shared/attachments.ts';
@@ -49,10 +49,6 @@ const T = {
   joinFailed: {
     uz: '⚠️ Guruhga qo\'shib bo\'lmadi. Bir ozdan keyin guruh havolasini yana bir marta bosing. Hal bo\'lmasa, shu chatga yozing.',
     ru: '⚠️ Не удалось добавить в группу. Через минуту нажмите ссылку группы ещё раз. Если не получится, напишите сюда.',
-  },
-  noGroup: {
-    uz: 'ℹ️ Fanlaringiz chiqishi uchun botni guruhingizning taklif havolasi orqali oching. Havolani guruh sardoringizdan so\'rang. Havolani bossangiz, guruhga o\'zi qo\'shilasiz.',
-    ru: 'ℹ️ Чтобы появились ваши предметы, откройте бота по пригласительной ссылке вашей группы. Попросите ссылку у старосты. По ней вы сами добавитесь в группу.',
   },
   planTitle: { uz: '📚 Bugungi reja', ru: '📚 План на сегодня' },
   planEmpty: {
@@ -187,9 +183,6 @@ async function runCommand(chatId: number, text: string, user: TelegramUser, prof
       if (code) {
         const joined = await joinCommunity(profile.id, code);
         await sendMessage(chatId, joined.status === 'joined' ? t('joined', lang)(joined.name) : joined.status === 'failed' ? t('joinFailed', lang) : t('badCode', lang));
-      } else if (!isStaffRole(profile.role) && !(await hasGroup(profile.id))) {
-        // Opened the bot without the group's invite link: nothing will show up until they join
-        await sendMessage(chatId, t('noGroup', lang));
       }
       return;
     }

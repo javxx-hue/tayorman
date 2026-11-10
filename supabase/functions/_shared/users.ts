@@ -145,9 +145,3 @@ export async function joinCommunity(userId: string, inviteCode: string): Promise
   await recordEvent(userId, 'group_join_failed');
   return { status: 'failed' };
 }
-
-// Whether this person belongs to any group
-export async function hasGroup(userId: string): Promise<boolean> {
-  const { count } = await admin.from('community_members').select('user_id', { count: 'exact', head: true }).eq('user_id', userId);
-  return (count ?? 0) > 0;
-}
