@@ -6,7 +6,7 @@ import { Language } from '../../lib/i18n';
 import { StudySet, Subject } from '../../types';
 import { setsOfSubject, todayOverview } from '../../lib/prep';
 import { dueQueue } from '../../lib/srs';
-import { DEFAULT_NEW_CARDS, limitNewCards, newCardsToday } from '../../lib/dailyPlan';
+import { currentBudget, DEFAULT_NEW_CARDS, limitNewCards, newCardsToday } from '../../lib/dailyPlan';
 import { DailyStudyRows } from './DailyStudy';
 import { daysLeftLabel } from '../../pages/SubjectsPage';
 
@@ -27,6 +27,7 @@ export const TodayPlan: React.FC<TodayPlanProps> = ({ subjects, studySets, lang 
   const looseDecks = studySets.filter((s) => s.flashcards?.length && !inSubjects.has(s.id));
   const dueCards = looseDecks.reduce((n, s) => n + looseDue(s), 0);
   const firstDueDeck = looseDecks.find((s) => looseDue(s) > 0);
+  const budget = currentBudget(subjects, studySets);
 
   return (
     <section className="mb-6 rounded-3xl border border-primary/25 bg-card p-5 sm:p-6 shadow-soft">
@@ -36,6 +37,12 @@ export const TodayPlan: React.FC<TodayPlanProps> = ({ subjects, studySets, lang 
         </h2>
         <Button variant="ghost" size="sm" onClick={() => navigate('/subjects')}>{isUz ? 'Fanlarim' : 'Мои предметы'}</Button>
       </div>
+      {tasks.length > 0 && (
+        <p className="text-xs text-muted-foreground -mt-2 mb-4">
+          {isUz ? `Bugun ~${budget.planned} daqiqa · kunlik vaqtingiz ${budget.minutes} daqiqa` : `Сегодня ~${budget.planned} мин · ваше время ${budget.minutes} мин`}
+          {budget.wanted > budget.planned + 2 && (isUz ? ". Sig'magani keyingi kunlarga o'tadi." : '. Остальное перейдёт на следующие дни.')}
+        </p>
+      )}
 
       {tasks.length === 0 && dueCards === 0 ? (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -50,10 +57,13 @@ export const TodayPlan: React.FC<TodayPlanProps> = ({ subjects, studySets, lang 
         </div>
       ) : (
         <ul className="space-y-2">
-          {tasks.map(({ subject, plan }) => (
+          {tasks.map(({ subject, plan }) => {
+            const allowed = budget.bySubject[subject.id];
+            const todayQs = allowed ? plan.today.slice(0, allowed.questions) : plan.today;
+            return (
             <li key={subject.id}>
               <button
-                onClick={() => (plan.today[0] ? navigate(`/subjects/${subject.id}/q/${plan.today[0].id}`, { state: { queue: plan.today.map((q) => q.id) } }) : navigate(`/subjects/${subject.id}`))}
+                onClick={() => (todayQs[0] ? navigate(`/subjects/${subject.id}/q/${todayQs[0].id}`, { state: { queue: todayQs.map((q) => q.id) } }) : navigate(`/subjects/${subject.id}`))}
                 className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-secondary/50"
               >
                 <div className="flex-1 min-w-0">
@@ -62,8 +72,8 @@ export const TodayPlan: React.FC<TodayPlanProps> = ({ subjects, studySets, lang 
                     {daysLeftLabel(plan.daysLeft, isUz)} ·{' '}
                     {subject.questions.length === 0
                       ? isUz ? 'savollar kiritilmagan' : 'вопросов пока нет'
-                      : plan.today.length
-                        ? isUz ? `bugun ${plan.today.length} ta savol` : `сегодня вопросов: ${plan.today.length}`
+                      : todayQs.length
+                        ? isUz ? `bugun ${todayQs.length} ta savol` : `сегодня вопросов: ${todayQs.length}`
                         : isUz ? 'hammasi o\'zlashtirilgan' : 'всё выучено'}
                   </div>
                 </div>
@@ -71,11 +81,12 @@ export const TodayPlan: React.FC<TodayPlanProps> = ({ subjects, studySets, lang 
               </button>
               {plan.daysLeft >= 0 && (
                 <div className="mt-2 pl-3 border-l-2 border-border">
-                  <DailyStudyRows subject={subject} studySets={studySets} lang={lang} />
+                  <DailyStudyRows subject={subject} studySets={studySets} lang={lang} allowance={allowed} />
                 </div>
               )}
             </li>
-          ))}
+            );
+          })}
           {dueCards > 0 && firstDueDeck && (
             <li>
               <button

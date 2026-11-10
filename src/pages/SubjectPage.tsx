@@ -8,6 +8,7 @@ import { planSubject, questionScore, setsOfSubject, scoreToGrade, subjectReadine
 import { ExamQuestion } from '../types';
 import { FORMAT_LABELS, daysLeftLabel, readinessColor } from './SubjectsPage';
 import { DailyStudyRows } from '../components/prep/DailyStudy';
+import { currentBudget } from '../lib/dailyPlan';
 import { WeakTopics } from '../components/prep/WeakTopics';
 
 type Tab = 'plan' | 'questions' | 'practice';
@@ -44,6 +45,11 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
 
   const days = daysUntil(subject.examDate);
   const plan = planSubject(subject);
+  // The day's budget for all subjects decides how many of today's questions fit; the rest is there for extra practice
+  const allowed = currentBudget(subjects, studySets).bySubject[subject.id];
+  const todayQs = allowed ? plan.today.slice(0, allowed.questions) : plan.today;
+  const moreQs = [...plan.today.slice(todayQs.length), ...plan.more];
+  const dayTarget = allowed ? plan.doneToday + allowed.questions : plan.perDay;
   const readiness = subjectReadiness(subject, studySets);
   const ownSets = setsOfSubject(subject, studySets);
 
@@ -96,7 +102,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
 
       {tab === 'plan' && (
         <div className="space-y-4">
-          {days >= 0 && <DailyStudyRows subject={subject} studySets={studySets} lang={lang} />}
+          {days >= 0 && <DailyStudyRows subject={subject} studySets={studySets} lang={lang} allowance={allowed} />}
           {subject.questions.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
               <h3 className="font-serif font-bold text-lg text-foreground">{isUz ? 'Savollar tayyorlanmoqda' : 'Вопросы готовятся'}</h3>
@@ -118,22 +124,22 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
                     {plan.isReviewDay
                       ? isUz ? `${plan.remaining} ta savol qoldi: hammasini ko'rib chiqing.` : `Осталось вопросов: ${plan.remaining}. Повторите все.`
                       : isUz
-                        ? `Reja imtihonga ${plan.daysLeft} kun qolganiga qarab tuzilgan: kuniga ~${plan.perDay} ta savol. Bugun: ${plan.doneToday} / ${plan.perDay}.`
-                        : `План рассчитан на оставшиеся дни (${plan.daysLeft}): примерно ${plan.perDay} вопросов в день. Сегодня: ${plan.doneToday} / ${plan.perDay}.`}
+                        ? `Reja imtihonga ${plan.daysLeft} kun qolganiga qarab tuzilgan: kuniga ~${dayTarget} ta savol. Bugun: ${plan.doneToday} / ${dayTarget}.`
+                        : `План рассчитан на оставшиеся дни (${plan.daysLeft}): примерно ${dayTarget} вопросов в день. Сегодня: ${plan.doneToday} / ${dayTarget}.`}
                   </p>
                 </div>
-                {plan.today.length > 0 && (
-                  <Button variant="primary" size="md" icon={<Play size={15} />} onClick={() => practise(idsOf(plan.today))}>
+                {todayQs.length > 0 && (
+                  <Button variant="primary" size="md" icon={<Play size={15} />} onClick={() => practise(idsOf(todayQs))}>
                     {isUz ? 'Boshlash' : 'Начать'}
                   </Button>
                 )}
               </div>
 
-              {plan.today.length > 0 ? (
+              {todayQs.length > 0 ? (
                 <ol className="space-y-2">
-                  {plan.today.map((q) => (
+                  {todayQs.map((q) => (
                     <li key={q.id}>
-                      <button onClick={() => practise(idsOf(plan.today), q.id)} className="w-full text-left flex items-center justify-between gap-3 p-3 rounded-xl border border-border hover:bg-secondary/50">
+                      <button onClick={() => practise(idsOf(todayQs), q.id)} className="w-full text-left flex items-center justify-between gap-3 p-3 rounded-xl border border-border hover:bg-secondary/50">
                         <span className="text-sm text-foreground">{q.text}</span>
                         <span className="text-xs text-muted-foreground shrink-0">{q.attempts.length ? `${questionScore(q)}%` : isUz ? 'yangi' : 'новый'}</span>
                       </button>
@@ -150,11 +156,11 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
                 </p>
               )}
 
-              {plan.more.length > 0 && (
+              {moreQs.length > 0 && (
                 <div className="pt-3 border-t border-border flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs text-muted-foreground">{isUz ? 'Ko\'proq shug\'ullanmoqchimisiz? Reja majburiy emas.' : 'Хотите заниматься больше? План не обязателен.'}</span>
-                  <Button variant="outline" size="sm" onClick={() => practise(idsOf(plan.more))}>
-                    {isUz ? `Yana ${plan.more.length} ta savol` : `Ещё вопросов: ${plan.more.length}`}
+                  <Button variant="outline" size="sm" onClick={() => practise(idsOf(moreQs))}>
+                    {isUz ? `Yana ${moreQs.length} ta savol` : `Ещё вопросов: ${moreQs.length}`}
                   </Button>
                 </div>
               )}
