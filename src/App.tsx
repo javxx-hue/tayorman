@@ -8,7 +8,6 @@ import { Language, tr } from './lib/i18n';
 import { QuizQuestion, StudySet, Subject, UserStats } from './types';
 import { getProgress, pickQuestions, progressKey, type QuizLaunch } from './lib/quizProgress';
 import { newCardsLeftToday, newCardsToday } from './lib/dailyPlan';
-import { isMastered } from './lib/srs';
 import { useAuth } from './lib/auth';
 import { startSync } from './lib/sync';
 import { deliverLibrary } from './lib/library';
@@ -31,7 +30,6 @@ const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then((m) => (
 const QuizRunner = lazy(() => import('./components/study/QuizRunner').then((m) => ({ default: m.QuizRunner })));
 const QuizSetup = lazy(() => import('./components/study/QuizSetup').then((m) => ({ default: m.QuizSetup })));
 const FlashcardPlayer = lazy(() => import('./components/study/FlashcardPlayer').then((m) => ({ default: m.FlashcardPlayer })));
-const NotesViewer = lazy(() => import('./components/study/NotesViewer').then((m) => ({ default: m.NotesViewer })));
 const ExamSimulator = lazy(() => import('./components/study/ExamSimulator').then((m) => ({ default: m.ExamSimulator })));
 
 const ONBOARDED_KEY = 'sessiyagatayyorlan_onboarded';
@@ -91,8 +89,6 @@ const StudyRoute: React.FC<{ studySets: StudySet[]; subjects: Subject[]; lang: L
       return <QuizRunner key={attempt} set={set} lang={lang} onFinish={finish} onRetake={retake} />;
     case 'flashcards':
       return <FlashcardPlayer key={attempt} set={set} lang={lang} onFinish={finish} newLimit={newCardsLeftToday(set, subjects, studySets, newCardsToday(set))} />;
-    case 'notes':
-      return <NotesViewer set={set} lang={lang} onBack={finish} />;
     case 'exam':
       return <ExamSimulator key={attempt} set={set} lang={lang} onFinish={finish} onRetake={retake} />;
     default:
@@ -246,14 +242,13 @@ export default function App() {
   }
 
   // Derived from card states, so re-rating the same card can't inflate it
-  const cardsMastered = studySets.reduce((sum, s) => sum + (s.flashcards?.filter(isMastered).length ?? 0), 0);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans pb-20">
       <main className="flex-1">
         <Suspense fallback={loading}>
           <Routes>
-            <Route path="/" element={<HomePage subjects={subjects} studySets={studySets} stats={{ ...stats, cardsMastered }} lang={lang} />} />
+            <Route path="/" element={<HomePage subjects={subjects} studySets={studySets} stats={stats} lang={lang} />} />
             <Route path="/subjects" element={<SubjectsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id" element={<SubjectPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id/q/:qid" element={<QuestionPracticePage subjects={subjects} lang={lang} />} />

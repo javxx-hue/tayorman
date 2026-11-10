@@ -77,7 +77,7 @@ export const AssignmentsPage: React.FC = () => {
     ]);
     if (a.error) return setError("Topshiriqlarni yuklab bo'lmadi.");
     // notes cannot be "done", so they are not offered
-    setItems(((i.data ?? []) as unknown as Item[]).filter((x) => x.type !== 'notes'));
+    setItems(((i.data ?? []) as unknown as Item[]));
     setGroups((g.data ?? []) as Group[]);
     setRows((a.data ?? []) as Assignment[]);
   }, []);

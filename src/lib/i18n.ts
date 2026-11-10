@@ -7,8 +7,6 @@ const uz = {
   dashboard: {
     streak: 'Kunlik o\'qish zanjiri',
     streakDays: 'kun',
-    quizzesTaken: 'Yechilgan testlar',
-    cardsMastered: 'Yodlangan kartalar',
     avgScore: 'O\'rtacha natija',
   },
   quiz: {
@@ -57,23 +55,12 @@ const uz = {
     failedBadge: 'Qayta topshirish kerak',
     weakSpots: 'Kuchaytirish kerak bo\'lgan joylar',
   },
-  notes: {
-    title: 'O\'quv qaydlari',
-    executiveSummary: 'Qisqacha mazmun',
-    keyDefinitions: 'Asosiy tushunchalar va ta\'riflar',
-    bulletPoints: 'Muhim eslatmalar',
-    copyNotes: 'Nusxa olish',
-    copied: 'Nusxalandi!',
-    print: 'Chop etish / PDF',
-  },
 };
 
 const ru: typeof uz = {
   dashboard: {
     streak: 'Дней подряд',
     streakDays: 'дн.',
-    quizzesTaken: 'Пройдено тестов',
-    cardsMastered: 'Выучено карточек',
     avgScore: 'Средний результат',
   },
   quiz: {
@@ -121,15 +108,6 @@ const ru: typeof uz = {
     passedBadge: 'Сдано',
     failedBadge: 'Нужно пересдать',
     weakSpots: 'Что стоит подтянуть',
-  },
-  notes: {
-    title: 'Учебный конспект',
-    executiveSummary: 'Краткое содержание',
-    keyDefinitions: 'Основные понятия и определения',
-    bulletPoints: 'Важные пункты',
-    copyNotes: 'Копировать',
-    copied: 'Скопировано!',
-    print: 'Печать / PDF',
   },
 };
 

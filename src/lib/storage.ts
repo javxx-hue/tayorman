@@ -25,7 +25,6 @@ const defaultStats: UserStats = {
   streakDays: 0,
   lastStudyDate: '',
   quizzesTaken: 0,
-  cardsMastered: 0,
   totalStudyMinutes: 0,
   averageScore: 0,
 };

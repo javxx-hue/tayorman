@@ -1,4 +1,4 @@
-export type StudySetType = 'quiz' | 'flashcards' | 'notes' | 'exam';
+export type StudySetType = 'quiz' | 'flashcards' | 'exam';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type Language = 'uz' | 'ru';
 
@@ -44,14 +44,6 @@ export interface SrsState {
   last_review?: string;
 }
 
-export interface StudyNote {
-  id: string;
-  title: string;
-  summary: string;
-  keyPoints: string[];
-  glossary: { term: string; definition: string }[];
-}
-
 export interface StudySet {
   id: string;
   title: string;
@@ -65,7 +57,6 @@ export interface StudySet {
   sourceSnippet?: string;
   questions?: QuizQuestion[];
   flashcards?: Flashcard[];
-  notes?: StudyNote;
   subjectId?: string; // set generated inside a subject
   libraryId?: string; // copied from the admin library
   libraryUpdatedAt?: string; // library version this copy was last refreshed from
@@ -78,7 +69,6 @@ export interface UserStats {
   streakDays: number;
   lastStudyDate: string; // YYYY-MM-DD
   quizzesTaken: number;
-  cardsMastered: number;
   totalStudyMinutes: number;
   averageScore: number;
 }

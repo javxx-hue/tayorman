@@ -32,7 +32,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
   const [showHint, setShowHint] = useState(false);
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
-  const [timerEnabled, setTimerEnabled] = useState(true);
+  const [timerEnabled, setTimerEnabled] = useState(false); // off by default: a long question should not turn into a "mistake"
   const [secondsLeft, setSecondsLeft] = useState(30);
 
   const currentQ = questions[currentIndex];

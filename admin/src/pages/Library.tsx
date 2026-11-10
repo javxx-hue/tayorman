@@ -26,7 +26,7 @@ interface Group {
 }
 type View = { mode: 'list' } | { mode: 'set' | 'subject'; doc?: StudySet | Subject; audience?: Audience; draft?: boolean; presetFiles?: File[] };
 
-const SET_TYPE: Record<string, string> = { quiz: 'Test', exam: 'Imtihon', flashcards: 'Kartalar', notes: 'Konspekt' };
+const SET_TYPE: Record<string, string> = { quiz: 'Test', exam: 'Imtihon', flashcards: 'Kartalar' };
 
 // Everything students can get: subjects and tests/cards. Admins make, edit, hide and remove them here.
 export const LibraryPage: React.FC = () => {
@@ -171,7 +171,7 @@ export const LibraryPage: React.FC = () => {
                   {r.published ? <Pill tone="green">Nashr qilingan</Pill> : <Pill tone="amber">Qoralama</Pill>}
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {r.type !== 'notes' && <Btn disabled={busy === r.id} onClick={() => edit(r)}>Tahrirlash</Btn>}
+                  <Btn disabled={busy === r.id} onClick={() => edit(r)}>Tahrirlash</Btn>
                   <Btn disabled={busy === r.id} onClick={() => duplicate(r)}>Nusxalash</Btn>
                   <Btn disabled={busy === r.id} onClick={() => togglePublished(r)}>{r.published ? 'Yashirish' : 'Nashr qilish'}</Btn>
                   <Btn tone="danger" disabled={busy === r.id} onClick={() => remove(r)}>O'chirish</Btn>

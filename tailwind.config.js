@@ -48,8 +48,6 @@ export default {
           'quiz-strong': 'hsl(var(--creation-quiz-strong) / <alpha-value>)',
           flashcards: 'hsl(var(--creation-flashcards) / <alpha-value>)',
           'flashcards-strong': 'hsl(var(--creation-flashcards-strong) / <alpha-value>)',
-          notes: 'hsl(var(--creation-notes) / <alpha-value>)',
-          'notes-strong': 'hsl(var(--creation-notes-strong) / <alpha-value>)',
           exam: 'hsl(var(--creation-exam) / <alpha-value>)',
           'exam-strong': 'hsl(var(--creation-exam-strong) / <alpha-value>)',
         },

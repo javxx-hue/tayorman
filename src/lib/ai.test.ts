@@ -56,15 +56,8 @@ describe('generateStudySet (through the server proxy)', () => {
 
   it('maps HTTP 429 to LIMIT_REACHED and other failures to API_ERROR', async () => {
     invoke.mockResolvedValue({ data: null, error: { message: 'x', context: { status: 429 } } });
-    await expect(generateStudySet({ ...base, targetType: 'notes' })).rejects.toMatchObject({ code: 'LIMIT_REACHED' });
+    await expect(generateStudySet({ ...base, targetType: 'flashcards' })).rejects.toMatchObject({ code: 'LIMIT_REACHED' });
     invoke.mockResolvedValue({ data: null, error: { message: 'boom', context: { status: 502 } } });
-    await expect(generateStudySet({ ...base, targetType: 'notes' })).rejects.toMatchObject({ code: 'API_ERROR' });
-  });
-
-  it('builds notes from a valid response', async () => {
-    reply({ summary: 'Qisqa mazmun', keyPoints: ['a', 5], glossary: [{ term: 'ATF', definition: 'energiya' }, { term: 'x' }] });
-    const notes = await generateStudySet({ ...base, targetType: 'notes' });
-    expect(notes.notes!.keyPoints).toEqual(['a']);
-    expect(notes.notes!.glossary).toHaveLength(1);
+    await expect(generateStudySet({ ...base, targetType: 'flashcards' })).rejects.toMatchObject({ code: 'API_ERROR' });
   });
 });

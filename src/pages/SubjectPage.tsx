@@ -21,7 +21,6 @@ const SET_LABEL: Record<StudySet['type'], { uz: string; ru: string }> = {
   quiz: { uz: 'Test', ru: 'Тест' },
   exam: { uz: 'Imtihon', ru: 'Экзамен' },
   flashcards: { uz: 'Kartalar', ru: 'Карточки' },
-  notes: { uz: 'Konspekt', ru: 'Конспект' },
 };
 
 // One subject for a student: today's questions, the whole list, and the tests and cards that came with it

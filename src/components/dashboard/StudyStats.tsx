@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, CheckCircle, Brain, Clock } from 'lucide-react';
+import { Flame, Target } from 'lucide-react';
 import { UserStats } from '../../types';
 import { Language, getTranslations } from '../../lib/i18n';
 
@@ -8,64 +8,34 @@ interface StudyStatsProps {
   lang: Language;
 }
 
+// Two numbers a student cares about: days in a row, and how well the tests go
 export const StudyStats: React.FC<StudyStatsProps> = ({ stats, lang }) => {
   const t = getTranslations(lang).dashboard;
+  const tile = 'rounded-2xl bg-card border border-border/80 p-4 shadow-soft flex items-center gap-3';
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      
-      {/* Streak */}
-      <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-soft flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
-          <Flame size={24} className="fill-orange-500" />
+    <div className="grid grid-cols-2 gap-3 mb-8">
+      <div className={tile}>
+        <div className="w-10 h-10 rounded-xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0">
+          <Flame size={20} className="fill-orange-500" />
         </div>
         <div>
-          <span className="text-2xl font-serif font-bold text-foreground">
+          <span className="text-xl font-serif font-bold text-foreground">
             {stats.streakDays} <span className="text-xs font-sans text-muted-foreground font-normal">{t.streakDays}</span>
           </span>
           <p className="text-xs text-muted-foreground">{t.streak}</p>
         </div>
       </div>
 
-      {/* Quizzes Taken */}
-      <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-soft flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-creation-quiz/20 text-creation-quiz-strong flex items-center justify-center shrink-0">
-          <CheckCircle size={24} />
+      <div className={tile}>
+        <div className="w-10 h-10 rounded-xl bg-creation-quiz/20 text-creation-quiz-strong flex items-center justify-center shrink-0">
+          <Target size={20} />
         </div>
         <div>
-          <span className="text-2xl font-serif font-bold text-foreground">
-            {stats.quizzesTaken}
-          </span>
-          <p className="text-xs text-muted-foreground">{t.quizzesTaken}</p>
-        </div>
-      </div>
-
-      {/* Cards Mastered */}
-      <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-soft flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-creation-flashcards/20 text-creation-flashcards-strong flex items-center justify-center shrink-0">
-          <Brain size={24} />
-        </div>
-        <div>
-          <span className="text-2xl font-serif font-bold text-foreground">
-            {stats.cardsMastered}
-          </span>
-          <p className="text-xs text-muted-foreground">{t.cardsMastered}</p>
-        </div>
-      </div>
-
-      {/* Average Score */}
-      <div className="rounded-2xl bg-card border border-border/80 p-5 shadow-soft flex items-center gap-4">
-        <div className="w-12 h-12 rounded-xl bg-creation-notes/20 text-creation-notes-strong flex items-center justify-center shrink-0">
-          <Clock size={24} />
-        </div>
-        <div>
-          <span className="text-2xl font-serif font-bold text-foreground">
-            {stats.averageScore}%
-          </span>
+          <span className="text-xl font-serif font-bold text-foreground">{stats.averageScore}%</span>
           <p className="text-xs text-muted-foreground">{t.avgScore}</p>
         </div>
       </div>
-
     </div>
   );
 };
