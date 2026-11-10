@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isMistake, isMistakeDue, mergeProgress, overview, pickQuestions, recordAnswer, topicSummaries, weakTopics, MASTERED_BOX, type SetProgress } from './quizProgress';
+import { isMistake, isMistakeDue, mergeProgress, overview, pickQuestions, recordAnswer, topicSummaries, MASTERED_BOX, type SetProgress } from './quizProgress';
 
 const DAY = 86_400_000;
 const T0 = new Date('2026-12-01T09:00:00').getTime();
@@ -57,12 +57,13 @@ describe('pickQuestions', () => {
     d: recordAnswer(undefined, false, T0), // mistake, due tomorrow
   };
 
-  it('"new" gives what was never answered first, in deck order', () => {
-    expect(pickQuestions(questions, progress, { mode: 'new', count: 3, now: T0 }).map((x) => x.id)).toEqual(['c', 'e', 'f']);
+  it('"mixed" is new questions first when no mistake is due, in deck order', () => {
+    const fresh = { a: progress.a };
+    expect(pickQuestions(questions, fresh, { mode: 'mixed', count: 3, now: T0 }).map((x) => x.id)).toEqual(['b', 'c', 'd']);
   });
 
-  it('"new" falls back to mistakes and then known ones when little is new', () => {
-    expect(pickQuestions(questions, progress, { mode: 'new', count: 6, now: T0 }).map((x) => x.id)).toEqual(['c', 'e', 'f', 'b', 'd', 'a']);
+  it('"mixed" falls back to mistakes and then known ones when little is new', () => {
+    expect(pickQuestions(questions, progress, { mode: 'mixed', count: 6, now: T0 }).map((x) => x.id)).toEqual(['b', 'c', 'e', 'f', 'd', 'a']);
   });
 
   it('"mistakes" is only mistakes, the due ones first', () => {
@@ -76,8 +77,8 @@ describe('pickQuestions', () => {
   });
 
   it('stays inside one topic and never returns more than asked', () => {
-    expect(pickQuestions(questions, progress, { mode: 'new', count: 10, topic: 2, now: T0 }).map((x) => x.id)).toEqual(['e', 'f', 'd']);
-    expect(pickQuestions(questions, progress, { mode: 'new', count: 0, now: T0 })).toEqual([]);
+    expect(pickQuestions(questions, progress, { mode: 'mixed', count: 10, topic: 2, now: T0 }).map((x) => x.id)).toEqual(['e', 'f', 'd']);
+    expect(pickQuestions(questions, progress, { mode: 'mixed', count: 0, now: T0 })).toEqual([]);
   });
 });
 
@@ -96,17 +97,6 @@ describe('topics and overview', () => {
     expect(s[0]).toMatchObject({ no: 1, total: 4, seen: 3, mistakes: 2, accuracy: 33 });
     expect(s[1]).toMatchObject({ no: 2, total: 2, seen: 1, mistakes: 0, accuracy: 100 });
     expect(s[2]).toMatchObject({ no: 3, total: 1, seen: 0, accuracy: null });
-  });
-
-  it('names the weakest topics, and only ones answered enough to judge', () => {
-    const p: SetProgress = {
-      a: recordAnswer(undefined, false, T0),
-      b: recordAnswer(undefined, false, T0),
-      c: recordAnswer(undefined, true, T0),
-      e: recordAnswer(undefined, false, T0),
-    };
-    const weak = weakTopics(topicSummaries(questions, topics, p));
-    expect(weak.map((w) => w.no)).toEqual([1]); // topic 2 has only 1 answer
   });
 
   it('counts today\'s answers, mistakes due and accuracy', () => {

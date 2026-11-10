@@ -34,7 +34,7 @@ export function recordAnswer(prev: QStat | undefined, correct: boolean, now: num
 export const isMistake = (s: QStat | undefined): boolean => !!s && s.wrong > 0 && s.box < MASTERED_BOX;
 export const isMistakeDue = (s: QStat | undefined, now: number): boolean => !!s && isMistake(s) && s.due <= now;
 
-export type PickMode = 'new' | 'mistakes' | 'mixed';
+export type PickMode = 'mistakes' | 'mixed';
 export interface PickOptions {
   mode: PickMode;
   count: number;
@@ -42,8 +42,9 @@ export interface PickOptions {
   now?: number;
 }
 
-// The questions for one sitting. "new" starts with what was never answered, "mistakes" is only questions answered
-// wrong before (those due first), "mixed" brings a third of them back between new ones. Never longer than asked.
+// The questions for one sitting. "mixed" is new questions with a third of the mistakes that came back between them
+// (then older ones when little is new); "mistakes" is only questions answered wrong before, those due first.
+// Never longer than asked.
 export function pickQuestions<Q extends { id: string; topic?: number }>(questions: Q[], progress: SetProgress, opts: PickOptions): Q[] {
   const now = opts.now ?? Date.now();
   const pool = opts.topic == null ? questions : questions.filter((q) => q.topic === opts.topic);
@@ -54,18 +55,16 @@ export function pickQuestions<Q extends { id: string; topic?: number }>(question
 
   let order: Q[];
   if (opts.mode === 'mistakes') order = [...dueMistakes, ...laterMistakes];
-  else if (opts.mode === 'mixed') {
+  else {
     const back = dueMistakes.slice(0, Math.ceil(opts.count / 3));
     order = [...back, ...unseen, ...dueMistakes.slice(back.length), ...laterMistakes, ...known];
-  } else order = [...unseen, ...dueMistakes, ...laterMistakes, ...known];
+  }
   return order.slice(0, Math.max(0, opts.count));
 }
 
 // What a link may ask for when it opens a large test (the daily plan does): start right away with these settings
 export interface QuizLaunch {
-  mode?: PickMode;
   count?: number;
-  topic?: number | null;
   autostart?: boolean;
 }
 
@@ -92,14 +91,6 @@ export function topicSummaries(questions: { id: string; topic?: number }[], topi
       accuracy: stats.length ? Math.round((right / stats.length) * 100) : null,
     };
   });
-}
-
-// Topics to work on first: answered enough to judge, weakest first, then the ones with the most open mistakes
-export function weakTopics(summaries: TopicSummary[], limit = 3, minSeen = 3): TopicSummary[] {
-  return summaries
-    .filter((s) => s.seen >= minSeen && (s.mistakes > 0 || (s.accuracy ?? 100) < 70))
-    .sort((a, b) => (a.accuracy ?? 100) - (b.accuracy ?? 100) || b.mistakes - a.mistakes)
-    .slice(0, limit);
 }
 
 export interface Overview {

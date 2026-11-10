@@ -8,7 +8,6 @@ import { planSubject, questionScore, setsOfSubject, scoreToGrade, subjectReadine
 import { ExamQuestion } from '../types';
 import { FORMAT_LABELS, daysLeftLabel, readinessColor } from './SubjectsPage';
 import { DailyStudyRows } from '../components/prep/DailyStudy';
-import { WeakTopics } from '../components/prep/WeakTopics';
 
 type Tab = 'plan' | 'questions' | 'practice';
 
@@ -160,7 +159,6 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
               )}
             </div>
           )}
-          <WeakTopics subject={subject} studySets={studySets} lang={lang} />
         </div>
       )}
 

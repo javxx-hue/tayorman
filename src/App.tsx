@@ -43,13 +43,13 @@ const QuizRoute: React.FC<{ set: StudySet; lang: Language; onFinish: () => void 
   const launch = (useLocation().state ?? {}) as QuizLaunch;
   const [session, setSession] = useState<{ n: number; questions: QuizQuestion[] } | null>(() => {
     if (!launch.autostart) return null;
-    const qs = pickQuestions(set.questions ?? [], getProgress(progressKey(set)), { mode: launch.mode ?? 'mixed', count: launch.count ?? 20, topic: launch.topic });
+    const qs = pickQuestions(set.questions ?? [], getProgress(progressKey(set)), { mode: 'mixed', count: launch.count ?? 20 });
     return qs.length ? { n: 0, questions: qs } : null;
   });
   const start = (questions: QuizQuestion[]) => setSession((s) => ({ n: (s?.n ?? 0) + 1, questions }));
 
   if (!session) {
-    return <QuizSetup set={set} lang={lang} initialMode={launch.mode} initialCount={launch.count} initialTopic={launch.topic} onStart={start} onBack={onFinish} />;
+    return <QuizSetup set={set} lang={lang} onStart={start} onBack={onFinish} />;
   }
   return (
     <QuizRunner

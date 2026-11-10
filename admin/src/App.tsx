@@ -16,7 +16,6 @@ const BroadcastsPage = lazy(() => import('./pages/Broadcasts').then((m) => ({ de
 const AccountsPage = lazy(() => import('./pages/Accounts').then((m) => ({ default: m.AccountsPage })));
 const SettingsPage = lazy(() => import('./pages/Settings').then((m) => ({ default: m.SettingsPage })));
 const IssuesPage = lazy(() => import('./pages/Issues').then((m) => ({ default: m.IssuesPage })));
-const AnalysisPage = lazy(() => import('./pages/Analysis').then((m) => ({ default: m.AnalysisPage })));
 
 const NAV: { to: string; label: string; adminOnly?: boolean; ownerOnly?: boolean }[] = [
   { to: '/', label: 'Umumiy ko\'rinish', adminOnly: true },
@@ -26,7 +25,6 @@ const NAV: { to: string; label: string; adminOnly?: boolean; ownerOnly?: boolean
   { to: '/assignments', label: 'Topshiriqlar' },
   { to: '/broadcasts', label: 'Xabarlar', adminOnly: true },
   { to: '/groups', label: 'Guruhlar' },
-  { to: '/analysis', label: 'Tahlil' },
   { to: '/users', label: 'Foydalanuvchilar' },
   { to: '/accounts', label: 'Hisoblar', adminOnly: true, ownerOnly: true },
   { to: '/settings', label: 'Sozlamalar', adminOnly: true },
@@ -201,7 +199,6 @@ const Shell: React.FC = () => {
             <Route path="/broadcasts" element={isAdmin ? <BroadcastsPage /> : <Navigate to={home} replace />} />
             <Route path="/groups" element={<GroupsPage />} />
             <Route path="/groups/:id" element={<GroupDetailPage />} />
-            <Route path="/analysis" element={<AnalysisPage />} />
             <Route path="/users" element={<UsersPage />} />
             <Route path="/accounts" element={owner ? <AccountsPage /> : <Navigate to={home} replace />} />
             <Route path="/settings" element={isAdmin ? <SettingsPage /> : <Navigate to={home} replace />} />
