@@ -32,7 +32,7 @@ export function recordAnswer(prev: QStat | undefined, correct: boolean, now: num
 
 // A question the student got wrong and has not yet overcome
 export const isMistake = (s: QStat | undefined): boolean => !!s && s.wrong > 0 && s.box < MASTERED_BOX;
-export const isMistakeDue = (s: QStat | undefined, now: number): boolean => isMistake(s) && s.due <= now;
+export const isMistakeDue = (s: QStat | undefined, now: number): boolean => !!s && isMistake(s) && s.due <= now;
 
 export type PickMode = 'new' | 'mistakes' | 'mixed';
 export interface PickOptions {
