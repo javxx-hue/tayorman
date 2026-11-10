@@ -2,10 +2,9 @@
 // The day's share is worked out from what was still to do this morning, so doing today's work never moves today's
 // target. The day before the exam is left for review when there is room for it (the same rule as the question plan).
 import { Flashcard, StudySet, Subject } from '../types';
-import { daysUntil, planSubject, setsOfSubject } from './prep';
-import { allocate, COST, getDailyMinutes, type Allowance, type Need } from './budget';
+import { daysUntil, setsOfSubject } from './prep';
 import { isDue, isNew } from './srs';
-import { getProgress, overview, progressKey, type SetProgress } from './quizProgress';
+import { overview, progressKey, type SetProgress } from './quizProgress';
 import { localDateKey } from './storage';
 
 export const TESTS_PER_DAY = { min: 5, max: 30 };
@@ -70,14 +69,14 @@ export function dailyStudy(
   return out;
 }
 
-// How many new cards of a deck may still be started today: the deck's subject's part of the day's budget
+// How many new cards of a deck may still be started today
 export function newCardsLeftToday(set: StudySet, subjects: Subject[], sets: StudySet[], doneToday: number, now = new Date()): number {
   const subject = subjects.find((s) => setsOfSubject(s, sets).some((x) => x.id === set.id));
   if (!subject) return Math.max(0, DEFAULT_NEW_CARDS - doneToday);
-  const budget = todayBudget(subjects, sets, (s) => getProgress(progressKey(s)), (s) => (s.id === set.id ? doneToday : newCardsToday(s, now)), getDailyMinutes(), now);
-  const allowed = budget.bySubject[subject.id];
+  const plan = dailyStudy(subject, sets, () => ({}), () => doneToday, now);
   // exam passed or no plan: the default allowance
-  return allowed ? allowed.newCards : Math.max(0, DEFAULT_NEW_CARDS - doneToday);
+  if (!plan.cards) return Math.max(0, DEFAULT_NEW_CARDS - doneToday);
+  return Math.max(0, plan.cards.newTarget - doneToday);
 }
 
 // ---------------------------------------------------------------- new cards started today (this phone)
@@ -112,47 +111,3 @@ export function limitNewCards(queue: Flashcard[], allowance: number): Flashcard[
   let left = allowance;
   return queue.filter((c) => (isNew(c) ? left-- > 0 : true));
 }
-
-// ---------------------------------------------------------------- one budget for the whole day
-export interface DayBudget {
-  minutes: number; // the student's daily minutes
-  planned: number; // minutes of work that fits today
-  wanted: number; // minutes all subjects would have liked today
-  bySubject: Record<string, Allowance>;
-}
-
-export function todayBudget(
-  subjects: Subject[],
-  sets: StudySet[],
-  progressOf: (set: StudySet) => SetProgress,
-  newCardsDoneToday: (set: StudySet) => number,
-  minutes: number,
-  now: Date = new Date()
-): DayBudget {
-  const today = localDateKey(now);
-  const needs: Need[] = subjects
-    .map((subject) => {
-      const plan = planSubject(subject, today);
-      const study = dailyStudy(subject, sets, progressOf, newCardsDoneToday, now);
-      if (plan.daysLeft < 0) return null;
-      return {
-        id: subject.id,
-        questions: plan.today.length,
-        tests: study.quiz ? Math.max(study.quiz.target - study.quiz.done, 0) : 0,
-        mistakes: study.quiz?.dueMistakes ?? 0,
-        newCards: study.cards ? Math.max(study.cards.newTarget - study.cards.newDone, 0) : 0,
-        reviews: study.cards?.reviewsDue ?? 0,
-      };
-    })
-    .filter((n): n is Need => n !== null);
-  const bySubject = allocate(needs, minutes);
-  const planned = Object.values(bySubject).reduce((m, a) => m + a.minutes, 0);
-  const wanted = Math.round(
-    needs.reduce((m, n) => m + n.questions * COST.question + n.tests * COST.test + n.mistakes * COST.mistake + n.newCards * COST.newCard + n.reviews * COST.review, 0)
-  );
-  return { minutes, planned, wanted, bySubject };
-}
-
-// Today's budget with what this phone knows (test progress, new cards started today, the student's minutes)
-export const currentBudget = (subjects: Subject[], sets: StudySet[], now = new Date()): DayBudget =>
-  todayBudget(subjects, sets, (s) => getProgress(progressKey(s)), (s) => newCardsToday(s, now), getDailyMinutes(), now);

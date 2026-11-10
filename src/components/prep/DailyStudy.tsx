@@ -5,17 +5,15 @@ import { Language, tr } from '../../lib/i18n';
 import { StudySet, Subject } from '../../types';
 import { dailyStudy, newCardsToday } from '../../lib/dailyPlan';
 import { getProgress, progressKey, type QuizLaunch } from '../../lib/quizProgress';
-import type { Allowance } from '../../lib/budget';
 
 interface DailyStudyRowsProps {
   subject: Subject;
   studySets: StudySet[];
   lang: Language;
-  allowance?: Allowance; // this subject's part of the day's budget; without it, the subject's own share
 }
 
 // Today's share of a subject's tests and flashcards, each a tap away
-export const DailyStudyRows: React.FC<DailyStudyRowsProps> = ({ subject, studySets, lang, allowance }) => {
+export const DailyStudyRows: React.FC<DailyStudyRowsProps> = ({ subject, studySets, lang }) => {
   const navigate = useNavigate();
   const plan = dailyStudy(subject, studySets, (s) => getProgress(progressKey(s)), (s) => newCardsToday(s));
   if (!plan.quiz && !plan.cards) return null;
@@ -27,8 +25,7 @@ export const DailyStudyRows: React.FC<DailyStudyRowsProps> = ({ subject, studySe
   return (
     <div className="space-y-2">
       {plan.quiz && (() => {
-        const { set, done: did, dueMistakes } = plan.quiz;
-        const target = allowance ? did + allowance.tests : plan.quiz.target;
+        const { set, target, done: did, dueMistakes } = plan.quiz;
         const left = Math.max(target - did, 0);
         const finished = left === 0 && dueMistakes === 0;
         const launch: QuizLaunch = { mode: 'mixed', count: Math.max(left + dueMistakes, 10), autostart: !finished };
@@ -46,8 +43,7 @@ export const DailyStudyRows: React.FC<DailyStudyRowsProps> = ({ subject, studySe
         );
       })()}
       {plan.cards && (() => {
-        const { set, newDone, reviewsDue } = plan.cards;
-        const newTarget = allowance ? newDone + allowance.newCards : plan.cards.newTarget;
+        const { set, newTarget, newDone, reviewsDue } = plan.cards;
         const finished = newDone >= newTarget && reviewsDue === 0;
         return (
           <button className={row} onClick={() => navigate(`/study/${set.id}`)}>

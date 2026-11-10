@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, BellOff, Clock, Globe, GraduationCap, Users, MessageCircle, ShieldCheck } from 'lucide-react';
-import { getDailyMinutes, MINUTE_CHOICES, setDailyMinutes } from '../lib/budget';
+import { Bell, BellOff, Globe, GraduationCap, Users, MessageCircle, ShieldCheck } from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
@@ -37,7 +36,6 @@ export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
     setCommunities((c) => c.filter((x) => x.id !== id));
   };
 
-  const [minutes, setMinutes] = useState(getDailyMinutes);
   const card = 'rounded-2xl border border-border bg-card p-4';
   const pill = (active: boolean) => `px-3 py-1.5 rounded-lg text-sm border ${active ? 'border-primary bg-primary/10 font-semibold' : 'border-border'}`;
 
@@ -108,20 +106,6 @@ export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
             <span className={`block w-5 h-5 rounded-full bg-white transition-transform ${profile?.reminders_enabled ? 'translate-x-4' : ''}`} />
           </span>
         </button>
-      </div>
-
-      <div className={card}>
-        <div className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5"><Clock size={14} /> {tr(lang, 'Kunlik o\'qish vaqti', 'Время на учёбу в день')}</div>
-        <div className="flex flex-wrap gap-2">
-          {MINUTE_CHOICES.map((m) => (
-            <button key={m} className={pill(minutes === m)} onClick={() => { setDailyMinutes(m); setMinutes(m); }}>
-              {m} {tr(lang, 'daq', 'мин')}
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          {tr(lang, "Bugungi reja shu vaqtga sig'adigan qilib tuziladi. Sig'magani keyingi kunlarga o'tadi.", 'План на день подбирается под это время. Что не помещается, переходит на следующие дни.')}
-        </p>
       </div>
 
       <div className={card}>
