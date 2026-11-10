@@ -34,6 +34,11 @@ const T = {
       `Привет, ${name}! 👋\n\n«Tayyorman» помогает готовиться к сессии и промежуточному контролю:\n• предметы и даты экзаменов\n• готовые тесты и карточки\n• ответы на экзаменационные вопросы и оценка ИИ\n• каждое утро план на день\n\nНажмите кнопку ниже, чтобы начать. Нужен предмет, вопросы или материалы — напишите сюда, запрос уйдёт администратору.`,
   },
   open: { uz: '📚 Ochish', ru: '📚 Открыть' },
+  kbOpen: { uz: '📚 Ilovani ochish', ru: '📚 Открыть приложение' },
+  kbVideo: { uz: "🎬 Video qo'llanma", ru: '🎬 Видеоинструкция' },
+  kbReminders: { uz: '🔔 Eslatmalar', ru: '🔔 Напоминания' },
+  kbHelp: { uz: 'ℹ️ Yordam', ru: 'ℹ️ Помощь' },
+  useButtons: { uz: 'Quyidagi tugmalardan foydalaning 👇', ru: 'Пользуйтесь кнопками ниже 👇' },
   videoButton: { uz: '🎬 Video qo\'llanma', ru: '🎬 Видеоинструкция' },
   videoCaption: {
     uz: '🎬 Botdan foydalanish bo\'yicha qisqa qo\'llanma',
@@ -101,6 +106,25 @@ async function profileOf(tgUser: TelegramUser) {
 }
 
 const appKeyboard = (lang: Lang, path = '') => ({ reply_markup: { inline_keyboard: [[openAppButton(t('open', lang), path)]] } });
+
+// The four buttons that stay under the message box
+const menuKeyboard = (lang: Lang) => ({
+  reply_markup: {
+    keyboard: [[openAppButton(t('kbOpen', lang), '')], [{ text: t('kbVideo', lang) }, { text: t('kbReminders', lang) }], [{ text: t('kbHelp', lang) }]],
+    resize_keyboard: true,
+    is_persistent: true,
+  },
+});
+
+// A press on one of those buttons arrives as its text; it means the matching command (in either language)
+function buttonCommand(text: string): string | null {
+  for (const lang of ['uz', 'ru'] as Lang[]) {
+    if (text === t('kbVideo', lang)) return '/video';
+    if (text === t('kbReminders', lang)) return '/eslatma';
+    if (text === t('kbHelp', lang)) return '/yordam';
+  }
+  return null;
+}
 
 // ---------------------------------------------------------------- how-to video
 async function guideVideoId(): Promise<string | null> {
@@ -179,6 +203,7 @@ async function runCommand(chatId: number, text: string, user: TelegramUser, prof
         }));
       }
       await sendMessage(chatId, t('welcome', lang)(user.first_name ?? ''), welcomeKeyboard(lang, !!(await guideVideoId())));
+      await sendMessage(chatId, t('useButtons', lang), menuKeyboard(lang));
       const code = arg?.match(/^c_([a-f0-9]{12})$/)?.[1];
       if (code) {
         const joined = await joinCommunity(profile.id, code);
@@ -375,7 +400,9 @@ Deno.serve(async (req) => {
     } else if (update?.message?.chat?.type === 'private' && update.message.from) {
       const m = update.message;
       const chatId: number = m.chat.id;
-      if (typeof m.text === 'string' && m.text.startsWith('/')) await onCommand(chatId, m.text, m.from);
+      const pressed = typeof m.text === 'string' ? buttonCommand(m.text) : null;
+      if (pressed) await onCommand(chatId, pressed, m.from);
+      else if (typeof m.text === 'string' && m.text.startsWith('/')) await onCommand(chatId, m.text, m.from);
       else if (m.voice) await onVoice(chatId, m.from, m.voice.file_id, m.voice.mime_type ?? 'audio/ogg');
       else if (m.audio) await onVoice(chatId, m.from, m.audio.file_id, m.audio.mime_type ?? 'audio/mpeg');
       else if (!(await onGuideUpload(chatId, m.from, m))) await onRequest(chatId, m.from, m);

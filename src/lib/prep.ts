@@ -140,25 +140,41 @@ export function setsOfSubject(subject: Subject, sets: StudySet[]): StudySet[] {
   );
 }
 
-// 0-100. Question list counts most; quizzes and flashcards of the subject fill in
-export function subjectReadiness(subject: Subject, sets: StudySet[]): number {
-  const own = setsOfSubject(subject, sets);
-  const parts: { value: number; weight: number }[] = [];
+// Weights of the readiness score: written answers 3, tests 1, flashcards 1 (60% / 20% / 20%).
+// A part the subject does not have, or that was never started (tests), is left out and the rest share its weight.
+export const READINESS_WEIGHTS = { written: 3, tests: 1, cards: 1 } as const;
 
-  if (subject.questions.length) {
-    const avg = subject.questions.reduce((sum, q) => sum + questionScore(q), 0) / subject.questions.length;
-    parts.push({ value: avg, weight: 3 });
-  }
-  const quizzes = own.filter((s) => (s.type === 'quiz' || s.type === 'exam') && typeof s.lastScore === 'number');
-  if (quizzes.length) {
-    parts.push({ value: quizzes.reduce((sum, s) => sum + (s.lastScore ?? 0), 0) / quizzes.length, weight: 1 });
-  }
-  const cards = own.flatMap((s) => s.flashcards ?? []);
-  if (cards.length) parts.push({ value: (cards.filter(isMastered).length / cards.length) * 100, weight: 1 });
-
-  const totalWeight = parts.reduce((sum, p) => sum + p.weight, 0);
-  return totalWeight ? Math.round(parts.reduce((sum, p) => sum + p.value * p.weight, 0) / totalWeight) : 0;
+export interface ReadinessParts {
+  written: number | null; // average score of the exam questions (an unanswered one counts as 0)
+  tests: number | null; // latest test score
+  cards: number | null; // % of cards learned for the long term
+  total: number; // 0-100
 }
+
+export function readinessParts(subject: Subject, sets: StudySet[]): ReadinessParts {
+  const own = setsOfSubject(subject, sets);
+  const written = subject.questions.length ? subject.questions.reduce((sum, q) => sum + questionScore(q), 0) / subject.questions.length : null;
+  const quizzes = own.filter((s) => (s.type === 'quiz' || s.type === 'exam') && typeof s.lastScore === 'number');
+  const tests = quizzes.length ? quizzes.reduce((sum, s) => sum + (s.lastScore ?? 0), 0) / quizzes.length : null;
+  const cardList = own.flatMap((s) => s.flashcards ?? []);
+  const cards = cardList.length ? (cardList.filter(isMastered).length / cardList.length) * 100 : null;
+
+  const parts: { value: number; weight: number }[] = [];
+  if (written !== null) parts.push({ value: written, weight: READINESS_WEIGHTS.written });
+  if (tests !== null) parts.push({ value: tests, weight: READINESS_WEIGHTS.tests });
+  if (cards !== null) parts.push({ value: cards, weight: READINESS_WEIGHTS.cards });
+  const totalWeight = parts.reduce((sum, p) => sum + p.weight, 0);
+  const round = (n: number | null) => (n === null ? null : Math.round(n));
+  return {
+    written: round(written),
+    tests: round(tests),
+    cards: round(cards),
+    total: totalWeight ? Math.round(parts.reduce((sum, p) => sum + p.value * p.weight, 0) / totalWeight) : 0,
+  };
+}
+
+// 0-100. Question list counts most; quizzes and flashcards of the subject fill in
+export const subjectReadiness = (subject: Subject, sets: StudySet[]): number => readinessParts(subject, sets).total;
 
 // ---------------------------------------------------------------
 // Session plan

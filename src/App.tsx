@@ -22,6 +22,8 @@ import { startTelegram, applyTelegramTheme, useTelegramBackButton, BOT_USERNAME 
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
 const SubjectsPage = lazy(() => import('./pages/SubjectsPage').then((m) => ({ default: m.SubjectsPage })));
 const SubjectPage = lazy(() => import('./pages/SubjectPage').then((m) => ({ default: m.SubjectPage })));
+const TicketsPage = lazy(() => import('./pages/TicketsPage').then((m) => ({ default: m.TicketsPage })));
+const SubjectStatsPage = lazy(() => import('./pages/SubjectStatsPage').then((m) => ({ default: m.SubjectStatsPage })));
 const QuestionPracticePage = lazy(() => import('./pages/QuestionPracticePage').then((m) => ({ default: m.QuestionPracticePage })));
 const AssignmentsPage = lazy(() => import('./pages/AssignmentsPage').then((m) => ({ default: m.AssignmentsPage })));
 const RequestPage = lazy(() => import('./pages/RequestPage').then((m) => ({ default: m.RequestPage })));
@@ -41,7 +43,7 @@ const QuizRoute: React.FC<{ set: StudySet; lang: Language; onFinish: () => void 
   const launch = (useLocation().state ?? {}) as QuizLaunch;
   const [session, setSession] = useState<{ n: number; questions: QuizQuestion[] } | null>(() => {
     if (!launch.autostart) return null;
-    const qs = pickQuestions(set.questions ?? [], getProgress(progressKey(set)), { mode: 'mixed', count: launch.count ?? 20 });
+    const qs = pickQuestions(set.questions ?? [], getProgress(progressKey(set)), { mode: 'mixed', count: launch.count ?? 10 });
     return qs.length ? { n: 0, questions: qs } : null;
   });
   const start = (questions: QuizQuestion[]) => setSession((s) => ({ n: (s?.n ?? 0) + 1, questions }));
@@ -251,6 +253,8 @@ export default function App() {
             <Route path="/" element={<HomePage subjects={subjects} studySets={studySets} stats={stats} lang={lang} />} />
             <Route path="/subjects" element={<SubjectsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id" element={<SubjectPage subjects={subjects} studySets={studySets} lang={lang} />} />
+            <Route path="/subjects/:id/tickets" element={<TicketsPage subjects={subjects} lang={lang} />} />
+            <Route path="/subjects/:id/stats" element={<SubjectStatsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id/q/:qid" element={<QuestionPracticePage subjects={subjects} lang={lang} />} />
             <Route path="/study/:id" element={<StudyRoute studySets={studySets} subjects={subjects} lang={lang} />} />
             <Route path="/assignments" element={<AssignmentsPage assignments={assignments} server={assignmentProgress} subjects={subjects} studySets={studySets} lang={lang} staff={online && !!profile && profile.role !== 'student'} />} />

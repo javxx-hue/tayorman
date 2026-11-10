@@ -12,12 +12,12 @@ interface QuizSetupProps {
   onBack: () => void;
 }
 
-const SITTING = 20;
+const SITTING = 10;
 const COUNTS = [10, 20, 50];
 
 const barColor = (pct: number | null) => (pct === null ? 'bg-secondary' : pct >= 71 ? 'bg-emerald-500' : pct >= 56 ? 'bg-amber-500' : 'bg-rose-500');
 
-// The start screen of a large test set: 20 questions (new ones, with mistakes that came back), or only mistakes.
+// The start screen of a large test set: 10 questions (new ones, with mistakes that came back), or only mistakes.
 // Choosing a topic and a count is there for whoever wants it, folded away.
 export const QuizSetup: React.FC<QuizSetupProps> = ({ set, lang, onStart, onBack }) => {
   const questions = set.questions ?? [];

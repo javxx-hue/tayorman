@@ -17,6 +17,9 @@ interface FlashcardPlayerProps {
 
 // review: FSRS queue of due cards, ratings are saved and scheduled.
 // practice: flip through every card in order, nothing is scheduled.
+// A review sitting shows at most this many cards; the rest wait for the next one
+const CARDS_PER_SITTING = 20;
+
 type Mode = 'review' | 'practice';
 
 const RATINGS: { key: ReviewRating; hotkey: string; className: string }[] = [
@@ -36,7 +39,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ set, lang, onF
   // Card ids still to show; review mode re-appends cards that come back within minutes
   const [queue, setQueue] = useState<string[]>(() => {
     const due = dueQueue(set.flashcards || []);
-    return (newLimit === undefined ? due : limitNewCards(due, newLimit)).map((c) => c.id);
+    return (newLimit === undefined ? due : limitNewCards(due, newLimit)).slice(0, CARDS_PER_SITTING).map((c) => c.id);
   });
   const [reviewedCount, setReviewedCount] = useState(0);
   const [practiceIndex, setPracticeIndex] = useState(0);
