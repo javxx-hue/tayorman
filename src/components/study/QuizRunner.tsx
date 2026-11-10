@@ -3,22 +3,30 @@ import { StudySet, QuizQuestion } from '../../types';
 import { Button } from '../ui/Button';
 import { Check, X, Lightbulb, ArrowRight, RotateCcw, Trophy, Award, Sparkles, ChevronRight, HelpCircle, Clock, Volume2 } from 'lucide-react';
 import { Language, getTranslations } from '../../lib/i18n';
-import { recordQuizCompletion } from '../../lib/storage';
+import { recordQuizCompletion, saveStudySet } from '../../lib/storage';
 import { useSpeech } from '../../lib/speech';
 import { ReportIssue } from '../ReportIssue';
+import { getProgress, overview, progressKey, recordAnswers } from '../../lib/quizProgress';
 
 interface QuizRunnerProps {
   set: StudySet;
   lang: Language;
   onFinish: () => void;
   onRetake: () => void;
+  // A sitting with part of the set (chosen on the start screen). Every answer is remembered per question.
+  session?: {
+    questions: QuizQuestion[];
+    onRetryMistakes: (ids: string[]) => void;
+    onMore: () => void;
+  };
 }
 
-export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onRetake }) => {
+export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onRetake, session }) => {
   const t = getTranslations(lang).quiz;
   const speech = useSpeech(lang);
-  const questions: QuizQuestion[] = set.questions || [];
-  
+  const questions: QuizQuestion[] = session?.questions ?? set.questions ?? [];
+  const [wrongIds, setWrongIds] = useState<string[]>([]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [showHint, setShowHint] = useState(false);
@@ -82,7 +90,10 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
     const correct = idx === currentQ.correctAnswer;
     if (correct) {
       setScore((prev) => prev + 1);
+    } else {
+      setWrongIds((prev) => [...prev, currentQ.id]);
     }
+    if (session) recordAnswers(progressKey(set), [{ id: currentQ.id, correct }]);
   };
 
   const handleNext = () => {
@@ -92,7 +103,14 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
       setShowHint(false);
     } else {
       const finalScore = Math.round(((score + (isCorrect ? 0 : 0)) / totalQ) * 100);
-      recordQuizCompletion(finalScore, totalQ, set);
+      if (session) {
+        // The set's score is the whole picture (latest answer of every question so far), not just this sitting
+        recordQuizCompletion(finalScore, totalQ);
+        const all = overview(set.questions ?? [], getProgress(progressKey(set)));
+        saveStudySet({ ...set, lastScore: all.accuracy ?? finalScore, completedAt: Date.now() });
+      } else {
+        recordQuizCompletion(finalScore, totalQ, set);
+      }
       setIsFinished(true);
     }
   };
@@ -137,6 +155,19 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
             {score} / {totalQ} {lang === 'uz' ? 'to\'g\'ri javob' : 'верно'}
           </p>
         </div>
+
+        {session && (
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-3">
+            {wrongIds.length > 0 && (
+              <Button variant="primary" size="md" onClick={() => session.onRetryMistakes(wrongIds)} icon={<RotateCcw size={16} />} className="w-full sm:w-auto">
+                {lang === 'uz' ? `Xatolarni qayta ishlash (${wrongIds.length})` : `Повторить ошибки (${wrongIds.length})`}
+              </Button>
+            )}
+            <Button variant="outline" size="md" onClick={session.onMore} icon={<ChevronRight size={16} />} className="w-full sm:w-auto">
+              {lang === 'uz' ? 'Keyingi savollar' : 'Следующие вопросы'}
+            </Button>
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Button

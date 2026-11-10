@@ -61,6 +61,14 @@ export function pickQuestions<Q extends { id: string; topic?: number }>(question
   return order.slice(0, Math.max(0, opts.count));
 }
 
+// What a link may ask for when it opens a large test (the daily plan does): start right away with these settings
+export interface QuizLaunch {
+  mode?: PickMode;
+  count?: number;
+  topic?: number | null;
+  autostart?: boolean;
+}
+
 export interface TopicSummary {
   no: number;
   name: string;

@@ -5,7 +5,9 @@ import { Button } from './components/ui/Button';
 import { BottomNav, TAB_ROOTS } from './components/layout/BottomNav';
 import { initStorage, getStudySets, getUserStats, getSubjects, subscribeStorage } from './lib/storage';
 import { Language, tr } from './lib/i18n';
-import { StudySet, Subject, UserStats } from './types';
+import { QuizQuestion, StudySet, Subject, UserStats } from './types';
+import { getProgress, pickQuestions, progressKey, type QuizLaunch } from './lib/quizProgress';
+import { newCardsLeftToday, newCardsToday } from './lib/dailyPlan';
 import { isMastered } from './lib/srs';
 import { useAuth } from './lib/auth';
 import { startSync } from './lib/sync';
@@ -27,14 +29,46 @@ const RequestPage = lazy(() => import('./pages/RequestPage').then((m) => ({ defa
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
 const QuizRunner = lazy(() => import('./components/study/QuizRunner').then((m) => ({ default: m.QuizRunner })));
+const QuizSetup = lazy(() => import('./components/study/QuizSetup').then((m) => ({ default: m.QuizSetup })));
 const FlashcardPlayer = lazy(() => import('./components/study/FlashcardPlayer').then((m) => ({ default: m.FlashcardPlayer })));
 const NotesViewer = lazy(() => import('./components/study/NotesViewer').then((m) => ({ default: m.NotesViewer })));
 const ExamSimulator = lazy(() => import('./components/study/ExamSimulator').then((m) => ({ default: m.ExamSimulator })));
 
 const ONBOARDED_KEY = 'sessiyagatayyorlan_onboarded';
 
+// A test set this large opens on a start screen instead of running all of it at once
+const LARGE_QUIZ = 25;
+
+const QuizRoute: React.FC<{ set: StudySet; lang: Language; onFinish: () => void }> = ({ set, lang, onFinish }) => {
+  const launch = (useLocation().state ?? {}) as QuizLaunch;
+  const [session, setSession] = useState<{ n: number; questions: QuizQuestion[] } | null>(() => {
+    if (!launch.autostart) return null;
+    const qs = pickQuestions(set.questions ?? [], getProgress(progressKey(set)), { mode: launch.mode ?? 'mixed', count: launch.count ?? 20, topic: launch.topic });
+    return qs.length ? { n: 0, questions: qs } : null;
+  });
+  const start = (questions: QuizQuestion[]) => setSession((s) => ({ n: (s?.n ?? 0) + 1, questions }));
+
+  if (!session) {
+    return <QuizSetup set={set} lang={lang} initialMode={launch.mode} initialCount={launch.count} initialTopic={launch.topic} onStart={start} onBack={onFinish} />;
+  }
+  return (
+    <QuizRunner
+      key={session.n}
+      set={set}
+      lang={lang}
+      onFinish={() => setSession(null)}
+      onRetake={() => start(session.questions)}
+      session={{
+        questions: session.questions,
+        onRetryMistakes: (ids) => start((set.questions ?? []).filter((q) => ids.includes(q.id))),
+        onMore: () => setSession(null),
+      }}
+    />
+  );
+};
+
 // Renders the runner for /study/:id
-const StudyRoute: React.FC<{ studySets: StudySet[]; lang: Language }> = ({ studySets, lang }) => {
+const StudyRoute: React.FC<{ studySets: StudySet[]; subjects: Subject[]; lang: Language }> = ({ studySets, subjects, lang }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState(0);
@@ -53,9 +87,10 @@ const StudyRoute: React.FC<{ studySets: StudySet[]; lang: Language }> = ({ study
   const retake = () => setAttempt((n) => n + 1);
   switch (set.type) {
     case 'quiz':
+      if ((set.questions?.length ?? 0) >= LARGE_QUIZ) return <QuizRoute key={set.id} set={set} lang={lang} onFinish={finish} />;
       return <QuizRunner key={attempt} set={set} lang={lang} onFinish={finish} onRetake={retake} />;
     case 'flashcards':
-      return <FlashcardPlayer key={attempt} set={set} lang={lang} onFinish={finish} />;
+      return <FlashcardPlayer key={attempt} set={set} lang={lang} onFinish={finish} newLimit={newCardsLeftToday(set, subjects, studySets, newCardsToday(set))} />;
     case 'notes':
       return <NotesViewer set={set} lang={lang} onBack={finish} />;
     case 'exam':
@@ -222,7 +257,7 @@ export default function App() {
             <Route path="/subjects" element={<SubjectsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id" element={<SubjectPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id/q/:qid" element={<QuestionPracticePage subjects={subjects} lang={lang} />} />
-            <Route path="/study/:id" element={<StudyRoute studySets={studySets} lang={lang} />} />
+            <Route path="/study/:id" element={<StudyRoute studySets={studySets} subjects={subjects} lang={lang} />} />
             <Route path="/assignments" element={<AssignmentsPage assignments={assignments} server={assignmentProgress} subjects={subjects} studySets={studySets} lang={lang} staff={online && !!profile && profile.role !== 'student'} />} />
             <Route path="/request" element={<RequestPage lang={lang} />} />
             <Route path="/library" element={<Navigate to="/request" replace />} />

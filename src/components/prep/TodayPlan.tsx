@@ -4,8 +4,10 @@ import { CalendarCheck, Layers, Plus, ChevronRight } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Language } from '../../lib/i18n';
 import { StudySet, Subject } from '../../types';
-import { todayOverview } from '../../lib/prep';
+import { setsOfSubject, todayOverview } from '../../lib/prep';
 import { dueQueue } from '../../lib/srs';
+import { DEFAULT_NEW_CARDS, limitNewCards, newCardsToday } from '../../lib/dailyPlan';
+import { DailyStudyRows } from './DailyStudy';
 import { daysLeftLabel } from '../../pages/SubjectsPage';
 
 interface TodayPlanProps {
@@ -18,8 +20,13 @@ interface TodayPlanProps {
 export const TodayPlan: React.FC<TodayPlanProps> = ({ subjects, studySets, lang }) => {
   const isUz = lang === 'uz';
   const navigate = useNavigate();
-  const { tasks, dueCards } = todayOverview(subjects, studySets);
-  const firstDueDeck = studySets.find((s) => s.flashcards && dueQueue(s.flashcards).length > 0);
+  const { tasks } = todayOverview(subjects, studySets);
+  // Decks of a subject are in that subject's rows; the rest show here, new cards held to the daily allowance
+  const inSubjects = new Set(subjects.flatMap((s) => setsOfSubject(s, studySets).map((x) => x.id)));
+  const looseDue = (s: StudySet) => limitNewCards(dueQueue(s.flashcards ?? []), Math.max(0, DEFAULT_NEW_CARDS - newCardsToday(s))).length;
+  const looseDecks = studySets.filter((s) => s.flashcards?.length && !inSubjects.has(s.id));
+  const dueCards = looseDecks.reduce((n, s) => n + looseDue(s), 0);
+  const firstDueDeck = looseDecks.find((s) => looseDue(s) > 0);
 
   return (
     <section className="mb-6 rounded-3xl border border-primary/25 bg-card p-5 sm:p-6 shadow-soft">
@@ -62,6 +69,11 @@ export const TodayPlan: React.FC<TodayPlanProps> = ({ subjects, studySets, lang 
                 </div>
                 <ChevronRight size={16} className="text-muted-foreground shrink-0" />
               </button>
+              {plan.daysLeft >= 0 && (
+                <div className="mt-2 pl-3 border-l-2 border-border">
+                  <DailyStudyRows subject={subject} studySets={studySets} lang={lang} />
+                </div>
+              )}
             </li>
           ))}
           {dueCards > 0 && firstDueDeck && (

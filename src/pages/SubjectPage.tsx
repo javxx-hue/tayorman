@@ -7,6 +7,8 @@ import { StudySet, Subject } from '../types';
 import { planSubject, questionScore, setsOfSubject, scoreToGrade, subjectReadiness, daysUntil } from '../lib/prep';
 import { ExamQuestion } from '../types';
 import { FORMAT_LABELS, daysLeftLabel, readinessColor } from './SubjectsPage';
+import { DailyStudyRows } from '../components/prep/DailyStudy';
+import { WeakTopics } from '../components/prep/WeakTopics';
 
 type Tab = 'plan' | 'questions' | 'practice';
 
@@ -94,6 +96,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
 
       {tab === 'plan' && (
         <div className="space-y-4">
+          {days >= 0 && <DailyStudyRows subject={subject} studySets={studySets} lang={lang} />}
           {subject.questions.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card p-5 space-y-3">
               <h3 className="font-serif font-bold text-lg text-foreground">{isUz ? 'Savollar tayyorlanmoqda' : 'Вопросы готовятся'}</h3>
@@ -157,6 +160,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
               )}
             </div>
           )}
+          <WeakTopics subject={subject} studySets={studySets} lang={lang} />
         </div>
       )}
 

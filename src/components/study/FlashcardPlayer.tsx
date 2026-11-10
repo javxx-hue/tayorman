@@ -5,12 +5,14 @@ import { RotateCw, ArrowLeft, ArrowRight, Shuffle, RotateCcw, Check, Trophy, Max
 import { Language, getTranslations } from '../../lib/i18n';
 import { saveStudySet, recordStudyActivity } from '../../lib/storage';
 import { useSpeech } from '../../lib/speech';
-import { dueQueue, reviewCard, shouldRequeue, nextDueDate, previewIntervals, formatInterval, isMastered, ReviewRating } from '../../lib/srs';
+import { dueQueue, reviewCard, shouldRequeue, nextDueDate, previewIntervals, formatInterval, isMastered, isNew, ReviewRating } from '../../lib/srs';
+import { countNewCard, limitNewCards } from '../../lib/dailyPlan';
 
 interface FlashcardPlayerProps {
   set: StudySet;
   lang: Language;
   onFinish: () => void;
+  newLimit?: number; // how many new cards may still be started today; due reviews are never held back
 }
 
 // review: FSRS queue of due cards, ratings are saved and scheduled.
@@ -24,7 +26,7 @@ const RATINGS: { key: ReviewRating; hotkey: string; className: string }[] = [
   { key: 'easy', hotkey: '4', className: 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-800 dark:text-emerald-300' },
 ];
 
-export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ set, lang, onFinish }) => {
+export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ set, lang, onFinish, newLimit }) => {
   const t = getTranslations(lang).flashcards;
   const isUz = lang === 'uz';
   const speech = useSpeech(lang);
@@ -32,7 +34,10 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ set, lang, onF
   const [deck, setDeck] = useState<Flashcard[]>(set.flashcards || []);
   const [mode, setMode] = useState<Mode>('review');
   // Card ids still to show; review mode re-appends cards that come back within minutes
-  const [queue, setQueue] = useState<string[]>(() => dueQueue(set.flashcards || []).map((c) => c.id));
+  const [queue, setQueue] = useState<string[]>(() => {
+    const due = dueQueue(set.flashcards || []);
+    return (newLimit === undefined ? due : limitNewCards(due, newLimit)).map((c) => c.id);
+  });
   const [reviewedCount, setReviewedCount] = useState(0);
   const [practiceIndex, setPracticeIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -82,6 +87,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ set, lang, onF
       return;
     }
 
+    if (isNew(currentCard)) countNewCard(set);
     const updated = reviewCard(currentCard, rating);
     const nextDeck = deck.map((c) => (c.id === updated.id ? updated : c));
     setDeck(nextDeck);

@@ -4,6 +4,7 @@
 import { supabase } from './supabase';
 import { StudySet, Subject } from '../types';
 import { getStudySets, getSubjects, saveStudySet, saveSubject, onLocalChange, LocalChange } from './storage';
+import { getAllProgress, getProgress, mergeProgress, onProgressChange, saveProgress, SetProgress } from './quizProgress';
 
 type Doc = { id: string };
 type Table = 'study_sets' | 'subjects';
@@ -43,6 +44,25 @@ async function remove(table: Table, id: string): Promise<void> {
   if (error) throw error;
 }
 
+async function pushProgress(setKey: string, data: SetProgress): Promise<void> {
+  const { error } = await supabase!.from('quiz_progress').upsert({ set_key: setKey, data, updated_at: new Date().toISOString() }, { onConflict: 'user_id,set_key' });
+  if (error) throw error;
+}
+
+// Both sides keep every answer: per set, merge this phone with the cloud and write back only what changed
+async function syncAllProgress(): Promise<void> {
+  const { data, error } = await supabase!.from('quiz_progress').select('set_key, data');
+  if (error) throw error;
+  const remote = new Map((data ?? []).map((r: { set_key: string; data: SetProgress }) => [r.set_key, r.data]));
+  const local = getAllProgress();
+  for (const key of new Set([...remote.keys(), ...Object.keys(local)])) {
+    const merged = mergeProgress(local[key] ?? {}, remote.get(key) ?? {});
+    const text = JSON.stringify(merged);
+    if (text !== JSON.stringify(local[key] ?? {})) saveProgress(key, merged, { fromSync: true });
+    if (text !== JSON.stringify(remote.get(key) ?? {})) await pushProgress(key, merged);
+  }
+}
+
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error';
 
 // Starts syncing for the signed-in user; returns a stop function.
@@ -71,6 +91,7 @@ export function startSync(onStatus: (status: SyncStatus) => void): () => void {
     sets.toLocal.forEach((s) => saveStudySet(s, { fromSync: true }));
     subjects.toLocal.forEach((s) => saveSubject(s, { fromSync: true }));
     await Promise.all([push('study_sets', sets.toRemote), push('subjects', subjects.toRemote)]);
+    await syncAllProgress();
   });
 
   // Then mirror every local write, debounced per document (flashcard reviews write often)
@@ -88,6 +109,18 @@ export function startSync(onStatus: (status: SyncStatus) => void): () => void {
     pending.set(key, { timer: setTimeout(send, 1500), send });
   });
 
+  // Test progress: one small row per set, written a few seconds after the last answer
+  const unsubscribeProgress = onProgressChange((setKey) => {
+    const key = `quiz_progress:${setKey}`;
+    const send = () => {
+      pending.delete(key);
+      run(() => pushProgress(setKey, getProgress(setKey)));
+    };
+    const previous = pending.get(key);
+    if (previous) clearTimeout(previous.timer);
+    pending.set(key, { timer: setTimeout(send, 3000), send });
+  });
+
   // Don't lose debounced writes when the tab is closed or hidden
   const flush = () => pending.forEach(({ timer, send }) => (clearTimeout(timer), send()));
   const onHide = () => document.visibilityState === 'hidden' && flush();
@@ -97,6 +130,7 @@ export function startSync(onStatus: (status: SyncStatus) => void): () => void {
     flush();
     stopped = true;
     unsubscribe();
+    unsubscribeProgress();
     document.removeEventListener('visibilitychange', onHide);
   };
 }
