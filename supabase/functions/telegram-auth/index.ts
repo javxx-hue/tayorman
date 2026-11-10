@@ -19,7 +19,10 @@ Deno.serve(async (req) => {
     const userId = await ensureUser(verified.user);
     let joined: string | null = null;
     const code = verified.startParam?.match(/^c_([a-f0-9]{12})$/)?.[1];
-    if (code) joined = await joinCommunity(userId, code);
+    if (code) {
+      const result = await joinCommunity(userId, code);
+      joined = result.status === 'joined' ? result.name : null;
+    }
 
     const { data: profile } = await admin
       .from('profiles')

@@ -3,7 +3,8 @@
 //  /start a_<nonce>   admin site sign-in from a browser: shows a code and a Confirm button
 //  admins and moderators also get an "Admin" menu button that opens the admin site inside Telegram
 //  /reja              today's plan       /til      switch language
-//  /eslatma           reminders on/off   /yordam   help
+//  /eslatma           reminders on/off   /yordam   help       /video   the how-to video
+//  an admin sends a video captioned "/video": it becomes the how-to video (its file id is kept in app_settings)
 //  any other message  (text, file, photo) is passed to the admins as a request
 //  voice message      graded as an answer to the question chosen in the Mini App
 // Deploy with --no-verify-jwt; requests are checked against TELEGRAM_WEBHOOK_SECRET.
@@ -19,6 +20,7 @@ import { isStaffRole, menuButtonFor } from '../_shared/staff.ts';
 import { planLines } from '../_shared/plan.ts';
 import { bytesToBase64, callGemini, consumeQuota, GeminiRejected, QuotaError, refundQuota } from '../_shared/gemini.ts';
 import { sameSecret } from '../_shared/secrets.ts';
+import { GUIDE_VIDEO_KEY, storedGuideVideo, uploadedGuideVideo } from '../_shared/guideVideo.ts';
 
 class BlockedError extends Error {}
 
@@ -32,8 +34,22 @@ const T = {
       `Привет, ${name}! 👋\n\n«Tayyorman» помогает готовиться к сессии и промежуточному контролю:\n• предметы и даты экзаменов\n• готовые тесты и карточки\n• ответы на экзаменационные вопросы и оценка ИИ\n• каждое утро план на день\n\nНажмите кнопку ниже, чтобы начать. Нужен предмет, вопросы или материалы — напишите сюда, запрос уйдёт администратору.`,
   },
   open: { uz: '📚 Ochish', ru: '📚 Открыть' },
+  videoButton: { uz: '🎬 Video qo\'llanma', ru: '🎬 Видеоинструкция' },
+  videoCaption: {
+    uz: '🎬 Botdan foydalanish bo\'yicha qisqa qo\'llanma',
+    ru: '🎬 Короткая инструкция, как пользоваться ботом',
+  },
+  videoMissing: { uz: 'Video qo\'llanma hali qo\'shilmagan.', ru: 'Видеоинструкция пока не добавлена.' },
+  videoSaved: {
+    uz: '✅ Video qo\'llanma saqlandi. Endi /video buyrug\'i va «Video qo\'llanma» tugmasi shuni yuboradi.',
+    ru: '✅ Видеоинструкция сохранена. Теперь команда /video и кнопка «Видеоинструкция» отправляют её.',
+  },
   joined: { uz: (n: string) => `✅ Siz «${n}» guruhiga qo'shildingiz.`, ru: (n: string) => `✅ Вы присоединились к группе «${n}».` },
   badCode: { uz: 'Taklif havolasi eskirgan yoki noto\'g\'ri.', ru: 'Ссылка-приглашение устарела или неверна.' },
+  joinFailed: {
+    uz: '⚠️ Guruhga qo\'shib bo\'lmadi. Bir ozdan keyin guruh havolasini yana bir marta bosing. Hal bo\'lmasa, shu chatga yozing.',
+    ru: '⚠️ Не удалось добавить в группу. Через минуту нажмите ссылку группы ещё раз. Если не получится, напишите сюда.',
+  },
   planTitle: { uz: '📚 Bugungi reja', ru: '📚 План на сегодня' },
   planEmpty: {
     uz: 'Hozircha reja yo\'q. Ilovada fan va imtihon sanasini qo\'shing.',
@@ -43,8 +59,8 @@ const T = {
   remindersOn: { uz: '🔔 Har kunlik eslatmalar yoqildi (08:00).', ru: '🔔 Ежедневные напоминания включены (08:00).' },
   remindersOff: { uz: '🔕 Eslatmalar o\'chirildi.', ru: '🔕 Напоминания выключены.' },
   help: {
-    uz: "/reja — bugungi reja\\n/til — tilni almashtirish\\n/eslatma — eslatmalarni yoqish/o'chirish\\n\\nFan, savol, material yoki xato haqida shu chatga yozing (fayl yoki rasm ham mumkin): so'rovingiz adminga yuboriladi.",
-    ru: "/reja — план на сегодня\\n/til — сменить язык\\n/eslatma — вкл/выкл напоминания\\n\\nНапишите сюда о предмете, вопросах, материалах или ошибке (можно файл или фото): запрос уйдёт администратору.",
+    uz: "/reja — bugungi reja\n/video — botdan foydalanish bo'yicha video\n/til — tilni almashtirish\n/eslatma — eslatmalarni yoqish/o'chirish\n\nFan, savol, material yoki xato haqida shu chatga yozing (fayl yoki rasm ham mumkin): so'rovingiz adminga yuboriladi.",
+    ru: "/reja — план на сегодня\n/video — видеоинструкция по боту\n/til — сменить язык\n/eslatma — вкл/выкл напоминания\n\nНапишите сюда о предмете, вопросах, материалах или ошибке (можно файл или фото): запрос уйдёт администратору.",
   },
   badFile: {
     uz: 'Bu fayl turini o\'qiy olmayman. PDF, PPTX, DOCX, TXT yoki rasm yuboring.',
@@ -86,6 +102,45 @@ async function profileOf(tgUser: TelegramUser) {
 
 const appKeyboard = (lang: Lang, path = '') => ({ reply_markup: { inline_keyboard: [[openAppButton(t('open', lang), path)]] } });
 
+// ---------------------------------------------------------------- how-to video
+async function guideVideoId(): Promise<string | null> {
+  const { data } = await admin.from('app_settings').select('value').eq('key', GUIDE_VIDEO_KEY).maybeSingle();
+  return storedGuideVideo(data?.value);
+}
+
+// The welcome keyboard: the app button, and the video button when a video has been added
+const welcomeKeyboard = (lang: Lang, hasVideo: boolean) => ({
+  reply_markup: {
+    inline_keyboard: [[openAppButton(t('open', lang), '')], ...(hasVideo ? [[{ text: t('videoButton', lang), callback_data: 'gv' }]] : [])],
+  },
+});
+
+async function sendGuideVideo(chatId: number, lang: Lang) {
+  const fileId = await guideVideoId();
+  if (!fileId) return void (await sendMessage(chatId, t('videoMissing', lang)));
+  const sent = await tg('sendVideo', { chat_id: chatId, video: fileId, caption: t('videoCaption', lang), supports_streaming: true });
+  if (sent === null) await sendMessage(chatId, t('failed', lang)); // e.g. the stored file no longer exists for this bot
+}
+
+// An admin's video captioned "/video" becomes the guide. Returns false when it is not that (a normal request then).
+async function onGuideUpload(chatId: number, user: TelegramUser, m: Incoming): Promise<boolean> {
+  const upload = uploadedGuideVideo(m);
+  if (!upload) return false;
+  const profile = await profileOf(user);
+  if (profile.role !== 'admin') return false;
+  const { error } = await admin
+    .from('app_settings')
+    .upsert({ key: GUIDE_VIDEO_KEY, value: { file_id: upload.fileId, unique_id: upload.uniqueId }, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  await sendMessage(chatId, error ? t('failed', profile.language) : t('videoSaved', profile.language));
+  return true;
+}
+
+async function onGuideButton(query: { id: string; from: TelegramUser; message?: { chat: { id: number } } }) {
+  const profile = await profileOf(query.from);
+  await tg('answerCallbackQuery', { callback_query_id: query.id });
+  await sendGuideVideo(query.message?.chat.id ?? query.from.id, profile.language);
+}
+
 // Staff get the Admin button. Anyone else gets the normal menu back, but only when they start the bot:
 // one call is enough to take the button from someone who is no longer staff, and students are not bothered each time.
 async function syncMenuButton(chatId: number, role: string, isStart: boolean) {
@@ -123,17 +178,21 @@ async function runCommand(chatId: number, text: string, user: TelegramUser, prof
           reply_markup: { inline_keyboard: [[{ text: t('loginConfirm', lang), callback_data: `al:${nonce}` }]] },
         }));
       }
-      await sendMessage(chatId, t('welcome', lang)(user.first_name ?? ''), appKeyboard(lang));
+      await sendMessage(chatId, t('welcome', lang)(user.first_name ?? ''), welcomeKeyboard(lang, !!(await guideVideoId())));
       const code = arg?.match(/^c_([a-f0-9]{12})$/)?.[1];
       if (code) {
-        const name = await joinCommunity(profile.id, code);
-        await sendMessage(chatId, name ? t('joined', lang)(name) : t('badCode', lang));
+        const joined = await joinCommunity(profile.id, code);
+        await sendMessage(chatId, joined.status === 'joined' ? t('joined', lang)(joined.name) : joined.status === 'failed' ? t('joinFailed', lang) : t('badCode', lang));
       }
       return;
     }
     case '/reja': {
       const lines = await planLines(profile.id, lang);
       await sendMessage(chatId, lines.length ? `${t('planTitle', lang)}\n\n${lines.join('\n')}` : t('planEmpty', lang), appKeyboard(lang));
+      return;
+    }
+    case '/video': {
+      await sendGuideVideo(chatId, lang);
       return;
     }
     case '/til': {
@@ -158,8 +217,9 @@ type Incoming = {
   message_id: number;
   text?: string;
   caption?: string;
-  document?: { file_id: string; file_name?: string; mime_type?: string; file_size?: number };
+  document?: { file_id: string; file_unique_id?: string; file_name?: string; mime_type?: string; file_size?: number };
   photo?: { file_id: string; file_size?: number }[];
+  video?: { file_id: string; file_unique_id?: string };
 };
 
 // A file or photo from the chat is kept in the private bucket, so the admin can open it on the site
@@ -310,13 +370,15 @@ Deno.serve(async (req) => {
   try {
     if (typeof update?.callback_query?.data === 'string' && update.callback_query.data.startsWith('al:')) {
       await onLoginConfirm(update.callback_query);
+    } else if (update?.callback_query?.data === 'gv') {
+      await onGuideButton(update.callback_query);
     } else if (update?.message?.chat?.type === 'private' && update.message.from) {
       const m = update.message;
       const chatId: number = m.chat.id;
       if (typeof m.text === 'string' && m.text.startsWith('/')) await onCommand(chatId, m.text, m.from);
       else if (m.voice) await onVoice(chatId, m.from, m.voice.file_id, m.voice.mime_type ?? 'audio/ogg');
       else if (m.audio) await onVoice(chatId, m.from, m.audio.file_id, m.audio.mime_type ?? 'audio/mpeg');
-      else await onRequest(chatId, m.from, m);
+      else if (!(await onGuideUpload(chatId, m.from, m))) await onRequest(chatId, m.from, m);
     }
   } catch (e) {
     // Always 200 so Telegram does not retry the same update forever
