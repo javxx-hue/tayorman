@@ -1,10 +1,12 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CalendarDays, Play, PenLine, HelpCircle, Layers, Grid3x3, BarChart3, Timer, ChevronRight } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Play, PenLine, HelpCircle, Layers, Grid3x3, BarChart3, Timer, ChevronRight, Brain, TextCursorInput } from 'lucide-react';
+import { RECALL_SITTING } from './RecallPage';
+import { CLOZE_SITTING } from './ClozePage';
 import { Button } from '../components/ui/Button';
 import { Language, tr } from '../lib/i18n';
 import { ExamQuestion, StudySet, Subject } from '../types';
-import { planSubject, questionScore, setsOfSubject, subjectReadiness, daysUntil } from '../lib/prep';
+import { planSubject, practiceOrder, setsOfSubject, subjectReadiness, daysUntil } from '../lib/prep';
 import { FORMAT_LABELS, daysLeftLabel, readinessColor } from './SubjectsPage';
 import { DailyStudyRows } from '../components/prep/DailyStudy';
 
@@ -62,9 +64,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
   // Opens a question with the order to go through them in
   const practise = (ids: string[], first = ids[0]) => navigate(`/subjects/${subject.id}/q/${first}`, { state: { queue: ids } });
   const idsOf = (qs: ExamQuestion[]) => qs.map((q) => q.id);
-  // Today's questions first, then the weakest ones
-  const weakest = [...subject.questions].sort((a, b) => questionScore(a) - questionScore(b));
-  const writeQueue = [...new Set([...plan.today, ...plan.more, ...weakest])].slice(0, WRITE_SITTING);
+  const writeQueue = practiceOrder(subject).slice(0, WRITE_SITTING);
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-5 pb-6 space-y-5">
@@ -135,6 +135,18 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
               title={tr(lang, 'Javob yozib ko\'rish', 'Написать ответ')}
               hint={tr(lang, `${WRITE_SITTING} ta savol · AI tekshiradi`, `${WRITE_SITTING} вопросов · проверяет ИИ`)}
               onClick={() => practise(idsOf(writeQueue))}
+            />
+            <Row
+              icon={<Brain size={18} className="text-violet-600 dark:text-violet-400" />}
+              title={tr(lang, "Eslab ko'rish", 'Вспомнить ответ')}
+              hint={tr(lang, `Savol → javobni oching → o'zingizni baholang · ${RECALL_SITTING} tadan`, `Вопрос → откройте ответ → оцените себя · по ${RECALL_SITTING}`)}
+              onClick={() => navigate(`/subjects/${subject.id}/recall`)}
+            />
+            <Row
+              icon={<TextCursorInput size={18} className="text-orange-600 dark:text-orange-400" />}
+              title={tr(lang, "Bo'sh joyni to'ldirish", 'Заполнить пропуски')}
+              hint={tr(lang, `Javobdagi kalit atamalar · ${CLOZE_SITTING} tadan`, `Ключевые термины ответа · по ${CLOZE_SITTING}`)}
+              onClick={() => navigate(`/subjects/${subject.id}/cloze`)}
             />
             {quiz && (
               <Row

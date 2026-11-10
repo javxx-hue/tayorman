@@ -181,6 +181,16 @@ export const subjectReadiness = (subject: Subject, sets: StudySet[]): number => 
 // ---------------------------------------------------------------
 export const PASS_SCORE = 71; // "4" or better counts as learned
 
+// A student's own verdict after seeing the model answer (the practice page and the recall mode use the same scale)
+export const SELF_SCORES = { know: 90, partly: 60, not: 20 } as const;
+
+// The order to practise a subject's questions in: today's plan, then the next weakest, then everything else weakest first
+export function practiceOrder(subject: Subject, today: string = localDateKey()): ExamQuestion[] {
+  const plan = planSubject(subject, today);
+  const weakest = [...subject.questions].sort((a, b) => questionScore(a) - questionScore(b));
+  return [...new Set([...plan.today, ...plan.more, ...weakest])];
+}
+
 export function daysUntil(examDate: string, today: string = localDateKey()): number {
   return Math.round((Date.parse(examDate) - Date.parse(today)) / 86_400_000);
 }

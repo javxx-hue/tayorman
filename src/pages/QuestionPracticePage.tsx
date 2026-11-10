@@ -11,7 +11,7 @@ import { haptic, openBotChat } from '../lib/telegram';
 import { track } from '../lib/track';
 import { Subject } from '../types';
 import { getSubjectById, saveSubject, recordStudyActivity } from '../lib/storage';
-import { generateModelAnswer, gradeAnswer, planSubject, questionScore, scoreToGrade } from '../lib/prep';
+import { generateModelAnswer, gradeAnswer, planSubject, questionScore, scoreToGrade, SELF_SCORES } from '../lib/prep';
 import { describeGenerationError } from '../lib/ai';
 import { AnswerInput } from '../components/AnswerInput';
 import { canRecordAudio } from '../lib/useRecorder';
@@ -222,9 +222,9 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
               {isUz ? 'Javobingiz namunaga qanchalik mos keldi?' : 'Насколько ваш ответ совпал с образцом?'}
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => selfAssess(90)} className="py-2.5 rounded-xl text-sm font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300">{isUz ? 'Bilaman' : 'Знаю'}</button>
-              <button onClick={() => selfAssess(60)} className="py-2.5 rounded-xl text-sm font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-300">{isUz ? 'Qisman' : 'Частично'}</button>
-              <button onClick={() => selfAssess(20)} className="py-2.5 rounded-xl text-sm font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-800 dark:text-rose-300">{isUz ? 'Bilmayman' : 'Не знаю'}</button>
+              <button onClick={() => selfAssess(SELF_SCORES.know)} className="py-2.5 rounded-xl text-sm font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300">{isUz ? 'Bilaman' : 'Знаю'}</button>
+              <button onClick={() => selfAssess(SELF_SCORES.partly)} className="py-2.5 rounded-xl text-sm font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-300">{isUz ? 'Qisman' : 'Частично'}</button>
+              <button onClick={() => selfAssess(SELF_SCORES.not)} className="py-2.5 rounded-xl text-sm font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-800 dark:text-rose-300">{isUz ? 'Bilmayman' : 'Не знаю'}</button>
             </div>
           </div>
         )}

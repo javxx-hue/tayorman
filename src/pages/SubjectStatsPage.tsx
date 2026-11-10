@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Language, tr } from '../lib/i18n';
 import { StudySet, Subject } from '../types';
-import { PASS_SCORE, questionScore, readinessParts, READINESS_WEIGHTS } from '../lib/prep';
+import { PASS_SCORE, questionScore, readinessParts, READINESS_WEIGHTS, SELF_SCORES } from '../lib/prep';
 import { readinessColor } from './SubjectsPage';
 
 interface SubjectStatsPageProps {
@@ -26,7 +26,7 @@ export const SubjectStatsPage: React.FC<SubjectStatsPageProps> = ({ subjects, st
   const toRepeat = answered.filter((q) => questionScore(q) < PASS_SCORE).length;
 
   const rows: { label: string; weight: number; value: number | null }[] = [
-    { label: tr(lang, 'Yozma javoblar', 'Письменные ответы'), weight: READINESS_WEIGHTS.written, value: parts.written },
+    { label: tr(lang, "Savollar: yozma, eslash, bo'sh joy",'Вопросы: письменно, по памяти, пропуски'), weight: READINESS_WEIGHTS.written, value: parts.written },
     { label: tr(lang, 'Testlar', 'Тесты'), weight: READINESS_WEIGHTS.tests, value: parts.tests },
     { label: tr(lang, 'Kartochkalar', 'Карточки'), weight: READINESS_WEIGHTS.cards, value: parts.cards },
   ];
@@ -75,8 +75,8 @@ export const SubjectStatsPage: React.FC<SubjectStatsPageProps> = ({ subjects, st
       <p className="text-xs text-muted-foreground">
         {tr(
           lang,
-          `Tayyorlik = yozma javoblar (${share(READINESS_WEIGHTS.written)}%) + testlar (${share(READINESS_WEIGHTS.tests)}%) + kartochkalar (${share(READINESS_WEIGHTS.cards)}%). Hali boshlanmagan qism («—») hisobga olinmaydi, uning ulushi qolganlariga bo'linadi. Yozma javob ${PASS_SCORE}% va undan yuqori baholansa, savol tayyor hisoblanadi.`,
-          `Готовность = письменные ответы (${share(READINESS_WEIGHTS.written)}%) + тесты (${share(READINESS_WEIGHTS.tests)}%) + карточки (${share(READINESS_WEIGHTS.cards)}%). Ещё не начатая часть («—») не учитывается, её доля делится между остальными. Вопрос готов, если ответ оценён на ${PASS_SCORE}% и выше.`
+          `Tayyorlik = savollar (${share(READINESS_WEIGHTS.written)}%) + testlar (${share(READINESS_WEIGHTS.tests)}%) + kartochkalar (${share(READINESS_WEIGHTS.cards)}%). Hali boshlanmagan qism («—») hisobga olinmaydi, uning ulushi qolganlariga bo'linadi. Savolning oxirgi natijasi hisobga olinadi: ${PASS_SCORE}% va undan yuqori bo'lsa, savol tayyor. «Bilaman» ${SELF_SCORES.know}%, «Qisman» ${SELF_SCORES.partly}%, «Bilmayman» ${SELF_SCORES.not}%; bo'sh joy mashqi eng ko'pi 70% beradi.`,
+          `Готовность = вопросы (${share(READINESS_WEIGHTS.written)}%) + тесты (${share(READINESS_WEIGHTS.tests)}%) + карточки (${share(READINESS_WEIGHTS.cards)}%). Ещё не начатая часть («—») не учитывается, её доля делится между остальными. Учитывается последний результат вопроса: от ${PASS_SCORE}% вопрос готов. «Знаю» ${SELF_SCORES.know}%, «Частично» ${SELF_SCORES.partly}%, «Не знаю» ${SELF_SCORES.not}%; пропуски дают не больше 70%.`
         )}
       </p>
     </div>

@@ -22,6 +22,8 @@ import { startTelegram, applyTelegramTheme, useTelegramBackButton, BOT_USERNAME 
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
 const SubjectsPage = lazy(() => import('./pages/SubjectsPage').then((m) => ({ default: m.SubjectsPage })));
 const SubjectPage = lazy(() => import('./pages/SubjectPage').then((m) => ({ default: m.SubjectPage })));
+const RecallPage = lazy(() => import('./pages/RecallPage').then((m) => ({ default: m.RecallPage })));
+const ClozePage = lazy(() => import('./pages/ClozePage').then((m) => ({ default: m.ClozePage })));
 const TicketsPage = lazy(() => import('./pages/TicketsPage').then((m) => ({ default: m.TicketsPage })));
 const SubjectStatsPage = lazy(() => import('./pages/SubjectStatsPage').then((m) => ({ default: m.SubjectStatsPage })));
 const QuestionPracticePage = lazy(() => import('./pages/QuestionPracticePage').then((m) => ({ default: m.QuestionPracticePage })));
@@ -253,6 +255,8 @@ export default function App() {
             <Route path="/" element={<HomePage subjects={subjects} studySets={studySets} stats={stats} lang={lang} />} />
             <Route path="/subjects" element={<SubjectsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id" element={<SubjectPage subjects={subjects} studySets={studySets} lang={lang} />} />
+            <Route path="/subjects/:id/recall" element={<RecallPage subjects={subjects} lang={lang} />} />
+            <Route path="/subjects/:id/cloze" element={<ClozePage subjects={subjects} lang={lang} />} />
             <Route path="/subjects/:id/tickets" element={<TicketsPage subjects={subjects} lang={lang} />} />
             <Route path="/subjects/:id/stats" element={<SubjectStatsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id/q/:qid" element={<QuestionPracticePage subjects={subjects} lang={lang} />} />

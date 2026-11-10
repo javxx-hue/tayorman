@@ -100,6 +100,7 @@ export interface AnswerAttempt {
   score: number; // 0-100
   feedback: string;
   missing: string[];
+  mode?: 'recall' | 'cloze'; // how it was practised; none = a written or spoken answer
 }
 
 export interface ExamQuestion {
