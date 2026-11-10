@@ -2,8 +2,15 @@ export type StudySetType = 'quiz' | 'flashcards' | 'notes' | 'exam';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type Language = 'uz' | 'ru';
 
+// A subject's topic. Library content is tagged with these, so a student can study by topic and see weak spots.
+export interface Topic {
+  no: number;
+  name: string;
+}
+
 export interface QuizQuestion {
   id: string;
+  topic?: number; // Topic.no
   question: string;
   options: string[];
   correctAnswer: number; // 0-based index
@@ -14,6 +21,7 @@ export interface QuizQuestion {
 
 export interface Flashcard {
   id: string;
+  topic?: number; // Topic.no
   front: string;
   back: string;
   example?: string;
@@ -61,6 +69,7 @@ export interface StudySet {
   subjectId?: string; // set generated inside a subject
   libraryId?: string; // copied from the admin library
   libraryUpdatedAt?: string; // library version this copy was last refreshed from
+  topics?: Topic[];
   lastScore?: number;
   completedAt?: number;
 }
@@ -106,6 +115,7 @@ export interface AnswerAttempt {
 export interface ExamQuestion {
   id: string;
   text: string;
+  topic?: number; // Topic.no
   modelAnswer?: ModelAnswer;
   attempts: AnswerAttempt[];
 }
@@ -121,5 +131,6 @@ export interface Subject {
   questions: ExamQuestion[];
   libraryId?: string; // copied from the admin library
   libraryUpdatedAt?: string; // library version this copy was last refreshed from
+  topics?: Topic[];
   librarySourceId?: string; // id the admin's subject had; sets published with it name it in their subjectId
 }
