@@ -135,8 +135,8 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
           <Section title={tr(lang, 'Tayyorlanish', 'Подготовка')}>
             <Row
               icon={<Presentation size={18} className="text-teal-500" />}
-              title={tr(lang, "Doskada o'rganish", 'Учить на доске')}
-              hint={tr(lang, `Javob doskada qadam-baqadam, ovoz bilan · ${BOARD_SITTING} tadan`, `Ответ на доске по шагам, с голосом · по ${BOARD_SITTING}`)}
+              title={tr(lang, 'Ustoz tushuntiradi', 'Учитель объясняет')}
+              hint={tr(lang, `Ustoz javobni doskaga yozib, qadam-baqadam tushuntiradi · ${BOARD_SITTING} tadan`, `Учитель пишет ответ на доске и объясняет по шагам · по ${BOARD_SITTING}`)}
               onClick={() => navigate(`/subjects/${subject.id}/board`)}
             />
             <Row
@@ -148,7 +148,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
             <Row
               icon={<Brain size={18} className="text-violet-600 dark:text-violet-400" />}
               title={tr(lang, "Eslab ko'rish", 'Вспомнить ответ')}
-              hint={tr(lang, `Savol → javobni oching → o'zingizni baholang · ${RECALL_SITTING} tadan`, `Вопрос → откройте ответ → оцените себя · по ${RECALL_SITTING}`)}
+              hint={tr(lang, `Eslaganingizni yozing → to'g'ri javob bilan solishtiring · ${RECALL_SITTING} tadan`, `Запишите, что помните → сравните с ответом · по ${RECALL_SITTING}`)}
               onClick={() => navigate(`/subjects/${subject.id}/recall`)}
             />
             <Row

@@ -23,6 +23,7 @@ export const RecallPage: React.FC<RecallPageProps> = ({ subjects, lang }) => {
   const queue = useMemo(() => (subject ? practiceOrder(subject).filter((q) => q.modelAnswer).slice(0, RECALL_SITTING) : []), [subject?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [index, setIndex] = useState(0);
   const [open, setOpen] = useState(false);
+  const [notes, setNotes] = useState('');
   const [tally, setTally] = useState({ know: 0, partly: 0, not: 0 });
   if (!subject) return null;
 
@@ -32,7 +33,7 @@ export const RecallPage: React.FC<RecallPageProps> = ({ subjects, lang }) => {
   if (!question) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center space-y-4">
-        <h2 className="text-2xl font-serif font-bold text-foreground">{tr(lang, 'Mashq tugadi', 'Готово')}</h2>
+        <h2 className="text-2xl font-extrabold text-foreground">{tr(lang, 'Mashq tugadi', 'Готово')}</h2>
         <p className="text-sm text-muted-foreground">
           {tr(lang, `Bilaman: ${tally.know} · Qisman: ${tally.partly} · Bilmayman: ${tally.not}`, `Знаю: ${tally.know} · Частично: ${tally.partly} · Не знаю: ${tally.not}`)}
         </p>
@@ -42,9 +43,10 @@ export const RecallPage: React.FC<RecallPageProps> = ({ subjects, lang }) => {
   }
 
   const rate = (verdict: keyof typeof SELF_SCORES) => {
-    saveAttempt(subject.id, question.id, { at: Date.now(), answer: '', score: SELF_SCORES[verdict], feedback: '', missing: [], mode: 'recall' });
+    saveAttempt(subject.id, question.id, { at: Date.now(), answer: notes.trim(), score: SELF_SCORES[verdict], feedback: '', missing: [], mode: 'recall' });
     setTally((t) => ({ ...t, [verdict]: t[verdict] + 1 }));
     setOpen(false);
+    setNotes('');
     setIndex((i) => i + 1);
   };
   const number = subject.questions.findIndex((q) => q.id === question.id) + 1;
@@ -60,13 +62,24 @@ export const RecallPage: React.FC<RecallPageProps> = ({ subjects, lang }) => {
 
       <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
         <span className="text-xs font-semibold text-primary">{tr(lang, `${number}-bilet`, `Билет ${number}`)}</span>
-        <h1 className="text-lg font-serif font-bold text-foreground leading-snug">{question.text}</h1>
+        <h1 className="text-lg font-extrabold text-foreground leading-snug">{question.text}</h1>
         {!open ? (
-          <p className="text-sm text-muted-foreground rounded-xl bg-secondary/60 p-3">
-            {tr(lang, "Javob rejasini ichingizda yoki qog'ozda eslang. Tayyor bo'lsangiz, oching.", 'Вспомните план ответа про себя или на бумаге. Готовы — откройте.')}
-          </p>
+          <textarea
+            rows={5}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={tr(lang, "Eslaganingizni shu yerga yozing: asosiy fikrlar, ta'riflar. Yozmasdan, ichingizda eslasangiz ham bo'ladi.", 'Запишите, что помните: главные мысли, определения. Можно и вспомнить про себя, без записи.')}
+            className="w-full p-3.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+          />
         ) : (
           <div className="space-y-3 border-t border-border pt-4">
+            {notes.trim() && (
+              <div className="rounded-xl bg-secondary/60 p-3 space-y-1">
+                <p className="text-xs font-bold text-muted-foreground">{tr(lang, 'Siz yozdingiz', 'Вы написали')}</p>
+                <p className="text-sm text-foreground whitespace-pre-line">{notes.trim()}</p>
+              </div>
+            )}
+            <p className="text-xs font-bold uppercase tracking-wider text-emerald-400">{tr(lang, "To'g'ri javob", 'Правильный ответ')}</p>
             <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{question.modelAnswer?.summary}</p>
             {!!question.modelAnswer?.keyPoints.length && (
               <ul className="list-disc pl-5 space-y-1 text-sm text-foreground">
@@ -85,9 +98,9 @@ export const RecallPage: React.FC<RecallPageProps> = ({ subjects, lang }) => {
         <div className="space-y-2">
           <p className="text-xs text-center text-muted-foreground">{tr(lang, 'Qanchalik esladingiz?', 'Насколько вспомнили?')}</p>
           <div className="grid grid-cols-3 gap-2">
-            <button onClick={() => rate('not')} className="py-3 rounded-xl text-sm font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-800 dark:text-rose-300">{tr(lang, 'Bilmayman', 'Не знаю')}</button>
-            <button onClick={() => rate('partly')} className="py-3 rounded-xl text-sm font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-300">{tr(lang, 'Qisman', 'Частично')}</button>
-            <button onClick={() => rate('know')} className="py-3 rounded-xl text-sm font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300">{tr(lang, 'Bilaman', 'Знаю')}</button>
+            <button onClick={() => rate('not')} className="py-3 rounded-2xl text-sm font-bold bg-rose-500/15 border-2 border-rose-500/40 text-rose-300 active:translate-y-[2px]">{tr(lang, 'Bilmayman', 'Не знаю')}</button>
+            <button onClick={() => rate('partly')} className="py-3 rounded-2xl text-sm font-bold bg-amber-500/15 border-2 border-amber-500/40 text-amber-300 active:translate-y-[2px]">{tr(lang, 'Qisman', 'Частично')}</button>
+            <button onClick={() => rate('know')} className="py-3 rounded-2xl text-sm font-bold bg-emerald-500/15 border-2 border-emerald-500/40 text-emerald-300 active:translate-y-[2px]">{tr(lang, 'Bilaman', 'Знаю')}</button>
           </div>
         </div>
       )}

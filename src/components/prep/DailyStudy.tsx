@@ -28,7 +28,8 @@ export const DailyStudyRows: React.FC<DailyStudyRowsProps> = ({ subject, studySe
         const { set, target, done: did, dueMistakes } = plan.quiz;
         const left = Math.max(target - did, 0);
         const finished = left === 0 && dueMistakes === 0;
-        const launch: QuizLaunch = { count: Math.min(Math.max(left + dueMistakes, 10), 20), autostart: !finished };
+        // Exactly today's share: the tests still left plus the mistakes due again (at most 20 in one go)
+        const launch: QuizLaunch = { count: Math.min(Math.max(left + dueMistakes, 1), 20), autostart: !finished };
         return (
           <button className={row} onClick={() => navigate(`/study/${set.id}`, { state: launch })}>
             <HelpCircle size={18} className="text-creation-quiz-strong shrink-0" />

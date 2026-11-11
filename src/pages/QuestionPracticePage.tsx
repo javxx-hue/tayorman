@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Mic, Sparkles, BookOpen, Presentation } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Mic, Sparkles, BookOpen, GraduationCap } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { toast } from '../components/ui/Toast';
 import { Language } from '../lib/i18n';
@@ -52,6 +52,8 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   // Opened without one (a bookmark, a reload that lost it), it goes through today's plan.
   const existing = new Set(subject.questions.map((q) => q.id));
   const opened = queueOf(location.state);
+  // Opened from the tickets page: each question is a ticket, so it is shown as "17-bilet", not as one of hundreds
+  const fromTickets = (location.state as { tickets?: boolean } | null)?.tickets === true;
   const queue = usableQueue(opened ?? [question.id, ...planSubject(subject).today.map((q) => q.id).filter((x) => x !== question.id)], existing);
   const nextId = nextInQueue(queue, question.id);
   const place = placeInQueue(queue, question.id);
@@ -122,6 +124,10 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   const goNext = () => {
     setAnswer('');
     setShowModel(false);
+    if (fromTickets) {
+      navigate(nextId ? `/subjects/${subject.id}/q/${nextId}` : `/subjects/${subject.id}/tickets`, nextId ? { state: { queue, tickets: true } } : undefined);
+      return;
+    }
     navigate(nextId ? `/subjects/${subject.id}/q/${nextId}` : `/subjects/${subject.id}`, nextId ? { state: { queue } } : undefined);
   };
 
@@ -135,8 +141,10 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
 
       <div className="rounded-3xl bg-card border border-border/80 p-4 sm:p-7 shadow-soft space-y-5">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            {opened && queue.length > 1
+          <span className={fromTickets ? 'font-bold text-primary' : ''}>
+            {fromTickets
+              ? isUz ? `${index + 1}-bilet` : `Билет ${index + 1}`
+              : opened && queue.length > 1
               ? isUz ? `Mashq: ${place} / ${queue.length}` : `Практика: ${place} / ${queue.length}`
               : isUz ? `${index + 1}-savol / ${subject.questions.length}` : `Вопрос ${index + 1} / ${subject.questions.length}`}
           </span>
@@ -161,13 +169,13 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
           <Button variant="primary" size="lg" className="w-full" onClick={handleGrade} disabled={busy !== null || answer.trim().length < 10} icon={busy === 'grading' ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}>
             {isUz ? 'Baholash' : 'Оценить'}
           </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" size="md" className="flex-1 whitespace-nowrap" onClick={handleShowModel} disabled={busy !== null} icon={showModel ? <EyeOff size={15} /> : <Eye size={15} />}>
+          <div className="space-y-2">
+            <Button variant="outline" size="md" className="w-full" onClick={handleShowModel} disabled={busy !== null} icon={showModel ? <EyeOff size={15} /> : <Eye size={15} />}>
               {busy === 'answer' ? (isUz ? 'Tayyorlanmoqda...' : 'Готовим...') : showModel ? (isUz ? 'Yashirish' : 'Скрыть') : (isUz ? 'Javobni ko\'rish' : 'Показать ответ')}
             </Button>
             {question.modelAnswer && (
-              <Button variant="outline" size="md" className="flex-1 whitespace-nowrap" onClick={() => navigate(`/subjects/${subject.id}/board`, { state: { question: question.id } })} icon={<Presentation size={15} />}>
-                {isUz ? 'Doskada' : 'На доске'}
+              <Button variant="outline" size="md" className="w-full" onClick={() => navigate(`/subjects/${subject.id}/board`, { state: { question: question.id } })} icon={<GraduationCap size={16} />}>
+                {isUz ? 'Ustoz doskada tushuntirsin' : 'Пусть учитель объяснит на доске'}
               </Button>
             )}
           </div>
@@ -234,7 +242,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
 
         <div className="pt-3 border-t border-border">
           <Button variant="secondary" size="lg" className="w-full" onClick={goNext} icon={<ArrowRight size={16} />}>
-            {nextId ? (isUz ? 'Keyingi savol' : 'Следующий вопрос') : (isUz ? 'Tugatish' : 'Завершить')}
+            {nextId ? (fromTickets ? (isUz ? 'Keyingi bilet' : 'Следующий билет') : isUz ? 'Keyingi savol' : 'Следующий вопрос') : isUz ? 'Tugatish' : 'Завершить'}
           </Button>
         </div>
       </div>

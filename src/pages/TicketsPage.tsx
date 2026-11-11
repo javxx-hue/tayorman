@@ -35,7 +35,7 @@ export const TicketsPage: React.FC<TicketsPageProps> = ({ subjects, lang }) => {
   if (!subject) return null;
 
   const ids = subject.questions.map((q) => q.id);
-  const open = (i: number) => navigate(`/subjects/${subject.id}/q/${ids[i]}`, { state: { queue: ids.slice(i) } });
+  const open = (i: number) => navigate(`/subjects/${subject.id}/q/${ids[i]}`, { state: { queue: ids.slice(i), tickets: true } });
   const wanted = Number(search);
   const shown = subject.questions.map((q, i) => ({ q, i })).filter(({ i }) => !search || String(i + 1).startsWith(search.trim()));
   const legend: { key: TicketState; label: string }[] = [
@@ -51,7 +51,7 @@ export const TicketsPage: React.FC<TicketsPageProps> = ({ subjects, lang }) => {
         <ArrowLeft size={14} /> {subject.name}
       </button>
       <div>
-        <h1 className="text-2xl font-serif font-bold text-foreground">{tr(lang, 'Biletlar', 'Билеты')}</h1>
+        <h1 className="text-2xl font-extrabold text-foreground">{tr(lang, 'Biletlar', 'Билеты')}</h1>
         <p className="text-sm text-muted-foreground">{tr(lang, 'Rang tayyorlik darajasini bildiradi.', 'Цвет показывает готовность.')}</p>
       </div>
 
