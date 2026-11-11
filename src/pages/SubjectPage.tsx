@@ -33,7 +33,7 @@ const Row: React.FC<{ icon: React.ReactNode; title: string; hint: string; onClic
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <section>
-    <h2 className="text-sm font-semibold text-muted-foreground mb-2">{title}</h2>
+    <h2 className="text-lg font-serif text-foreground mb-2">{title}</h2>
     <div className="rounded-2xl border border-border bg-card divide-y divide-border">{children}</div>
   </section>
 );
@@ -103,7 +103,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
         <>
           {days >= 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-muted-foreground mb-2">{tr(lang, 'Bugun', 'Сегодня')}</h2>
+              <h2 className="text-lg font-serif text-foreground mb-2">{tr(lang, 'Bugun', 'Сегодня')}</h2>
               <div className="space-y-2">
                 <div className="rounded-2xl border border-border bg-card p-4 flex items-center justify-between gap-3">
                   <div className="min-w-0">
