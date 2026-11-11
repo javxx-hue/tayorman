@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Mic, Sparkles, BookOpen, GraduationCap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Mic, Sparkles, BookOpen, GraduationCap, ChevronDown } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { toast } from '../components/ui/Toast';
 import { Language } from '../lib/i18n';
@@ -15,9 +15,12 @@ import { generateModelAnswer, gradeAnswer, planSubject, questionScore, scoreToGr
 import { describeGenerationError } from '../lib/ai';
 import { AnswerInput } from '../components/AnswerInput';
 import { canRecordAudio } from '../lib/useRecorder';
+import { isGradable, MIN_ANSWER_WORDS } from '../lib/answerInput';
 import { readinessColor } from './SubjectsPage';
 import { ReportIssue } from '../components/ReportIssue';
 import { nextInQueue, placeInQueue, queueOf, usableQueue } from '../lib/practiceQueue';
+
+const UZ_MONTHS = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
 
 interface QuestionPracticePageProps {
   subjects: Subject[];
@@ -35,6 +38,14 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   const [answer, setAnswer] = useState('');
   const [showModel, setShowModel] = useState(false);
   const [busy, setBusy] = useState<'grading' | 'answer' | null>(null);
+  // The result is shown in full only for an answer given now; an earlier one stays a small line until opened
+  const [gradedNow, setGradedNow] = useState(false);
+  const [showOld, setShowOld] = useState(false);
+  // Moving to another question (also with the back button) starts it clean
+  useEffect(() => {
+    setGradedNow(false);
+    setShowOld(false);
+  }, [qid]);
   const { online } = useAuth();
 
   if (!subject || !question) {
@@ -85,6 +96,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
     try {
       const attempt = await gradeAnswer(subject, question, answer, lang);
       saveQuestion({ attempts: [...question.attempts, attempt] });
+      setGradedNow(true);
       track('first_answer', { oncePerSession: true });
     } catch (e) {
       toast.error(describeGenerationError(e, lang));
@@ -96,6 +108,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   // Self-assessment: works without AI (also when the daily limit is used up)
   const selfAssess = (score: number) => {
     saveQuestion({ attempts: [...question.attempts, { at: Date.now(), answer: answer.trim(), score, feedback: '', missing: [] }] });
+    setGradedNow(true);
     track('first_answer', { oncePerSession: true });
     haptic.success();
   };
@@ -124,6 +137,8 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   const goNext = () => {
     setAnswer('');
     setShowModel(false);
+    setGradedNow(false);
+    setShowOld(false);
     if (fromTickets) {
       navigate(nextId ? `/subjects/${subject.id}/q/${nextId}` : `/subjects/${subject.id}/tickets`, nextId ? { state: { queue, tickets: true } } : undefined);
       return;
@@ -131,7 +146,12 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
     navigate(nextId ? `/subjects/${subject.id}/q/${nextId}` : `/subjects/${subject.id}`, nextId ? { state: { queue } } : undefined);
   };
 
-  const gradedNow = last && last.answer === answer.trim();
+  const gradable = isGradable(answer);
+  // Phones often have no Uzbek month names ("M11 10"), so they are spelled out here
+  const when = (at: number) => {
+    const d = new Date(at);
+    return isUz ? `${d.getDate()}-${UZ_MONTHS[d.getMonth()]}` : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
@@ -148,9 +168,6 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
               ? isUz ? `Mashq: ${place} / ${queue.length}` : `Практика: ${place} / ${queue.length}`
               : isUz ? `${index + 1}-savol / ${subject.questions.length}` : `Вопрос ${index + 1} / ${subject.questions.length}`}
           </span>
-          {question.attempts.length > 0 && (
-            <span>{isUz ? `Oxirgi natija: ${questionScore(question)}%` : `Последний результат: ${questionScore(question)}%`}</span>
-          )}
         </div>
         <h1 className="text-xl font-extrabold text-foreground leading-snug">{question.text}</h1>
         <ReportIssue lang={lang} libraryId={subject.libraryId} context={subject.name} questionText={question.text} />
@@ -166,9 +183,14 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
             placeholder={isUz ? 'Javobni yozing, gapiring yoki qog\'ozdagi javobingiz rasmini yuklang. AI baholab, nimani unutganingizni ko\'rsatadi.' : 'Напишите ответ, скажите голосом или загрузите фото ответа с бумаги. ИИ оценит и покажет, что вы упустили.'}
             className="w-full p-3.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
           />
-          <Button variant="primary" size="lg" className="w-full" onClick={handleGrade} disabled={busy !== null || answer.trim().length < 10} icon={busy === 'grading' ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}>
+          <Button variant="primary" size="lg" className="w-full" onClick={handleGrade} disabled={busy !== null || !gradable} icon={busy === 'grading' ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}>
             {isUz ? 'Baholash' : 'Оценить'}
           </Button>
+          {answer.trim() && !gradable && (
+            <p className="text-xs text-muted-foreground text-center">
+              {isUz ? `Baholash uchun kamida ${MIN_ANSWER_WORDS} ta so'z yozing.` : `Для оценки напишите хотя бы ${MIN_ANSWER_WORDS} слова.`}
+            </p>
+          )}
           <div className="space-y-2">
             <Button variant="outline" size="md" className="w-full" onClick={handleShowModel} disabled={busy !== null} icon={showModel ? <EyeOff size={15} /> : <Eye size={15} />}>
               {busy === 'answer' ? (isUz ? 'Tayyorlanmoqda...' : 'Готовим...') : showModel ? (isUz ? 'Yashirish' : 'Скрыть') : (isUz ? 'Javobni ko\'rish' : 'Показать ответ')}
@@ -186,13 +208,23 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
           )}
         </div>
 
+        {/* An earlier result: one small line, the details only when asked for */}
+        {last && !gradedNow && (
+          <button onClick={() => setShowOld((v) => !v)} className="w-full flex items-center gap-2 text-left text-xs text-muted-foreground">
+            <span className="flex-1">
+              {isUz ? `Oldingi urinish: ${questionScore(question)}% · ${when(last.at)}` : `Прошлая попытка: ${questionScore(question)}% · ${when(last.at)}`}
+            </span>
+            {(last.feedback || last.missing.length > 0) && <ChevronDown size={14} className={showOld ? 'rotate-180' : ''} />}
+          </button>
+        )}
+
         {/* Grading result */}
-        {last && (gradedNow || question.attempts.length > 0) && (
+        {last && (gradedNow || (showOld && (last.feedback || last.missing.length > 0))) && (
           <div className="rounded-2xl border border-border p-4 space-y-3 bg-secondary/30" aria-live="polite">
             <div className="flex items-center gap-3">
               <span className={`w-12 h-12 rounded-xl text-white text-xl font-bold flex items-center justify-center ${readinessColor(last.score)}`}>{scoreToGrade(last.score)}</span>
               <div>
-                <div className="text-sm font-bold text-foreground">{last.score}% {gradedNow ? '' : isUz ? '(oldingi urinish)' : '(прошлая попытка)'}</div>
+                <div className="text-sm font-bold text-foreground">{last.score}% {gradedNow ? '' : isUz ? `(${when(last.at)})` : `(${when(last.at)})`}</div>
                 <div className="text-xs text-muted-foreground">{isUz ? '5 ballik tizimda' : 'по 5-балльной шкале'}</div>
               </div>
             </div>

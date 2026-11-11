@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('./supabase', () => ({ supabase: null }));
 
-import { audioPrompt, cleanTranscript, fitWithin, handwritingPrompt } from './answerInput';
+import { audioPrompt, cleanTranscript, fitWithin, handwritingPrompt, isGradable } from './answerInput';
 import { encodeWav, WAV_RATE } from './audioWav';
 
 describe('cleanTranscript', () => {
@@ -75,5 +75,15 @@ describe('encodeWav', () => {
   it('two minutes of speech stay well inside the request size limit', () => {
     const bytes = 44 + 120 * WAV_RATE * 2;
     expect(Math.ceil((bytes * 4) / 3)).toBeLessThan(8 * 1024 * 1024);
+  });
+});
+
+describe('isGradable', () => {
+  it('needs a few real words, not one run of random letters', () => {
+    expect(isGradable('bhbdhfesfggf')).toBe(false);
+    expect(isGradable('  hygyuyugyugtygu  ')).toBe(false);
+    expect(isGradable('LAN lokal tarmoq')).toBe(true);
+    expect(isGradable('a^2 + b^2 = c^2')).toBe(true);
+    expect(isGradable('— , .')).toBe(false);
   });
 });
