@@ -87,6 +87,7 @@ const T = {
     ru: 'Чтобы ответить голосом, откройте вопрос в приложении и нажмите «Ответить голосом».',
   },
   grading: { uz: '⏳ Javobingizni tinglayapman...', ru: '⏳ Слушаю ваш ответ...' },
+  notAnswer: { uz: "🤔 Ovozli xabarda savolga javob eshitilmadi, shuning uchun baholanmadi. Yana bir bor gapirib yuboring.", ru: '🤔 В голосовом не слышно ответа на вопрос, поэтому оценки нет. Запишите ещё раз.' },
   staffOnly: { uz: "Bu bo'lim faqat administratorlar uchun.", ru: 'Этот раздел только для администраторов.' },
   loginAsk: {
     uz: (code: string) => `🔐 Admin saytga kirish\n\nSaytda ko'rsatilgan kod: ${code}\nKod bir xil bo'lsa, tasdiqlang. Siz saytni ochmagan bo'lsangiz, tasdiqlamang.`,
@@ -345,13 +346,17 @@ Exam question: ${question.text}
 
 ${reference}
 
-Return strict JSON: { "transcript": "...", "score": 0-100 integer, "feedback": "...", "missing": ["..."] }`;
+Return strict JSON: { "transcript": "...", "answered": true or false, "score": 0-100 integer, "feedback": "...", "missing": ["..."] }
+"answered" is false only when the recording has no attempt to answer at all (silence, noise, unrelated talk).
+A short or wrong answer is still an answer (answered: true, graded as usual).`;
 
     const raw = await callGemini([{ text: prompt }, { inline_data: { mime_type: mime || 'audio/ogg', data: bytesToBase64(audio) } }], {
       json: true,
       temperature: 0.1,
     });
     const parsed = JSON.parse(raw);
+    // Nothing to grade: no attempt is saved, the student is asked to record again (the AI request is counted)
+    if (parsed.answered === false) return void (await sendMessage(chatId, t('notAnswer', lang)));
     const score = Math.round(Number(parsed.score));
     if (!Number.isFinite(score) || score < 0 || score > 100) throw new Error('bad score');
 

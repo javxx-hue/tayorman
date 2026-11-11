@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('./supabase', () => ({ supabase: null }));
 
-import { audioPrompt, cleanTranscript, fitWithin, handwritingPrompt, isGradable } from './answerInput';
+import { audioPrompt, cleanTranscript, fitWithin, handwritingPrompt, looksLikeAnswer } from './answerInput';
 import { encodeWav, WAV_RATE } from './audioWav';
 
 describe('cleanTranscript', () => {
@@ -78,12 +78,16 @@ describe('encodeWav', () => {
   });
 });
 
-describe('isGradable', () => {
-  it('needs a few real words, not one run of random letters', () => {
-    expect(isGradable('bhbdhfesfggf')).toBe(false);
-    expect(isGradable('  hygyuyugyugtygu  ')).toBe(false);
-    expect(isGradable('LAN lokal tarmoq')).toBe(true);
-    expect(isGradable('a^2 + b^2 = c^2')).toBe(true);
-    expect(isGradable('— , .')).toBe(false);
+describe('looksLikeAnswer', () => {
+  it('accepts a one-word answer, an abbreviation, a number or a formula', () => {
+    for (const a of ['Kislorod', 'LAN', 'Ha', '5', 'a^2 + b^2 = c^2', "Ma'lumotlar bazasi", "o'zgaruvchi", 'здравствуйте', 'Mashg\'ulot.', 'Протокол TCP/IP']) {
+      expect(looksLikeAnswer(a), a).toBe(true);
+    }
+  });
+
+  it('turns away random key mashing and punctuation', () => {
+    for (const a of ['bhbdhfesfggf', 'vgvgvg hvvg gvgv', 'jkjkjk', 'qwrtpsdf', 'hvvg', '— , .', '', 'g']) {
+      expect(looksLikeAnswer(a), a).toBe(false);
+    }
   });
 });

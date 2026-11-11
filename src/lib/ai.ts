@@ -12,7 +12,7 @@ export interface GenerationParams {
   language?: Language;
 }
 
-export type GenerationErrorCode = 'NO_API_KEY' | 'API_ERROR' | 'BAD_RESPONSE' | 'EMPTY_SOURCE' | 'LIMIT_REACHED';
+export type GenerationErrorCode = 'NO_API_KEY' | 'API_ERROR' | 'BAD_RESPONSE' | 'EMPTY_SOURCE' | 'LIMIT_REACHED' | 'NOT_AN_ANSWER';
 
 export class GenerationError extends Error {
   constructor(public code: GenerationErrorCode, message: string) {
@@ -198,6 +198,8 @@ export function describeGenerationError(error: unknown, lang: Language): string 
       return isUz
         ? 'Gemini API kaliti kiritilmagan. Yuqoridagi kalit belgisini bosib, kalitni kiriting.'
         : 'Сервис ИИ не настроен. Сообщите администратору.';
+    case 'NOT_AN_ANSWER':
+      return isUz ? "Bu javobga o'xshamaydi, shuning uchun baholanmadi. Savolga o'z so'zlaringiz bilan javob yozing." : 'Это не похоже на ответ, поэтому оценки нет. Напишите ответ своими словами.';
     case 'EMPTY_SOURCE':
       return isUz ? 'Manbadan matn olinmadi. Boshqa fayl yoki matn bilan urinib ko\'ring.' : 'Не удалось извлечь текст из источника.';
     case 'LIMIT_REACHED':

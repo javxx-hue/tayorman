@@ -104,8 +104,12 @@ ${answer.slice(0, 6000)}
 """
 
 Return strict JSON:
-{ "score": 0-100 integer, "feedback": "...", "missing": ["important points the student left out or got wrong"] }`;
+{ "answered": true or false, "score": 0-100 integer, "feedback": "...", "missing": ["important points the student left out or got wrong"] }
+"answered" is false only when the text is not an attempt to answer at all: random letters, key mashing, or text with nothing to do
+with the question. A short or wrong answer is still an answer (answered: true, graded as usual).`;
   const parsed = parseJson(await geminiGenerate([{ text: prompt }], { json: true, temperature: 0.1, tier: 'fast' }));
+  // Not an answer: nothing is saved, so no false 0% is left on the question
+  if (parsed.answered === false) throw new GenerationError('NOT_AN_ANSWER', 'Not an answer.');
   const score = Math.round(Number(parsed.score));
   if (!Number.isFinite(score) || score < 0 || score > 100) throw new GenerationError('BAD_RESPONSE', 'Invalid score.');
   return {
