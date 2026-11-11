@@ -16,8 +16,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        // Libraries in their own files: they rarely change, so phones keep them cached across our releases
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+          vendor: ['react', 'react-dom', 'react-dom/client', 'react-router-dom'],
+          supabase: ['@supabase/supabase-js'],
         },
       },
     },
