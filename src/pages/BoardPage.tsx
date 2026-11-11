@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pause, Play, SkipBack, SkipForward, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Pause, Play, SkipBack, SkipForward, ChevronRight, Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { Teacher } from '../components/board/Teacher';
 import { Language, tr } from '../lib/i18n';
 import { Subject } from '../types';
 import { practiceOrder } from '../lib/prep';
-import { boardSteps, readingTime } from '../lib/board';
+import { boardSteps, BoardSpeed, getBoardSpeed, highlight, readingTime, setBoardSpeed, SPEEDS } from '../lib/board';
+import { clozeScore, makeCloze, sameAnswer } from '../lib/cloze';
+import { saveAttempt } from '../lib/attempts';
 import { useSpeech } from '../lib/speech';
 
 interface BoardPageProps {
@@ -14,8 +17,23 @@ interface BoardPageProps {
 }
 
 export const BOARD_SITTING = 10;
+const CHALK = '#fff6c8';
 
-// The board: one exam question at a time, its model answer written up step by step and read aloud by the phone
+// Board text with the key terms underlined in yellow chalk
+const Chalk: React.FC<{ text: string; terms: string[] }> = ({ text, terms }) => (
+  <>
+    {highlight(text, terms).map((p, i) =>
+      p.key ? (
+        <span key={i} className="text-[#facc15] underline decoration-2 decoration-[#facc15]/70 underline-offset-4">{p.text}</span>
+      ) : (
+        <span key={i}>{p.text}</span>
+      )
+    )}
+  </>
+);
+
+// The board: an exam question's model answer written up in chalk step by step and read aloud by the phone,
+// with a short fill-in check at the end. No AI involved.
 export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -33,29 +51,79 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
 
   const [index, setIndex] = useState(0);
   const [step, setStep] = useState(0);
+  const [typed, setTyped] = useState(0);
+  const [spoken, setSpoken] = useState(false);
+  const [talking, setTalking] = useState(false);
   const [playing, setPlaying] = useState(true);
+  const [nod, setNod] = useState(0);
+  const [speed, setSpeed] = useState<BoardSpeed>(getBoardSpeed);
+  const [phase, setPhase] = useState<'teach' | 'check'>('teach');
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [checked, setChecked] = useState(false);
   const boardEnd = useRef<HTMLDivElement>(null);
 
   const question = queue[index];
   const steps = useMemo(() => (question ? boardSteps(question) : []), [question]);
-  const last = step >= steps.length - 1;
+  const cloze = useMemo(() => (question?.modelAnswer ? makeCloze(question.modelAnswer.summary, question.modelAnswer.keyPoints, 3) : null), [question]);
+  const terms = useMemo(() => (question?.modelAnswer ? makeCloze(question.modelAnswer.summary, question.modelAnswer.keyPoints, 5)?.answers ?? [] : []), [question]);
+  const current = steps[step];
+  const typingDone = !!current && typed >= current.text.length;
+  const lastStep = step >= steps.length - 1;
+  const pace = SPEEDS[speed];
 
-  // Playing: read the step aloud (or wait long enough to read it), then show the next one
+  // Write the current step letter by letter
   useEffect(() => {
-    if (!playing || !steps[step]) return;
+    if (phase !== 'teach' || !current) return;
+    setTyped(0);
+    const timer = setInterval(() => {
+      setTyped((n) => {
+        if (n >= current.text.length) {
+          clearInterval(timer);
+          return n;
+        }
+        return n + 1;
+      });
+    }, 1000 / pace.lettersPerSecond);
+    return () => clearInterval(timer);
+  }, [phase, step, current, pace.lettersPerSecond]);
+
+  // Read it aloud while playing (or, with no voice on the phone, give time to read it)
+  useEffect(() => {
+    setSpoken(false);
+    if (phase !== 'teach' || !playing || !current) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const next = () => (last ? setPlaying(false) : setStep((s) => s + 1));
-    if (speech.available) speech.speak(steps[step].text, () => (timer = setTimeout(next, 400)));
-    else timer = setTimeout(next, readingTime(steps[step].text));
+    // Stopping speech also reports "ended" in some browsers: only the step still on the board may move on
+    let active = true;
+    if (speech.available) {
+      setTalking(true);
+      speech.speak(
+        current.text,
+        () => {
+          if (!active) return;
+          setTalking(false);
+          setSpoken(true);
+        },
+        pace.speechRate
+      );
+    } else timer = setTimeout(() => setSpoken(true), readingTime(current.text) * pace.wait);
     return () => {
+      active = false;
       if (timer) clearTimeout(timer);
     };
-  }, [playing, step, steps]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [phase, playing, step, current]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When a step is written and said: a nod, then the next step (or the check after the last one)
+  useEffect(() => {
+    if (phase !== 'teach' || !playing || !typingDone || !spoken) return;
+    setNod((n) => n + 1);
+    const timer = setTimeout(() => (lastStep ? toCheck() : setStep((s) => s + 1)), 500);
+    return () => clearTimeout(timer);
+  }, [phase, playing, typingDone, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // A block body on purpose: newer browsers return a promise from scrollIntoView, and an effect must not return one
   useEffect(() => {
     boardEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [step]);
+  }, [step, typed, phase]);
   useEffect(() => () => speech.stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!subject) return null;
@@ -70,20 +138,49 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
     );
   }
 
-  const go = (to: number) => {
+  function toCheck() {
     speech.stop();
-    setStep(Math.max(0, Math.min(steps.length - 1, to)));
-  };
-  const nextQuestion = () => {
+    setTalking(false);
+    if (cloze) setPhase('check');
+    else nextQuestion();
+  }
+  function nextQuestion() {
     speech.stop();
+    setTalking(false);
+    if (index + 1 >= queue.length) return back();
     setIndex((i) => i + 1);
     setStep(0);
+    setPhase('teach');
+    setAnswers([]);
+    setChecked(false);
     setPlaying(true);
+  }
+  const goStep = (to: number) => {
+    speech.stop();
+    setTalking(false);
+    setStep(Math.max(0, Math.min(steps.length - 1, to)));
+  };
+  // A tap on the board: finish writing the line, or move on
+  const tapBoard = () => {
+    if (phase !== 'teach') return;
+    if (!typingDone) setTyped(current.text.length);
+    else if (lastStep) toCheck();
+    else goStep(step + 1);
+  };
+  const changeSpeed = (s: BoardSpeed) => {
+    setSpeed(s);
+    setBoardSpeed(s);
+  };
+  const check = () => {
+    if (!cloze) return;
+    const right = cloze.answers.filter((a, i) => sameAnswer(answers[i] ?? '', a)).length;
+    saveAttempt(subject.id, question.id, { at: Date.now(), answer: answers.join(' | '), score: clozeScore(right, cloze.answers.length), feedback: '', missing: [], mode: 'cloze' });
+    setChecked(true);
   };
   const number = subject.questions.findIndex((q) => q.id === question.id) + 1;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 pt-5 pb-8 space-y-4">
+    <div className="max-w-2xl mx-auto px-4 pt-4 pb-6 space-y-3">
       <div className="flex items-center justify-between">
         <button onClick={back} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
           <ArrowLeft size={14} /> {subject.name}
@@ -94,48 +191,109 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
         </span>
       </div>
 
-      {/* The board itself */}
-      <div className="rounded-3xl border-4 border-[#5b4636] bg-[#1f3a2f] p-5 min-h-[55vh] max-h-[62vh] overflow-y-auto shadow-[inset_0_0_40px_rgba(0,0,0,0.45)]">
-        <div className="space-y-3">
-          {steps.slice(0, step + 1).map((s, i) => (
-            <div
-              key={i}
-              className={`board-in ${i === step ? 'text-[#fff6c8]' : 'text-white/85'} ${
-                s.kind === 'title' ? 'text-lg font-extrabold border-b border-white/20 pb-2' : s.kind === 'point' ? 'text-sm font-bold pl-3 border-l-2 border-[#fff6c8]/60' : 'text-[15px] leading-relaxed'
-              }`}
-            >
-              {s.kind === 'point' && '✔ '}
-              {s.text}
+      {/* The board */}
+      <div className="relative">
+        <div
+          onClick={tapBoard}
+          className="rounded-3xl border-[6px] border-[#5b4636] bg-[#1f3a2f] px-5 pt-5 pb-24 h-[68vh] overflow-y-auto shadow-[inset_0_0_50px_rgba(0,0,0,0.5)] font-chalk text-[22px] leading-snug select-none cursor-pointer"
+          style={{ color: CHALK }}
+        >
+          {phase === 'teach' ? (
+            <div className="space-y-3">
+              {steps.slice(0, step + 1).map((s, i) => {
+                const text = i === step ? s.text.slice(0, typed) : s.text;
+                return (
+                  <div
+                    key={i}
+                    className={`${i === step ? '' : 'opacity-80'} ${s.kind === 'title' ? 'text-[26px] font-bold border-b border-white/25 pb-2' : s.kind === 'point' ? 'pl-3 border-l-2 border-[#facc15]/60' : ''}`}
+                  >
+                    {s.kind === 'point' && '✔ '}
+                    <Chalk text={text} terms={terms} />
+                    {i === step && !typingDone && <span className="chalk-caret" />}
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          ) : (
+            cloze && (
+              <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
+                <div className="text-[24px] font-bold border-b border-white/25 pb-2">{tr(lang, "Tekshiruv: bo'sh joylarni to'ldiring", 'Проверка: заполните пропуски')}</div>
+                <p className="leading-loose">
+                  {cloze.parts.map((p, i) =>
+                    typeof p === 'string' ? (
+                      <span key={i}>{p}</span>
+                    ) : checked ? (
+                      <span key={i} className={sameAnswer(answers[p.blank] ?? '', cloze.answers[p.blank]) ? 'text-emerald-300 underline' : 'text-rose-300'}>
+                        {sameAnswer(answers[p.blank] ?? '', cloze.answers[p.blank]) ? cloze.answers[p.blank] : `${answers[p.blank] || '—'} → ${cloze.answers[p.blank]}`}
+                      </span>
+                    ) : (
+                      <input
+                        key={i}
+                        value={answers[p.blank] ?? ''}
+                        onChange={(e) => setAnswers((a) => Object.assign([...a], { [p.blank]: e.target.value }))}
+                        aria-label={tr(lang, `${p.blank + 1}-bo'sh joy`, `Пропуск ${p.blank + 1}`)}
+                        className="mx-1 w-28 px-2 bg-transparent border-b-2 border-dashed border-[#fff6c8]/70 text-[#facc15] focus:outline-none font-chalk text-[22px]"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                      />
+                    )
+                  )}
+                </p>
+              </div>
+            )
+          )}
           <div ref={boardEnd} />
+        </div>
+        <div className="absolute left-3 bottom-3 pointer-events-none">
+          <Teacher talking={talking} nod={nod} />
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-3">
-        <Button variant="outline" size="md" onClick={() => go(step - 1)} disabled={step === 0} aria-label={tr(lang, 'Orqaga', 'Назад')} icon={<SkipBack size={18} />} />
-        <Button
-          variant="primary"
-          size="md"
-          className="px-6"
-          onClick={() => {
-            if (playing) speech.stop();
-            setPlaying((p) => !p);
-          }}
-          icon={playing ? <Pause size={18} /> : <Play size={18} />}
-        >
-          {playing ? tr(lang, "To'xtatish", 'Пауза') : tr(lang, 'Davom', 'Дальше')}
+      {phase === 'teach' ? (
+        <>
+          <div className="flex items-center justify-center gap-3">
+            <Button variant="outline" size="md" onClick={() => goStep(step - 1)} disabled={step === 0} aria-label={tr(lang, 'Orqaga', 'Назад')} icon={<SkipBack size={18} />} />
+            <Button
+              variant="primary"
+              size="md"
+              className="px-6"
+              onClick={() => {
+                if (playing) {
+                  speech.stop();
+                  setTalking(false);
+                }
+                setPlaying((p) => !p);
+              }}
+              icon={playing ? <Pause size={18} /> : <Play size={18} />}
+            >
+              {playing ? tr(lang, "To'xtatish", 'Пауза') : tr(lang, 'Davom', 'Дальше')}
+            </Button>
+            <Button variant="outline" size="md" onClick={tapBoard} aria-label={tr(lang, 'Oldinga', 'Вперёд')} icon={<SkipForward size={18} />} />
+          </div>
+          <div className="flex items-center justify-center gap-1.5">
+            {(['slow', 'normal', 'fast'] as BoardSpeed[]).map((s) => (
+              <button
+                key={s}
+                onClick={() => changeSpeed(s)}
+                className={`px-3 py-1 rounded-full text-xs font-bold border ${speed === s ? 'border-primary bg-primary/15 text-primary' : 'border-border text-muted-foreground'}`}
+              >
+                {s === 'slow' ? tr(lang, 'Sekin', 'Медленно') : s === 'normal' ? tr(lang, 'Oddiy', 'Обычно') : tr(lang, 'Tez', 'Быстро')}
+              </button>
+            ))}
+          </div>
+          {!speech.available && (
+            <p className="text-xs text-center text-muted-foreground">
+              {tr(lang, "Telefoningizda bu til uchun ovoz yo'q: doska o'zi yozib boradi. Doskani bossangiz, keyingisiga o'tadi.", 'На телефоне нет голоса для этого языка: доска пишет сама. Нажмите на доску, чтобы перейти дальше.')}
+            </p>
+          )}
+        </>
+      ) : !checked ? (
+        <Button variant="primary" size="lg" className="w-full" icon={<Check size={16} />} disabled={!answers.some((a) => a?.trim())} onClick={check}>
+          {tr(lang, 'Tekshirish', 'Проверить')}
         </Button>
-        <Button variant="outline" size="md" onClick={() => go(step + 1)} disabled={last} aria-label={tr(lang, 'Oldinga', 'Вперёд')} icon={<SkipForward size={18} />} />
-      </div>
-
-      {!speech.available && (
-        <p className="text-xs text-center text-muted-foreground">{tr(lang, "Telefoningizda bu til uchun ovoz yo'q: doska o'zi sekin yozib boradi.", 'На телефоне нет голоса для этого языка: доска пишет сама, не спеша.')}</p>
-      )}
-
-      {last && (
-        <Button variant="primary" size="lg" className="w-full" icon={<ChevronRight size={16} />} onClick={queue.length > index + 1 ? nextQuestion : back}>
-          {queue.length > index + 1 ? tr(lang, 'Keyingi savol', 'Следующий вопрос') : tr(lang, 'Yakunlash', 'Завершить')}
+      ) : (
+        <Button variant="primary" size="lg" className="w-full" icon={<ChevronRight size={16} />} onClick={nextQuestion}>
+          {index + 1 < queue.length ? tr(lang, 'Keyingi savol', 'Следующий вопрос') : tr(lang, 'Yakunlash', 'Завершить')}
         </Button>
       )}
     </div>

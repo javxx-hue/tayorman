@@ -31,14 +31,14 @@ export function useSpeech(lang: Language) {
   }, [lang]);
 
   // onEnd runs when the phrase has been read to the end (the board moves on to its next step then)
-  const speak = (text: string, onEnd?: () => void) => {
+  const speak = (text: string, onEnd?: () => void, rate = 0.95) => {
     if (!voice) return;
     const synth = window.speechSynthesis;
     synth.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.voice = voice;
     utterance.lang = voice.lang;
-    utterance.rate = 0.95;
+    utterance.rate = rate;
     if (onEnd) utterance.onend = onEnd;
     spoke.current = true;
     synth.speak(utterance);

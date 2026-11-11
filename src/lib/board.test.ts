@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { boardSteps, readingTime } from './board';
+import { boardSteps, highlight, readingTime } from './board';
 import type { ExamQuestion } from '../types';
 
 const q = (summary?: string, keyPoints: string[] = []): ExamQuestion => ({
@@ -37,5 +37,21 @@ describe('readingTime', () => {
     expect(readingTime('ab')).toBe(2500);
     expect(readingTime('x'.repeat(100))).toBe(6000);
     expect(readingTime('x'.repeat(1000))).toBe(9000);
+  });
+});
+
+describe('highlight', () => {
+  it('marks whole-word key terms, ignoring case', () => {
+    expect(highlight('TCP ishonchli, tcp tartibli; TCPIP emas.', ['TCP'])).toEqual([
+      { text: 'TCP', key: true },
+      { text: ' ishonchli, ', key: false },
+      { text: 'tcp', key: true },
+      { text: ' tartibli; TCPIP emas.', key: false },
+    ]);
+  });
+
+  it('prefers the longer term and leaves text without terms as it is', () => {
+    expect(highlight('SYN-ACK keladi', ['SYN', 'SYN-ACK']).map((p) => p.text)).toEqual(['SYN-ACK', ' keladi']);
+    expect(highlight('oddiy matn', [])).toEqual([{ text: 'oddiy matn', key: false }]);
   });
 });

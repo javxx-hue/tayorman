@@ -137,3 +137,47 @@
     transform: none;
   }
 }
+
+/* The board's teacher: the mouth moves while speaking, the head nods when a step is done, the eyes blink */
+.teacher-mouth {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.teacher-talking .teacher-mouth {
+  animation: teacher-talk 0.22s ease-in-out infinite alternate;
+}
+@keyframes teacher-talk {
+  from { transform: scaleY(0.25); }
+  to { transform: scaleY(1); }
+}
+.teacher-nod {
+  animation: teacher-nod 0.6s ease-in-out;
+  transform-origin: 50% 90%;
+}
+@keyframes teacher-nod {
+  0%, 100% { transform: rotate(0); }
+  40% { transform: rotate(7deg); }
+  70% { transform: rotate(-4deg); }
+}
+.teacher-eye {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: teacher-blink 4s infinite;
+}
+@keyframes teacher-blink {
+  0%, 94%, 100% { transform: scaleY(1); }
+  97% { transform: scaleY(0.1); }
+}
+/* The writing caret on the board */
+.chalk-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.1em;
+  background: #fff6c8;
+  animation: chalk-caret 0.8s steps(1) infinite;
+}
+@keyframes chalk-caret {
+  50% { opacity: 0; }
+}

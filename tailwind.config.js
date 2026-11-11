@@ -60,6 +60,7 @@ export default {
       fontFamily: {
         serif: ['Nunito', 'system-ui', 'sans-serif'],
         sans: ['Nunito', 'system-ui', 'sans-serif'],
+        chalk: ['Caveat', 'Nunito', 'cursive'],
       },
       borderRadius: {
         'xl': '0.875rem',

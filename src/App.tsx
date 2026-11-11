@@ -271,7 +271,8 @@ export default function App() {
           </Routes>
         </Suspense>
       </main>
-      <BottomNav lang={lang} openAssignments={openAssignments} />
+      {/* The board takes the whole screen */}
+      {!location.pathname.endsWith('/board') && <BottomNav lang={lang} openAssignments={openAssignments} />}
       {online && !privacyOk && (
         <PrivacyNotice
           lang={lang}
