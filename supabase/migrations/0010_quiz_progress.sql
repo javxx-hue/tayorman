@@ -11,3 +11,7 @@ alter table public.quiz_progress enable row level security;
 
 create policy "quiz_progress: own rows" on public.quiz_progress
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- A blocked user is cut off here too (see migration 0008)
+create policy "blocked users: no access" on public.quiz_progress as restrictive for all to authenticated
+  using ((select public.not_blocked())) with check ((select public.not_blocked()));

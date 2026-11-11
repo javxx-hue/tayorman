@@ -73,6 +73,8 @@ beforeAll(async () => {
   await db.exec(sql('0007_admin_credentials.sql'));
   await db.exec(sql('0008_blocked_and_uploads.sql'));
   await db.exec(sql('0009_quota_refund_and_helpers.sql'));
+  await db.exec(sql('0010_quiz_progress.sql'));
+  await db.exec(sql('0011_xp_and_duels.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');
@@ -560,5 +562,67 @@ describe('audit log', () => {
     expect(JSON.stringify(entries)).not.toContain('secret'); // content (data column) is never copied into the log
     expect(await as(U.s1, () => rows('select 1 from public.audit_log'))).toEqual([]);
     await db.exec(`update public.library_items set published = true where id = '${LIB}'`);
+  });
+});
+
+describe('XP, daily challenge and duels', () => {
+  const S3 = '00000000-0000-0000-0000-0000000000c3';
+  const S4 = '00000000-0000-0000-0000-0000000000c4';
+  const today = async () => (await rows('select public.tashkent_today()::text as d'))[0].d as string;
+  const xp = async (uid: string) => (await as(uid, () => rows('select public.xp_of(auth.uid()) as x')))[0].x;
+
+  beforeAll(async () => {
+    await db.exec(`
+      insert into auth.users (id, email) values ('${S3}', 's3@x'), ('${S4}', 's4@x');
+      insert into public.profiles (id, telegram_id, first_name, role, blocked) values
+        ('${S3}', 6, 'Student3', 'student', false), ('${S4}', 7, 'Student4', 'student', false);
+      insert into public.community_members (community_id, user_id) values ('${G1}', '${S3}'), ('${G1}', '${S4}');
+    `);
+  });
+
+  it('a challenge gives 20 XP per right answer, once a day, only for today', async () => {
+    const d = await today();
+    expect((await as(U.s1, () => rows('select public.submit_challenge($1::date, 4, 5) as p', [d])))[0].p).toBe(80);
+    expect((await as(U.s1, () => rows('select public.submit_challenge($1::date, 5, 5) as p', [d])))[0].p).toBe(0);
+    await expect(as(U.s1, () => rows("select public.submit_challenge('2000-01-01', 5, 5)"))).rejects.toThrow(/not today/);
+    await expect(as(U.s1, () => rows('select public.submit_challenge($1::date, 6, 5)', [d]))).rejects.toThrow(/bad result/);
+    expect(await xp(U.s1)).toBe(80);
+  });
+
+  it('students cannot write XP themselves and see only their own', async () => {
+    await expect(as(U.s1, () => db.exec(`insert into public.xp_events (user_id, kind, ref, points) values ('${U.s1}', 'duel', 'x', 500)`))).rejects.toThrow();
+    expect(await as(U.s1, () => rows('select * from public.xp_events'))).toHaveLength(1);
+    expect(await as(S3, () => rows('select * from public.xp_events'))).toHaveLength(0);
+  });
+
+  it('a duel picks the group member with the closest XP and pays both players when finished', async () => {
+    // S3 has 0 XP, S4 gets 60, s1 has 80: s1's closest rival is S4
+    await as(S4, async () => rows('select public.submit_challenge($1::date, 3, 5)', [await today()]));
+    const started = (await as(U.s1, () => rows(`select * from public.start_duel('${G1}', 'lib-q', array['a','b','c','d','e'])`)))[0];
+    expect(started.opponent).toBe(S4);
+
+    // the opponent sees it only after the challenger has played
+    expect(await as(S4, () => rows('select * from public.my_duels()'))).toHaveLength(0);
+    await as(U.s1, () => rows('select public.submit_duel($1, 4)', [started.id]));
+    expect(await as(S4, () => rows('select i_challenged, my_score, their_score, their_name from public.my_duels()'))).toEqual([
+      { i_challenged: false, my_score: null, their_score: 4, their_name: 'Student1' },
+    ]);
+
+    await as(S4, () => rows('select public.submit_duel($1, 2)', [started.id]));
+    await expect(as(S4, () => rows('select public.submit_duel($1, 5)', [started.id]))).rejects.toThrow(/already played/);
+    expect(await xp(U.s1)).toBe(130); // 80 + 50 for the win
+    expect(await xp(S4)).toBe(70); // 60 + 10
+  });
+
+  it('only members of a group can start duels there, and outsiders cannot play them', async () => {
+    await expect(as(U.s2, () => rows(`select * from public.start_duel('${G1}', 'k', array['a'])`))).rejects.toThrow(/not in this group/);
+    const own = (await as(S3, () => rows(`select * from public.start_duel('${G1}', 'k', array['a'])`)))[0];
+    await expect(as(U.s2, () => rows('select public.submit_duel($1, 1)', [own.id]))).rejects.toThrow(/not your duel/);
+  });
+
+  it('the group rating lists members with their XP, for members only', async () => {
+    const top = await as(U.s1, () => rows(`select first_name, xp from public.group_leaderboard('${G1}')`));
+    expect(top[0]).toEqual({ first_name: 'Student1', xp: 130 });
+    expect(await as(U.s2, () => rows(`select * from public.group_leaderboard('${G1}')`))).toEqual([]);
   });
 });
