@@ -25,7 +25,6 @@ const uz = {
   },
   flashcards: {
     card: 'Karta',
-    flipHint: 'Aylantirish uchun bosing',
     flipBtn: 'Aylantirish',
     fullscreen: 'To\'liq ekran',
     shuffle: 'Aralashtirish',
@@ -74,7 +73,6 @@ const ru: typeof uz = {
   },
   flashcards: {
     card: 'Карточка',
-    flipHint: 'Нажмите, чтобы перевернуть',
     flipBtn: 'Перевернуть',
     fullscreen: 'Во весь экран',
     shuffle: 'Перемешать',

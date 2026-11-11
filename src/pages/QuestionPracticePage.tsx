@@ -40,7 +40,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
   if (!subject || !question) {
     return (
       <div className="max-w-md mx-auto px-4 py-24 text-center space-y-4">
-        <h2 className="text-2xl font-serif font-bold text-foreground">{isUz ? 'Savol topilmadi' : 'Вопрос не найден'}</h2>
+        <h2 className="text-2xl font-extrabold text-foreground">{isUz ? 'Savol topilmadi' : 'Вопрос не найден'}</h2>
         <Button variant="primary" onClick={() => navigate(subject ? `/subjects/${subject.id}` : '/subjects')}>{isUz ? 'Orqaga' : 'Назад'}</Button>
       </div>
     );
@@ -133,7 +133,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
         <ArrowLeft size={14} /> {subject.name}
       </button>
 
-      <div className="rounded-3xl bg-card border border-border/80 p-5 sm:p-7 shadow-soft space-y-5">
+      <div className="rounded-3xl bg-card border border-border/80 p-4 sm:p-7 shadow-soft space-y-5">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             {opened && queue.length > 1
@@ -144,7 +144,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
             <span>{isUz ? `Oxirgi natija: ${questionScore(question)}%` : `Последний результат: ${questionScore(question)}%`}</span>
           )}
         </div>
-        <h1 className="text-xl sm:text-2xl font-serif font-bold text-foreground leading-snug">{question.text}</h1>
+        <h1 className="text-xl font-extrabold text-foreground leading-snug">{question.text}</h1>
         <ReportIssue lang={lang} libraryId={subject.libraryId} context={subject.name} questionText={question.text} />
 
         {/* Student answer */}
@@ -158,24 +158,24 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
             placeholder={isUz ? 'Javobni yozing, gapiring yoki qog\'ozdagi javobingiz rasmini yuklang. AI baholab, nimani unutganingizni ko\'rsatadi.' : 'Напишите ответ, скажите голосом или загрузите фото ответа с бумаги. ИИ оценит и покажет, что вы упустили.'}
             className="w-full p-3.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
           />
-          <div className="flex flex-wrap gap-2 justify-end">
-            {online && !canRecordAudio() && (
-              <Button variant="outline" size="sm" onClick={answerByVoice} disabled={busy !== null} icon={<Mic size={14} />}>
-                {isUz ? 'Botda ovoz bilan' : 'Голосом в боте'}
-              </Button>
-            )}
+          <Button variant="primary" size="lg" className="w-full" onClick={handleGrade} disabled={busy !== null || answer.trim().length < 10} icon={busy === 'grading' ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}>
+            {isUz ? 'Baholash' : 'Оценить'}
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="md" className="flex-1 whitespace-nowrap" onClick={handleShowModel} disabled={busy !== null} icon={showModel ? <EyeOff size={15} /> : <Eye size={15} />}>
+              {busy === 'answer' ? (isUz ? 'Tayyorlanmoqda...' : 'Готовим...') : showModel ? (isUz ? 'Yashirish' : 'Скрыть') : (isUz ? 'Javobni ko\'rish' : 'Показать ответ')}
+            </Button>
             {question.modelAnswer && (
-              <Button variant="outline" size="sm" onClick={() => navigate(`/subjects/${subject.id}/board`, { state: { question: question.id } })} icon={<Presentation size={14} />}>
-                {isUz ? 'Doskada tushuntirish' : 'Объяснить на доске'}
+              <Button variant="outline" size="md" className="flex-1 whitespace-nowrap" onClick={() => navigate(`/subjects/${subject.id}/board`, { state: { question: question.id } })} icon={<Presentation size={15} />}>
+                {isUz ? 'Doskada' : 'На доске'}
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={handleShowModel} disabled={busy !== null} icon={showModel ? <EyeOff size={14} /> : <Eye size={14} />}>
-              {busy === 'answer' ? (isUz ? 'Tayyorlanmoqda...' : 'Готовим...') : showModel ? (isUz ? 'Javobni yashirish' : 'Скрыть ответ') : (isUz ? 'To\'g\'ri javobni ko\'rish' : 'Показать правильный ответ')}
-            </Button>
-            <Button variant="primary" size="sm" onClick={handleGrade} disabled={busy !== null || answer.trim().length < 10} icon={busy === 'grading' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}>
-              {isUz ? 'Baholash' : 'Оценить'}
-            </Button>
           </div>
+          {online && !canRecordAudio() && (
+            <Button variant="outline" size="md" className="w-full" onClick={answerByVoice} disabled={busy !== null} icon={<Mic size={15} />}>
+              {isUz ? 'Botda ovoz bilan' : 'Голосом в боте'}
+            </Button>
+          )}
         </div>
 
         {/* Grading result */}
@@ -225,15 +225,15 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
               {isUz ? 'Javobingiz namunaga qanchalik mos keldi?' : 'Насколько ваш ответ совпал с образцом?'}
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => selfAssess(SELF_SCORES.know)} className="py-2.5 rounded-xl text-sm font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300">{isUz ? 'Bilaman' : 'Знаю'}</button>
-              <button onClick={() => selfAssess(SELF_SCORES.partly)} className="py-2.5 rounded-xl text-sm font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-300">{isUz ? 'Qisman' : 'Частично'}</button>
-              <button onClick={() => selfAssess(SELF_SCORES.not)} className="py-2.5 rounded-xl text-sm font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-800 dark:text-rose-300">{isUz ? 'Bilmayman' : 'Не знаю'}</button>
+              <button onClick={() => selfAssess(SELF_SCORES.know)} className="py-2.5 rounded-2xl text-sm font-bold bg-emerald-500/15 border-2 border-emerald-500/40 text-emerald-300 active:translate-y-[2px]">{isUz ? 'Bilaman' : 'Знаю'}</button>
+              <button onClick={() => selfAssess(SELF_SCORES.partly)} className="py-2.5 rounded-2xl text-sm font-bold bg-amber-500/15 border-2 border-amber-500/40 text-amber-300 active:translate-y-[2px]">{isUz ? 'Qisman' : 'Частично'}</button>
+              <button onClick={() => selfAssess(SELF_SCORES.not)} className="py-2.5 rounded-2xl text-sm font-bold bg-rose-500/15 border-2 border-rose-500/40 text-rose-300 active:translate-y-[2px]">{isUz ? 'Bilmayman' : 'Не знаю'}</button>
             </div>
           </div>
         )}
 
-        <div className="pt-3 border-t border-border flex justify-end">
-          <Button variant="secondary" size="md" onClick={goNext} icon={<ArrowRight size={15} />}>
+        <div className="pt-3 border-t border-border">
+          <Button variant="secondary" size="lg" className="w-full" onClick={goNext} icon={<ArrowRight size={16} />}>
             {nextId ? (isUz ? 'Keyingi savol' : 'Следующий вопрос') : (isUz ? 'Tugatish' : 'Завершить')}
           </Button>
         </div>
