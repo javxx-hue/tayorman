@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await admin
       .from('profiles')
-      .select('id, telegram_id, first_name, username, language, university, role, reminders_enabled, blocked')
+      .select('id, telegram_id, first_name, username, language, university, role, reminders_enabled, board_ai, blocked')
       .eq('id', userId)
       .single();
     if (profile?.blocked) return json(req, { error: 'Account is blocked' }, 403);

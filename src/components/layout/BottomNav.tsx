@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, BookOpen, ClipboardList, User } from 'lucide-react';
+import { Home, BookOpen, Trophy, User } from 'lucide-react';
 import { Language, tr } from '../../lib/i18n';
 import { haptic } from '../../lib/telegram';
 
@@ -12,7 +12,7 @@ export const BottomNav: React.FC<{ lang: Language; openAssignments?: number }> =
   const tabs = [
     { to: '/', icon: Home, label: tr(lang, 'Asosiy', 'Главная') },
     { to: '/subjects', icon: BookOpen, label: tr(lang, 'Fanlar', 'Предметы') },
-    { to: '/assignments', icon: ClipboardList, label: tr(lang, 'Topshiriq', 'Задания'), badge: openAssignments },
+    { to: '/assignments', icon: Trophy, label: tr(lang, 'Musobaqa', 'Соревнование'), badge: openAssignments },
     { to: '/profile', icon: User, label: tr(lang, 'Profil', 'Профиль') },
   ];
 

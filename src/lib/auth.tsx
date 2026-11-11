@@ -15,6 +15,7 @@ export interface Profile {
   university: string | null;
   role: 'student' | 'admin';
   reminders_enabled: boolean;
+  board_ai?: boolean; // the admin's bonus: questions to the board's teacher (AI)
 }
 
 type Status = 'loading' | 'ready' | 'outside' | 'error';

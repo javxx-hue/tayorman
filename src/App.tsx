@@ -254,14 +254,14 @@ export default function App() {
             <Route path="/" element={<HomePage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects" element={<SubjectsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id" element={<SubjectPage subjects={subjects} studySets={studySets} lang={lang} />} />
-            <Route path="/subjects/:id/board" element={<BoardPage subjects={subjects} lang={lang} />} />
+            <Route path="/subjects/:id/board" element={<BoardPage subjects={subjects} lang={lang} canAsk={online && !!profile?.board_ai} />} />
             <Route path="/subjects/:id/recall" element={<RecallPage subjects={subjects} lang={lang} />} />
             <Route path="/subjects/:id/cloze" element={<ClozePage subjects={subjects} lang={lang} />} />
             <Route path="/subjects/:id/tickets" element={<TicketsPage subjects={subjects} lang={lang} />} />
             <Route path="/subjects/:id/stats" element={<SubjectStatsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id/q/:qid" element={<QuestionPracticePage subjects={subjects} lang={lang} />} />
             <Route path="/study/:id" element={<StudyRoute studySets={studySets} subjects={subjects} lang={lang} />} />
-            <Route path="/assignments" element={<AssignmentsPage assignments={assignments} server={assignmentProgress} subjects={subjects} studySets={studySets} lang={lang} staff={online && !!profile && profile.role !== 'student'} />} />
+            <Route path="/assignments" element={<AssignmentsPage assignments={assignments} server={assignmentProgress} subjects={subjects} studySets={studySets} lang={lang} staff={online && !!profile && profile.role !== 'student'} userId={online && profile?.role === 'student' ? profile.id : null} />} />
             <Route path="/request" element={<RequestPage lang={lang} />} />
             <Route path="/library" element={<Navigate to="/request" replace />} />
             <Route path="/profile" element={<ProfilePage lang={lang} />} />

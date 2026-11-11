@@ -5,6 +5,7 @@ import { Language, tr } from '../lib/i18n';
 import { StudySet, Subject } from '../types';
 import { Assignment, Progress, assignmentsView, dueInfo, localItem, progressOf } from '../lib/assignments';
 import { ADMIN_URL } from '../lib/telegram';
+import { GamesPanel } from '../components/games/GamesPanel';
 
 interface Props {
   assignments: Assignment[] | null;
@@ -13,6 +14,7 @@ interface Props {
   studySets: StudySet[];
   lang: Language;
   staff: boolean; // admin or moderator: gives assignments on the admin site, has none of their own
+  userId: string | null; // a signed-in student: the games need the server
 }
 
 function dueLabel(dueAt: string, lang: Language): { text: string; urgent: boolean } {
@@ -22,8 +24,8 @@ function dueLabel(dueAt: string, lang: Language): { text: string; urgent: boolea
   return { text: tr(lang, `${d.days} kun qoldi`, `Осталось дней: ${d.days}`), urgent: d.days <= 2 };
 }
 
-// What the admin gave this student, with the deadline and how far they got
-export const AssignmentsPage: React.FC<Props> = ({ assignments, server, subjects, studySets, lang, staff }) => {
+// «Musobaqa»: XP games with group mates, then what the admin gave this student
+export const AssignmentsPage: React.FC<Props> = ({ assignments, server, subjects, studySets, lang, staff, userId }) => {
   const navigate = useNavigate();
   const view = assignmentsView(staff, assignments);
 
@@ -50,8 +52,15 @@ export const AssignmentsPage: React.FC<Props> = ({ assignments, server, subjects
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-5 pb-6">
-      <h1 className="text-2xl font-serif font-bold text-foreground">{tr(lang, 'Topshiriqlar', 'Задания')}</h1>
+      <h1 className="text-2xl font-extrabold text-foreground">{tr(lang, 'Musobaqa', 'Соревнование')}</h1>
       <p className="text-sm text-muted-foreground mt-1 mb-4">
+        {tr(lang, "Kunlik chellenj va guruhdoshlar bilan duelda XP yig'ing, haftalik reytingda yuqoriga chiqing.", 'Набирайте XP в ежедневном челлендже и дуэлях с одногруппниками, поднимайтесь в рейтинге недели.')}
+      </p>
+
+      {userId && !staff && <GamesPanel userId={userId} studySets={studySets} lang={lang} />}
+
+      <h2 className="text-lg font-extrabold text-foreground mt-6 mb-1">{tr(lang, 'Topshiriqlar', 'Задания')}</h2>
+      <p className="text-xs text-muted-foreground mb-3">
         {tr(lang, "Administrator guruhingizga bergan vazifalar. Natijangiz faqat sizga va administratorga ko'rinadi.", 'Задания администратора для вашей группы. Результат видите вы и администратор.')}
       </p>
 
@@ -70,8 +79,7 @@ export const AssignmentsPage: React.FC<Props> = ({ assignments, server, subjects
       ) : view === 'loading' ? (
         <div className="py-12 text-center text-muted-foreground"><Loader2 className="mx-auto animate-spin" /></div>
       ) : view === 'empty' ? (
-        <div className="rounded-2xl border border-dashed border-border p-8 text-center bg-card">
-          <ClipboardList size={32} className="mx-auto text-muted-foreground mb-2" />
+        <div className="rounded-2xl border border-dashed border-border p-5 text-center bg-card">
           <p className="text-sm text-muted-foreground">{tr(lang, "Hozircha topshiriq yo'q. Yangisi chiqsa, botdan xabar keladi.", 'Заданий пока нет. Когда появится новое, бот сообщит.')}</p>
         </div>
       ) : (

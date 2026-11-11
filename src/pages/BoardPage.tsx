@@ -1,19 +1,22 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pause, Play, SkipBack, SkipForward, ChevronRight, Check } from 'lucide-react';
+import { ArrowLeft, Pause, Play, SkipBack, SkipForward, ChevronRight, Check, Loader2, MessageCircleQuestion, Send } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { CHALK_TIP, Teacher, TEACHER_SIZE } from '../components/board/Teacher';
 import { Language, tr } from '../lib/i18n';
 import { Subject } from '../types';
 import { practiceOrder } from '../lib/prep';
-import { boardSteps, BoardSpeed, getBoardSpeed, highlight, readingTime, setBoardSpeed, SPEEDS } from '../lib/board';
+import { BoardStep, boardSteps, BoardSpeed, getBoardSpeed, highlight, readingTime, setBoardSpeed, SPEEDS } from '../lib/board';
 import { clozeScore, makeCloze, sameAnswer } from '../lib/cloze';
 import { saveAttempt } from '../lib/attempts';
 import { useSpeech } from '../lib/speech';
+import { askBoard, MAX_ASK } from '../lib/boardAi';
+import { describeGenerationError } from '../lib/ai';
 
 interface BoardPageProps {
   subjects: Subject[];
   lang: Language;
+  canAsk: boolean; // the admin gave this student questions to the teacher (AI)
 }
 
 export const BOARD_SITTING = 10;
@@ -33,8 +36,8 @@ const Chalk: React.FC<{ text: string; terms: string[] }> = ({ text, terms }) => 
 );
 
 // The board: an exam question's model answer written up in chalk step by step and read aloud by the phone,
-// with a short fill-in check at the end. No AI involved.
-export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
+// with a short fill-in check at the end. Students the admin chose may also ask the teacher their own question (AI).
+export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang, canAsk }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const start = (useLocation().state as { question?: string } | null)?.question;
@@ -60,13 +63,18 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
   const [phase, setPhase] = useState<'teach' | 'check'>('teach');
   const [answers, setAnswers] = useState<string[]>([]);
   const [checked, setChecked] = useState(false);
+  const [asked, setAsked] = useState<BoardStep[]>([]);
+  const [askOpen, setAskOpen] = useState(false);
+  const [askText, setAskText] = useState('');
+  const [askBusy, setAskBusy] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
   const boardEnd = useRef<HTMLDivElement>(null);
   const caret = useRef<HTMLSpanElement>(null);
   const page = useRef<HTMLDivElement>(null);
   const [chalkAt, setChalkAt] = useState({ left: 0, top: 0 });
 
   const question = queue[index];
-  const steps = useMemo(() => (question ? boardSteps(question) : []), [question]);
+  const steps = useMemo(() => (question ? [...boardSteps(question), ...asked] : []), [question, asked]);
   const cloze = useMemo(() => (question?.modelAnswer ? makeCloze(question.modelAnswer.summary, question.modelAnswer.keyPoints, 3) : null), [question]);
   const terms = useMemo(() => (question?.modelAnswer ? makeCloze(question.modelAnswer.summary, question.modelAnswer.keyPoints, 5)?.answers ?? [] : []), [question]);
   const current = steps[step];
@@ -167,6 +175,9 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
     setAnswers([]);
     setChecked(false);
     setPlaying(true);
+    setAsked([]);
+    setAskOpen(false);
+    setAskError(null);
   }
   const goStep = (to: number) => {
     speech.stop();
@@ -189,6 +200,30 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
     const right = cloze.answers.filter((a, i) => sameAnswer(answers[i] ?? '', a)).length;
     saveAttempt(subject.id, question.id, { at: Date.now(), answer: answers.join(' | '), score: clozeScore(right, cloze.answers.length), feedback: '', missing: [], mode: 'cloze' });
     setChecked(true);
+  };
+  // The student's own question: the teacher's answer is written up on the board after what is already there
+  const send = async () => {
+    const text = askText.trim();
+    if (!text || askBusy) return;
+    setAskBusy(true);
+    setAskError(null);
+    speech.stop();
+    setTalking(false);
+    try {
+      const more = await askBoard(question, text, lang);
+      const at = steps.length;
+      setAsked((a) => [...a, ...more]);
+      setAskText('');
+      setAskOpen(false);
+      setChecked(false);
+      setPhase('teach');
+      setPlaying(true);
+      setStep(at);
+    } catch (e) {
+      setAskError(describeGenerationError(e, lang));
+    } finally {
+      setAskBusy(false);
+    }
   };
   const number = subject.questions.findIndex((q) => q.id === question.id) + 1;
 
@@ -309,6 +344,32 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
           {index + 1 < queue.length ? tr(lang, 'Keyingi savol', 'Следующий вопрос') : tr(lang, 'Yakunlash', 'Завершить')}
         </Button>
       )}
+
+      {canAsk &&
+        (askOpen ? (
+          <div className="rounded-2xl border border-border bg-card p-3 space-y-2">
+            <div className="flex gap-2">
+              <input
+                value={askText}
+                onChange={(e) => setAskText(e.target.value.slice(0, MAX_ASK))}
+                onKeyDown={(e) => e.key === 'Enter' && void send()}
+                placeholder={tr(lang, 'Nimani tushunmadingiz?', 'Что непонятно?')}
+                disabled={askBusy}
+                autoFocus
+                className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <Button size="md" onClick={() => void send()} disabled={askBusy || !askText.trim()} aria-label={tr(lang, 'Yuborish', 'Отправить')} icon={askBusy ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {askBusy ? tr(lang, "Ustoz o'ylayapti...", 'Учитель думает...') : tr(lang, 'Ustoz javobni doskaga yozib tushuntiradi. Kunlik AI limitingizdan ishlatiladi.', 'Учитель напишет ответ на доске. Тратится дневной лимит ИИ.')}
+            </p>
+            {askError && <p className="text-xs font-semibold text-rose-400">{askError}</p>}
+          </div>
+        ) : (
+          <Button variant="outline" size="md" className="w-full" icon={<MessageCircleQuestion size={18} />} onClick={() => setAskOpen(true)}>
+            {tr(lang, "Ustozdan so'rash", 'Спросить учителя')}
+          </Button>
+        ))}
     </div>
   );
 };

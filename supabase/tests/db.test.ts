@@ -75,6 +75,7 @@ beforeAll(async () => {
   await db.exec(sql('0009_quota_refund_and_helpers.sql'));
   await db.exec(sql('0010_quiz_progress.sql'));
   await db.exec(sql('0011_xp_and_duels.sql'));
+  await db.exec(sql('0012_board_ai.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');
@@ -624,5 +625,26 @@ describe('XP, daily challenge and duels', () => {
     const top = await as(U.s1, () => rows(`select first_name, xp from public.group_leaderboard('${G1}')`));
     expect(top[0]).toEqual({ first_name: 'Student1', xp: 130 });
     expect(await as(U.s2, () => rows(`select * from public.group_leaderboard('${G1}')`))).toEqual([]);
+  });
+});
+
+describe('AI on the board (admin bonus)', () => {
+  const flag = async () => (await rows(`select board_ai from public.profiles where id = '${U.s1}'`))[0].board_ai;
+
+  it('is off by default and a student cannot turn it on', async () => {
+    expect(await flag()).toBe(false);
+    await expect(as(U.s1, () => db.exec(`update public.profiles set board_ai = true where id = '${U.s1}'`))).rejects.toThrow(/permission denied/i);
+    await expect(as(U.s1, () => rows(`select public.admin_set_board_ai('${U.s1}', true)`))).rejects.toThrow(/forbidden/);
+    await expect(as(U.mod, () => rows(`select public.admin_set_board_ai('${U.s1}', true)`))).rejects.toThrow(/forbidden/);
+    expect(await flag()).toBe(false);
+  });
+
+  it('the admin turns it on and off, and it is written to the audit log', async () => {
+    await as(U.admin, () => rows(`select public.admin_set_board_ai('${U.s1}', true)`));
+    expect(await flag()).toBe(true);
+    await as(U.admin, () => rows(`select public.admin_set_board_ai('${U.s1}', false)`));
+    expect(await flag()).toBe(false);
+    const log = await rows(`select details from public.audit_log where target_id = '${U.s1}' and details ? 'board_ai' order by id`);
+    expect(log.map((r) => r.details.board_ai)).toEqual([true, false]);
   });
 });
