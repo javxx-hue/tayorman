@@ -4,6 +4,7 @@ import { QuizQuestion, StudySet } from '../types';
 import { supabase } from './supabase';
 import { localDateKey } from './storage';
 import { Language, tr } from './i18n';
+import { webApp } from './telegram';
 
 export const CHALLENGE_SIZE = 5;
 export const DUEL_SIZE = 5;
@@ -179,6 +180,31 @@ export async function myDuels(): Promise<Duel[]> {
   const { data, error } = await client().rpc('my_duels');
   if (error) throw error;
   return (data ?? []) as Duel[];
+}
+
+// Calls onChange when one of my duels changes (a new challenge, the other player's answer) or when the app comes
+// back to the screen. The server's row rules decide which duels this player hears about. Returns the stop function.
+export function watchDuels(userId: string, onChange: () => void): () => void {
+  if (!supabase) return () => undefined;
+  const db = supabase;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // Several changes at once (a duel finished and paid out) make one refresh
+  const soon = () => {
+    clearTimeout(timer);
+    timer = setTimeout(onChange, 500);
+  };
+  const channel = db.channel(`duels-${userId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'duels' }, soon).subscribe();
+  const onShow = () => {
+    if (document.visibilityState === 'visible') soon();
+  };
+  document.addEventListener('visibilitychange', onShow);
+  webApp?.onEvent('activated', soon); // Telegram: the Mini App is back in front (not every phone reports visibility)
+  return () => {
+    clearTimeout(timer);
+    document.removeEventListener('visibilitychange', onShow);
+    webApp?.offEvent('activated', soon);
+    void db.removeChannel(channel);
+  };
 }
 
 export async function weeklyRating(groupId: string): Promise<RatingRow[]> {

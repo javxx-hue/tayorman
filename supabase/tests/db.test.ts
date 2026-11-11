@@ -77,6 +77,7 @@ beforeAll(async () => {
   await db.exec(sql('0011_xp_and_duels.sql'));
   await db.exec(sql('0012_board_ai.sql'));
   await db.exec(sql('0013_duel_notices.sql'));
+  await db.exec(sql('0014_duels_realtime.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');

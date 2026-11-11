@@ -4,7 +4,7 @@ import { QuizQuestion, StudySet } from '../../types';
 import { Language, tr } from '../../lib/i18n';
 import {
   CHALLENGE_SIZE, DUEL_SIZE, Duel, RatingRow, challengeDone, challengeQuestions, duelLabel, duelQuestions, duelState,
-  gameError, levelOf, myDuels, myGroup, myXp, rememberChallenge, startDuel, submitChallenge, submitDuel, today, weeklyRating,
+  gameError, levelOf, myDuels, myGroup, myXp, rememberChallenge, startDuel, submitChallenge, submitDuel, today, watchDuels, weeklyRating,
 } from '../../lib/games';
 import { Button } from '../ui/Button';
 import { GameRunner } from './GameRunner';
@@ -55,6 +55,9 @@ export const GamesPanel: React.FC<Props> = ({ userId, studySets, lang }) => {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // A duel from a group mate or their answer shows up by itself, without reopening the app
+  useEffect(() => watchDuels(userId, () => void load()), [userId, load]);
 
   // Test sets every group mate has from the library, big enough for a duel (one entry per library item)
   const duelSets = useMemo(() => {
