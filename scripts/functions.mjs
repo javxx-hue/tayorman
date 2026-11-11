@@ -10,6 +10,7 @@ export const FUNCTIONS = [
   { name: 'admin-broadcast', verifyJwt: true },
   { name: 'admin-reply', verifyJwt: true },
   { name: 'assignment-notify', verifyJwt: true },
+  { name: 'duel-notify', verifyJwt: true },
   { name: 'request-admin', verifyJwt: true },
   { name: 'bot-action', verifyJwt: true },
   { name: 'gemini', verifyJwt: true },

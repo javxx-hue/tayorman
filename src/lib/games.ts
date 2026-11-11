@@ -170,6 +170,8 @@ export async function startDuel(groupId: string, setKey: string, questionIds: st
 export async function submitDuel(duelId: string, correct: number): Promise<void> {
   const { error } = await client().rpc('submit_duel', { p_duel: duelId, p_correct: correct });
   if (error) throw error;
+  // The other player hears about it in the bot (the server decides what, and sends each message once)
+  client().functions.invoke('duel-notify', { body: { id: duelId } }).catch(() => undefined);
 }
 
 export async function myDuels(): Promise<Duel[]> {

@@ -123,11 +123,11 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
         <div className="grid grid-cols-3 gap-4 mb-8 text-center">
           <div className="p-4 rounded-2xl bg-background border border-border">
             <span className="text-3xl font-serif font-bold text-foreground">{finalPct}%</span>
-            <p className="text-xs text-muted-foreground mt-1">Umumiy Natija</p>
+            <p className="text-xs text-muted-foreground mt-1">Umumiy natija</p>
           </div>
           <div className="p-4 rounded-2xl bg-background border border-border">
             <span className="text-3xl font-serif font-bold text-emerald-600 dark:text-emerald-400">{correctCount}</span>
-            <p className="text-xs text-muted-foreground mt-1">To'g'ri Javoblar</p>
+            <p className="text-xs text-muted-foreground mt-1">To'g'ri javoblar</p>
           </div>
           <div className="p-4 rounded-2xl bg-background border border-border">
             <span className="text-3xl font-serif font-bold text-rose-600 dark:text-rose-400">{totalQ - correctCount}</span>
@@ -181,7 +181,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
             Qaytadan topshirish
           </Button>
           <Button variant="primary" size="md" onClick={onFinish} icon={<Check size={16} />}>
-            Kabinetga qaytish
+            Orqaga
           </Button>
         </div>
       </div>
@@ -338,7 +338,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded bg-amber-500/30 border border-amber-500/50 inline-block" />
-              <span>Belgilangan (Flagged)</span>
+              <span>Belgilangan</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded bg-background border border-border inline-block" />

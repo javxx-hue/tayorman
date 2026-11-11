@@ -123,7 +123,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
         <HelpCircle size={40} className="mx-auto text-muted-foreground mb-3" />
         <h3 className="text-xl font-serif font-bold">Savollar mavjud emas</h3>
         <p className="text-xs text-muted-foreground mt-2 mb-6">Ushbu to'plamda savollar topilmadi.</p>
-        <Button variant="primary" onClick={onFinish}>Kabinetga qaytish</Button>
+        <Button variant="primary" onClick={onFinish}>Orqaga</Button>
       </div>
     );
   }
