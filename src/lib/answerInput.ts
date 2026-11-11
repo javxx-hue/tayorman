@@ -66,9 +66,30 @@ export async function transcribeHandwriting(photo: Blob, lang: Language): Promis
   return cleanTranscript(await geminiGenerate([{ text: handwritingPrompt(lang) }, { inline_data: { mime_type: 'image/jpeg', data: await toBase64(small) } }], { temperature: 0, tier: 'fast' }));
 }
 
-// Worth sending to the AI grader: at least a few words. A single run of random letters is not graded
-// (it used to cost an AI request and leave a confusing 0% behind).
-export const MIN_ANSWER_WORDS = 3;
-export function isGradable(answer: string): boolean {
-  return answer.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length >= MIN_ANSWER_WORDS;
+// Worth sending to the AI grader: at least one thing that looks like a word, a number or a formula.
+// One word is enough ("Kislorod", "LAN"); random key mashing ("vgvgvg hvvg", "bhbdhfesfggf") is not sent.
+// Anything this lets through, the grader itself can still call "not an answer" (see gradeAnswer).
+const VOWELS = /[aeiouаеёиоуыэюяў]/giu;
+const CONSONANT_RUN = /[^aeiouаеёиоуыэюяўʻ'`ʼ‘’\-]{5,}/iu; // five consonants in a row: no Uzbek or Russian word does that
+
+export function looksLikeWord(token: string): boolean {
+  const word = token.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  if (!word) return false;
+  if (/\p{N}/u.test(word) || /[=+^*/<>√∑]/u.test(word)) return true; // numbers and formulas
+  const letters = word.replace(/[^\p{L}]/gu, '');
+  if (letters.length < 2) return false;
+  if (letters.length <= 6 && letters === letters.toUpperCase() && letters !== letters.toLowerCase()) return true; // LAN, SQL, TCP
+  const lower = letters.toLowerCase();
+  const vowels = (lower.match(VOWELS) ?? []).length;
+  if (vowels === 0) return false;
+  if (lower.length >= 4) {
+    const share = vowels / lower.length;
+    if (share < 0.2 || share > 0.8) return false;
+    if (/^(.{1,3})\1+.{0,2}$/u.test(lower)) return false; // "vgvgvg", "gvgv", "jkjkjk"
+  }
+  return !CONSONANT_RUN.test(lower);
+}
+
+export function looksLikeAnswer(answer: string): boolean {
+  return answer.split(/\s+/).some(looksLikeWord);
 }

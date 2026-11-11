@@ -15,7 +15,7 @@ import { generateModelAnswer, gradeAnswer, planSubject, questionScore, scoreToGr
 import { describeGenerationError } from '../lib/ai';
 import { AnswerInput } from '../components/AnswerInput';
 import { canRecordAudio } from '../lib/useRecorder';
-import { isGradable, MIN_ANSWER_WORDS } from '../lib/answerInput';
+import { looksLikeAnswer } from '../lib/answerInput';
 import { readinessColor } from './SubjectsPage';
 import { ReportIssue } from '../components/ReportIssue';
 import { nextInQueue, placeInQueue, queueOf, usableQueue } from '../lib/practiceQueue';
@@ -146,7 +146,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
     navigate(nextId ? `/subjects/${subject.id}/q/${nextId}` : `/subjects/${subject.id}`, nextId ? { state: { queue } } : undefined);
   };
 
-  const gradable = isGradable(answer);
+  const gradable = looksLikeAnswer(answer);
   // Phones often have no Uzbek month names ("M11 10"), so they are spelled out here
   const when = (at: number) => {
     const d = new Date(at);
@@ -188,7 +188,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
           </Button>
           {answer.trim() && !gradable && (
             <p className="text-xs text-muted-foreground text-center">
-              {isUz ? `Baholash uchun kamida ${MIN_ANSWER_WORDS} ta so'z yozing.` : `Для оценки напишите хотя бы ${MIN_ANSWER_WORDS} слова.`}
+              {isUz ? "Bu javobga o'xshamaydi: savolga o'z so'zlaringiz bilan javob yozing." : 'Это не похоже на ответ: напишите ответ своими словами.'}
             </p>
           )}
           <div className="space-y-2">
