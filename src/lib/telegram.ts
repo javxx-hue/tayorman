@@ -113,5 +113,3 @@ export function openBotChat(): void {
     window.open(`https://t.me/${BOT_USERNAME}`, '_blank');
   }
 }
-
-export const inviteLink = (code: string) => `https://t.me/${BOT_USERNAME}?start=c_${code}`;
