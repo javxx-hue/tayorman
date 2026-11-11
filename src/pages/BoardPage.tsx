@@ -52,7 +52,10 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
     };
   }, [playing, step, steps]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => boardEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), [step]);
+  // A block body on purpose: newer browsers return a promise from scrollIntoView, and an effect must not return one
+  useEffect(() => {
+    boardEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [step]);
   useEffect(() => () => speech.stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!subject) return null;
