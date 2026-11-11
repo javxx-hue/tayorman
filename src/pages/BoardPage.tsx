@@ -68,7 +68,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang, canAsk }) 
   const [askText, setAskText] = useState('');
   const [askBusy, setAskBusy] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
-  const boardEnd = useRef<HTMLDivElement>(null);
+  const board = useRef<HTMLDivElement>(null);
   const caret = useRef<HTMLSpanElement>(null);
   const page = useRef<HTMLDivElement>(null);
   const [chalkAt, setChalkAt] = useState({ left: 0, top: 0 });
@@ -131,9 +131,11 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang, canAsk }) 
     return () => clearTimeout(timer);
   }, [phase, playing, typingDone, spoken]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // A block body on purpose: newer browsers return a promise from scrollIntoView, and an effect must not return one
+  // Keep the newest line and the teacher under it in view: the board scrolls to its very bottom, past the
+  // space left for the teacher, and only the board scrolls (not the whole page)
   useEffect(() => {
-    boardEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const b = board.current;
+    if (b) b.scrollTo({ top: b.scrollHeight, behavior: 'smooth' });
   }, [step, typed, phase]);
   useEffect(() => () => speech.stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -242,8 +244,9 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang, canAsk }) 
       {/* The board */}
       <div className="relative">
         <div
+          ref={board}
           onClick={tapBoard}
-          className="rounded-3xl border-[6px] border-[#5b4636] bg-[#1f3a2f] px-5 pt-5 pb-28 h-[70vh] overflow-y-auto shadow-[inset_0_0_50px_rgba(0,0,0,0.5)] text-[17px] leading-relaxed font-medium select-none cursor-pointer"
+          className="rounded-3xl border-[6px] border-[#5b4636] bg-[#1f3a2f] px-5 pt-5 pb-3 h-[70vh] overflow-y-auto shadow-[inset_0_0_50px_rgba(0,0,0,0.5)] text-[17px] leading-relaxed font-medium select-none cursor-pointer"
           style={{ color: CHALK, textShadow: '0 0 1px rgba(255,255,255,0.35)' }}
         >
           {phase === 'teach' ? (
@@ -293,7 +296,8 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang, canAsk }) 
               </div>
             )
           )}
-          <div ref={boardEnd} />
+          {/* Room under the last line where the teacher stands */}
+          <div aria-hidden style={{ height: TEACHER_SIZE + 16 }} />
         </div>
       </div>
 
