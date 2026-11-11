@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   localDateKey,
-  nextStreak,
   saveStudySet,
   getStudySets,
   deleteStudySet,
@@ -9,28 +8,9 @@ import {
   getSubjects,
   deleteSubject,
   recordQuizCompletion,
-  getUserStats,
   initStorage,
 } from './storage';
 import { StudySet, Subject } from '../types';
-
-describe('nextStreak', () => {
-  it('starts at 1 on the very first study day', () => {
-    expect(nextStreak('', 0, '2026-11-01')).toBe(1);
-  });
-
-  it('adds a day when the last study day was yesterday', () => {
-    expect(nextStreak('2026-10-31', 4, '2026-11-01')).toBe(5);
-  });
-
-  it('keeps the streak when studying again on the same day', () => {
-    expect(nextStreak('2026-11-01', 5, '2026-11-01')).toBe(5);
-  });
-
-  it('resets to 1 after a missed day', () => {
-    expect(nextStreak('2026-10-29', 9, '2026-11-01')).toBe(1);
-  });
-});
 
 describe('localDateKey', () => {
   it('uses the local calendar day, zero padded', () => {
@@ -104,7 +84,7 @@ describe('StudySet & Subject Storage Operations', () => {
     expect(getSubjects().some((s) => s.id === 'sub-test-1')).toBe(false);
   });
 
-  it('records quiz completion and updates user stats', () => {
+  it('keeps the latest score of a test set on the set', () => {
     const set: StudySet = {
       id: 'set-test-stats',
       title: 'Sinov',
@@ -117,12 +97,9 @@ describe('StudySet & Subject Storage Operations', () => {
     };
 
     saveStudySet(set);
-    recordQuizCompletion(80, 10, set);
+    recordQuizCompletion(80, set);
 
-    const stats = getUserStats();
-    expect(stats.quizzesTaken).toBeGreaterThanOrEqual(1);
-    expect(stats.averageScore).toBe(80);
-    expect(stats.totalStudyMinutes).toBeGreaterThan(0);
+    expect(getStudySets().find((s) => s.id === set.id)?.lastScore).toBe(80);
   });
 
   it('migrates legacy tayyorman_* keys to sessiyagatayyorlan_*', () => {

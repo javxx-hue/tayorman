@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StudySet, Flashcard } from '../../types';
 import { Button } from '../ui/Button';
 import { RotateCw, ArrowLeft, ArrowRight, Shuffle, RotateCcw, Check, Trophy, Maximize, Minimize, Volume2, CalendarClock } from 'lucide-react';
 import { Language, getTranslations } from '../../lib/i18n';
-import { saveStudySet, recordStudyActivity } from '../../lib/storage';
+import { saveStudySet } from '../../lib/storage';
 import { useSpeech } from '../../lib/speech';
 import { dueQueue, reviewCard, shouldRequeue, nextDueDate, previewIntervals, formatInterval, isMastered, isNew, ReviewRating } from '../../lib/srs';
 import { countNewCard, limitNewCards } from '../../lib/dailyPlan';
@@ -46,7 +46,6 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ set, lang, onF
   const [isFlipped, setIsFlipped] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const activityRecorded = useRef(false);
 
   const currentId = mode === 'review' ? queue[0] : deck[practiceIndex]?.id;
   const currentCard = deck.find((c) => c.id === currentId);
@@ -95,10 +94,6 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ set, lang, onF
     const nextDeck = deck.map((c) => (c.id === updated.id ? updated : c));
     setDeck(nextDeck);
     saveStudySet({ ...set, flashcards: nextDeck });
-    if (!activityRecorded.current) {
-      recordStudyActivity();
-      activityRecorded.current = true;
-    }
 
     const rest = queue.slice(1);
     const nextQueue = shouldRequeue(updated) ? [...rest, updated.id] : rest;

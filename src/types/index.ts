@@ -65,14 +65,6 @@ export interface StudySet {
   completedAt?: number;
 }
 
-export interface UserStats {
-  streakDays: number;
-  lastStudyDate: string; // YYYY-MM-DD
-  quizzesTaken: number;
-  totalStudyMinutes: number;
-  averageScore: number;
-}
-
 // ---------------------------------------------------------------
 // Session prep: subjects, their materials and exam question lists
 // ---------------------------------------------------------------

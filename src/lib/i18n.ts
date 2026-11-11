@@ -4,11 +4,6 @@ export type Language = 'uz' | 'ru';
 export const tr = (lang: Language, uz: string, ru: string): string => (lang === 'uz' ? uz : ru);
 
 const uz = {
-  dashboard: {
-    streak: 'Kunlik o\'qish zanjiri',
-    streakDays: 'kun',
-    avgScore: 'O\'rtacha natija',
-  },
   quiz: {
     question: 'Savol',
     of: '/',
@@ -58,11 +53,6 @@ const uz = {
 };
 
 const ru: typeof uz = {
-  dashboard: {
-    streak: 'Дней подряд',
-    streakDays: 'дн.',
-    avgScore: 'Средний результат',
-  },
   quiz: {
     question: 'Вопрос',
     of: '/',

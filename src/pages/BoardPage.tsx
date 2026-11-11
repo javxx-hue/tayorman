@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Pause, Play, SkipBack, SkipForward, ChevronRight, Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { Teacher } from '../components/board/Teacher';
+import { CHALK_TIP, Teacher, TEACHER_SIZE } from '../components/board/Teacher';
 import { Language, tr } from '../lib/i18n';
 import { Subject } from '../types';
 import { practiceOrder } from '../lib/prep';
@@ -17,14 +17,14 @@ interface BoardPageProps {
 }
 
 export const BOARD_SITTING = 10;
-const CHALK = '#fff6c8';
+const CHALK = '#eef2e6';
 
 // Board text with the key terms underlined in yellow chalk
 const Chalk: React.FC<{ text: string; terms: string[] }> = ({ text, terms }) => (
   <>
     {highlight(text, terms).map((p, i) =>
       p.key ? (
-        <span key={i} className="text-[#facc15] underline decoration-2 decoration-[#facc15]/70 underline-offset-4">{p.text}</span>
+        <span key={i} className="text-[#fde68a] underline decoration-1 decoration-[#fde68a]/60 underline-offset-4">{p.text}</span>
       ) : (
         <span key={i}>{p.text}</span>
       )
@@ -61,6 +61,9 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
   const [answers, setAnswers] = useState<string[]>([]);
   const [checked, setChecked] = useState(false);
   const boardEnd = useRef<HTMLDivElement>(null);
+  const caret = useRef<HTMLSpanElement>(null);
+  const page = useRef<HTMLDivElement>(null);
+  const [chalkAt, setChalkAt] = useState({ left: 0, top: 0 });
 
   const question = queue[index];
   const steps = useMemo(() => (question ? boardSteps(question) : []), [question]);
@@ -125,6 +128,16 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
     boardEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [step, typed, phase]);
   useEffect(() => () => speech.stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The teacher follows the chalk: its chalk tip goes to the end of the line being written
+  useLayoutEffect(() => {
+    const end = caret.current;
+    const area = page.current;
+    if (!end || !area) return;
+    const scale = TEACHER_SIZE / 100;
+    const left = Math.min(end.offsetLeft - CHALK_TIP.x * scale, area.clientWidth - TEACHER_SIZE);
+    setChalkAt({ left: Math.max(0, left), top: end.offsetTop + end.offsetHeight - CHALK_TIP.y * scale });
+  }, [typed, step, phase, index]);
 
   if (!subject) return null;
   const back = () => (start ? navigate(-1) : navigate(`/subjects/${subject.id}`));
@@ -195,29 +208,32 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
       <div className="relative">
         <div
           onClick={tapBoard}
-          className="rounded-3xl border-[6px] border-[#5b4636] bg-[#1f3a2f] px-5 pt-5 pb-24 h-[68vh] overflow-y-auto shadow-[inset_0_0_50px_rgba(0,0,0,0.5)] font-chalk text-[22px] leading-snug select-none cursor-pointer"
-          style={{ color: CHALK }}
+          className="rounded-3xl border-[6px] border-[#5b4636] bg-[#1f3a2f] px-5 pt-5 pb-28 h-[70vh] overflow-y-auto shadow-[inset_0_0_50px_rgba(0,0,0,0.5)] text-[17px] leading-relaxed font-medium select-none cursor-pointer"
+          style={{ color: CHALK, textShadow: '0 0 1px rgba(255,255,255,0.35)' }}
         >
           {phase === 'teach' ? (
-            <div className="space-y-3">
+            <div ref={page} className="relative space-y-3">
               {steps.slice(0, step + 1).map((s, i) => {
                 const text = i === step ? s.text.slice(0, typed) : s.text;
                 return (
                   <div
                     key={i}
-                    className={`${i === step ? '' : 'opacity-80'} ${s.kind === 'title' ? 'text-[26px] font-bold border-b border-white/25 pb-2' : s.kind === 'point' ? 'pl-3 border-l-2 border-[#facc15]/60' : ''}`}
+                    className={`${i === step ? '' : 'opacity-85'} ${s.kind === 'title' ? 'font-chalk text-[26px] font-semibold leading-snug border-b border-white/20 pb-2' : s.kind === 'point' ? 'pl-3 border-l-2 border-[#fde68a]/50' : ''}`}
                   >
                     {s.kind === 'point' && '✔ '}
                     <Chalk text={text} terms={terms} />
-                    {i === step && !typingDone && <span className="chalk-caret" />}
+                    {i === step && <span ref={caret} className={typingDone ? 'inline-block w-0 h-[1em]' : 'chalk-caret'} />}
                   </div>
                 );
               })}
+              <div className="absolute pointer-events-none transition-all duration-150 ease-linear" style={{ left: chalkAt.left, top: chalkAt.top }}>
+                <Teacher talking={talking} nod={nod} />
+              </div>
             </div>
           ) : (
             cloze && (
               <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
-                <div className="text-[24px] font-bold border-b border-white/25 pb-2">{tr(lang, "Tekshiruv: bo'sh joylarni to'ldiring", 'Проверка: заполните пропуски')}</div>
+                <div className="font-chalk text-[26px] font-semibold border-b border-white/20 pb-2">{tr(lang, "Tekshiruv: bo'sh joylarni to'ldiring", 'Проверка: заполните пропуски')}</div>
                 <p className="leading-loose">
                   {cloze.parts.map((p, i) =>
                     typeof p === 'string' ? (
@@ -232,7 +248,7 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
                         value={answers[p.blank] ?? ''}
                         onChange={(e) => setAnswers((a) => Object.assign([...a], { [p.blank]: e.target.value }))}
                         aria-label={tr(lang, `${p.blank + 1}-bo'sh joy`, `Пропуск ${p.blank + 1}`)}
-                        className="mx-1 w-28 px-2 bg-transparent border-b-2 border-dashed border-[#fff6c8]/70 text-[#facc15] focus:outline-none font-chalk text-[22px]"
+                        className="mx-1 w-28 px-2 bg-transparent border-b-2 border-dashed border-[#eef2e6]/60 text-[#fde68a] focus:outline-none text-[17px] font-semibold"
                         autoCapitalize="none"
                         autoCorrect="off"
                       />
@@ -243,9 +259,6 @@ export const BoardPage: React.FC<BoardPageProps> = ({ subjects, lang }) => {
             )
           )}
           <div ref={boardEnd} />
-        </div>
-        <div className="absolute left-3 bottom-3 pointer-events-none">
-          <Teacher talking={talking} nod={nod} />
         </div>
       </div>
 

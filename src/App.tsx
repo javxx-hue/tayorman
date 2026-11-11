@@ -3,9 +3,9 @@ import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 're
 import { ToastContainer, toast } from './components/ui/Toast';
 import { Button } from './components/ui/Button';
 import { BottomNav, TAB_ROOTS } from './components/layout/BottomNav';
-import { initStorage, getStudySets, getUserStats, getSubjects, subscribeStorage } from './lib/storage';
+import { initStorage, getStudySets, getSubjects, subscribeStorage } from './lib/storage';
 import { Language, tr } from './lib/i18n';
-import { QuizQuestion, StudySet, Subject, UserStats } from './types';
+import { QuizQuestion, StudySet, Subject } from './types';
 import { getProgress, pickQuestions, progressKey, type QuizLaunch } from './lib/quizProgress';
 import { newCardsLeftToday, newCardsToday } from './lib/dailyPlan';
 import { useAuth } from './lib/auth';
@@ -113,7 +113,6 @@ export default function App() {
   const navigate = useNavigate();
 
   const [studySets, setStudySets] = useState<StudySet[]>(getStudySets());
-  const [stats, setStats] = useState<UserStats>(getUserStats());
   const [subjects, setSubjects] = useState<Subject[]>(getSubjects());
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem(ONBOARDED_KEY) === '1');
   const [allowBrowserAccess, setAllowBrowserAccess] = useState(false);
@@ -128,7 +127,6 @@ export default function App() {
     () =>
       subscribeStorage(() => {
         setStudySets(getStudySets());
-        setStats(getUserStats());
         setSubjects(getSubjects());
       }),
     []
@@ -253,7 +251,7 @@ export default function App() {
       <main className="flex-1">
         <Suspense fallback={loading}>
           <Routes>
-            <Route path="/" element={<HomePage subjects={subjects} studySets={studySets} stats={stats} lang={lang} />} />
+            <Route path="/" element={<HomePage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects" element={<SubjectsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id" element={<SubjectPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id/board" element={<BoardPage subjects={subjects} lang={lang} />} />

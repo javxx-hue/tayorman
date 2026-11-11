@@ -75,7 +75,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
       }
     });
     const finalPct = Math.round((correctCount / totalQ) * 100);
-    if (!reviewMistakesMode) recordQuizCompletion(finalPct, totalQ, set);
+    if (!reviewMistakesMode) recordQuizCompletion(finalPct, set);
   };
 
   const currentQ = activeQuestions[currentIdx];

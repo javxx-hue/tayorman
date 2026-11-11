@@ -108,11 +108,10 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
       const finalScore = Math.round((score / totalQ) * 100);
       if (session) {
         // The set's score is the whole picture (latest answer of every question so far), not just this sitting
-        recordQuizCompletion(finalScore, totalQ);
         const all = overview(set.questions ?? [], getProgress(progressKey(set)));
         saveStudySet({ ...set, lastScore: all.accuracy ?? finalScore, completedAt: Date.now() });
       } else {
-        recordQuizCompletion(finalScore, totalQ, set);
+        recordQuizCompletion(finalScore, set);
       }
       setIsFinished(true);
     }
