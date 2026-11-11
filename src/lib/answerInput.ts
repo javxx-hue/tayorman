@@ -65,3 +65,10 @@ export async function transcribeHandwriting(photo: Blob, lang: Language): Promis
   const small = await shrinkImage(photo);
   return cleanTranscript(await geminiGenerate([{ text: handwritingPrompt(lang) }, { inline_data: { mime_type: 'image/jpeg', data: await toBase64(small) } }], { temperature: 0, tier: 'fast' }));
 }
+
+// Worth sending to the AI grader: at least a few words. A single run of random letters is not graded
+// (it used to cost an AI request and leave a confusing 0% behind).
+export const MIN_ANSWER_WORDS = 3;
+export function isGradable(answer: string): boolean {
+  return answer.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length >= MIN_ANSWER_WORDS;
+}
