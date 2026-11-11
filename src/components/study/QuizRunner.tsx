@@ -28,16 +28,19 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
   const [wrongIds, setWrongIds] = useState<string[]>([]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  // One answer per question, so the student can jump between questions by number and come back
+  const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
   const [showHint, setShowHint] = useState(false);
-  const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [timerEnabled, setTimerEnabled] = useState(false); // off by default: a long question should not turn into a "mistake"
   const [secondsLeft, setSecondsLeft] = useState(30);
 
   const currentQ = questions[currentIndex];
   const totalQ = questions.length;
+  const selectedOption = answers[currentIndex] ?? null;
   const hasAnswered = selectedOption !== null;
+  const score = answers.filter((a, i) => a === questions[i]?.correctAnswer).length;
+  const firstOpen = answers.findIndex((a) => a === null);
   const isCorrect = hasAnswered && selectedOption === currentQ?.correctAnswer;
 
   // Question Timer countdown
@@ -86,23 +89,23 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
 
   const handleSelectOption = (idx: number) => {
     if (hasAnswered) return;
-    setSelectedOption(idx);
+    setAnswers((prev) => prev.map((a, i) => (i === currentIndex ? idx : a)));
     const correct = idx === currentQ.correctAnswer;
-    if (correct) {
-      setScore((prev) => prev + 1);
-    } else {
-      setWrongIds((prev) => [...prev, currentQ.id]);
-    }
+    if (!correct) setWrongIds((prev) => [...prev, currentQ.id]);
     if (session) recordAnswers(progressKey(set), [{ id: currentQ.id, correct }]);
   };
 
+  const goTo = (i: number) => {
+    setCurrentIndex(i);
+    setShowHint(false);
+  };
+
+  // On to the next question; after the last one, to the first one still open; when none is open, the result
   const handleNext = () => {
-    if (currentIndex < totalQ - 1) {
-      setCurrentIndex((prev) => prev + 1);
-      setSelectedOption(null);
-      setShowHint(false);
-    } else {
-      const finalScore = Math.round(((score + (isCorrect ? 0 : 0)) / totalQ) * 100);
+    if (currentIndex < totalQ - 1) goTo(currentIndex + 1);
+    else if (firstOpen >= 0) goTo(firstOpen);
+    else {
+      const finalScore = Math.round((score / totalQ) * 100);
       if (session) {
         // The set's score is the whole picture (latest answer of every question so far), not just this sitting
         recordQuizCompletion(finalScore, totalQ);
@@ -193,7 +196,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
     );
   }
 
-  const progressPct = ((currentIndex + 1) / totalQ) * 100;
+  const progressPct = (answers.filter((a) => a !== null).length / totalQ) * 100;
 
   return (
     <div className="max-w-3xl mx-auto my-4 sm:my-8 px-4">
@@ -228,6 +231,19 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
             className="h-full bg-creation-quiz-strong transition-all duration-300 rounded-full"
             style={{ width: `${progressPct}%` }}
           />
+        </div>
+
+        {/* Question numbers: jump to any question; the colour says right, wrong or not answered yet */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+          {questions.map((q, i) => {
+            const a = answers[i];
+            const state = i === currentIndex ? 'bg-primary text-primary-foreground border-primary' : a === null ? 'bg-card text-muted-foreground border-border' : a === q.correctAnswer ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+            return (
+              <button key={q.id} onClick={() => goTo(i)} className={`min-w-8 h-8 px-2 rounded-lg border text-xs font-bold shrink-0 ${state}`}>
+                {i + 1}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -353,7 +369,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
                 icon={<ChevronRight size={16} />}
                 className="animate-in fade-in"
               >
-                {currentIndex < totalQ - 1 ? t.nextQuestion : t.finishQuiz} <span className="text-[10px] opacity-75 font-mono ml-1">[Enter]</span>
+                {currentIndex < totalQ - 1 || firstOpen >= 0 ? t.nextQuestion : t.finishQuiz} <span className="text-[10px] opacity-75 font-mono ml-1">[Enter]</span>
               </Button>
             )}
           </div>

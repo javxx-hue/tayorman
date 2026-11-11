@@ -65,16 +65,15 @@ export function startTelegram(): void {
   webApp.expand();
 }
 
-// Follow Telegram's light/dark setting and paint the native header to match the app
-export function applyTelegramTheme(onScheme: (scheme: 'light' | 'dark') => void): () => void {
+// The app has one look, dark navy, whatever Telegram's own theme is; Telegram's bars are painted to match
+const APP_BACKGROUND = '#1a1c2e';
+
+export function applyTelegramTheme(): () => void {
   if (!webApp) return () => {};
   const apply = () => {
-    const dark = webApp.colorScheme === 'dark';
-    onScheme(webApp.colorScheme);
-    const bg = dark ? '#1c1917' : '#faf7ee';
     try {
-      webApp.setHeaderColor(bg);
-      webApp.setBackgroundColor(bg);
+      webApp.setHeaderColor(APP_BACKGROUND);
+      webApp.setBackgroundColor(APP_BACKGROUND);
     } catch {
       /* older clients */
     }

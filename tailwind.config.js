@@ -22,6 +22,7 @@ export default {
         },
         primary: {
           DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+          shade: 'hsl(var(--primary-shade) / <alpha-value>)',
           foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
         },
         secondary: {
@@ -57,8 +58,8 @@ export default {
         }
       },
       fontFamily: {
-        serif: ['"DM Serif Text"', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        serif: ['Nunito', 'system-ui', 'sans-serif'],
+        sans: ['Nunito', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         'xl': '0.875rem',

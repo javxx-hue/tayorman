@@ -120,7 +120,7 @@ export default function App() {
   useEffect(() => {
     initStorage();
     startTelegram();
-    return applyTelegramTheme((scheme) => document.documentElement.classList.toggle('dark', scheme === 'dark'));
+    return applyTelegramTheme(); // the page is dark from the start (index.html)
   }, []);
 
   useEffect(
@@ -248,7 +248,7 @@ export default function App() {
   // Derived from card states, so re-rating the same card can't inflate it
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans pb-20">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans pb-28">
       <main className="flex-1">
         <Suspense fallback={loading}>
           <Routes>

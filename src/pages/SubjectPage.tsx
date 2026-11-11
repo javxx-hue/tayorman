@@ -7,7 +7,8 @@ import { Button } from '../components/ui/Button';
 import { Language, tr } from '../lib/i18n';
 import { ExamQuestion, StudySet, Subject } from '../types';
 import { planSubject, practiceOrder, setsOfSubject, subjectReadiness, daysUntil } from '../lib/prep';
-import { FORMAT_LABELS, daysLeftLabel, readinessColor } from './SubjectsPage';
+import { FORMAT_LABELS, daysLeftLabel } from './SubjectsPage';
+import { ReadinessHero } from '../components/prep/Readiness';
 import { DailyStudyRows } from '../components/prep/DailyStudy';
 
 interface SubjectPageProps {
@@ -72,22 +73,23 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
         <ArrowLeft size={14} /> {tr(lang, 'Fanlarim', 'Мои предметы')}
       </button>
 
-      <div className="rounded-2xl bg-card border border-border p-4">
-        <h1 className="text-2xl font-serif font-bold text-foreground">{subject.name}</h1>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground mt-2">
-          <span className="flex items-center gap-1"><CalendarDays size={13} />{subject.examDate} · {daysLeftLabel(days, isUz)}</span>
-          <span>{FORMAT_LABELS[subject.examFormat][lang]}</span>
+      <div>
+        <div className="text-xs text-muted-foreground flex items-center gap-1">
+          <CalendarDays size={13} />
+          {subject.examDate} · {daysLeftLabel(days, isUz)} · {FORMAT_LABELS[subject.examFormat][lang]}
         </div>
-        <div className="mt-4">
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-muted-foreground">{tr(lang, 'Tayyorlik', 'Готовность')}</span>
-            <span className="font-bold text-foreground">{readiness}%</span>
-          </div>
-          <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
-            <div className={`h-full transition-all ${readinessColor(readiness)}`} style={{ width: `${readiness}%` }} />
-          </div>
-        </div>
+        <h1 className="text-3xl font-serif text-foreground mt-1">{subject.name}</h1>
       </div>
+
+      <ReadinessHero
+        value={readiness}
+        caption={tr(lang, 'tayyorlik', 'готовность')}
+        footer={tr(
+          lang,
+          `Savollar: ${subject.questions.length} · siz ishlagan: ${subject.questions.filter((q) => q.attempts.length > 0).length}`,
+          `Вопросов: ${subject.questions.length} · вы ответили: ${subject.questions.filter((q) => q.attempts.length > 0).length}`
+        )}
+      />
 
       {subject.questions.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-5 space-y-3">

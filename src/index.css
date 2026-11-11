@@ -3,87 +3,92 @@
 @tailwind utilities;
 
 @layer base {
+  /* Light: used by the admin site. The student app is always dark (see index.html). */
   :root {
-    --background: 40 30% 95%;
-    --foreground: 0 0% 10%;
-    --card: 45 100% 98%;
-    --card-foreground: 0 0% 10%;
-    --popover: 45 100% 98%;
-    --popover-foreground: 0 0% 10%;
-    --primary: 0 0% 10%;
-    --primary-foreground: 43 100% 97%;
-    --secondary: 38 25% 92%;
-    --secondary-foreground: 0 0% 10%;
-    --muted: 38 25% 92%;
-    --muted-foreground: 0 0% 40%;
-    --accent: 0 0% 10%;
-    --accent-foreground: 43 100% 97%;
+    --background: 232 45% 97%;
+    --foreground: 234 30% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 234 30% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 234 30% 14%;
+    --primary: 217 91% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-shade: 217 80% 42%;
+    --secondary: 232 35% 93%;
+    --secondary-foreground: 234 30% 14%;
+    --muted: 232 35% 93%;
+    --muted-foreground: 232 15% 45%;
+    --accent: 258 90% 66%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 38 22% 86%;
-    --input: 38 22% 86%;
-    --ring: 0 0% 18%;
-    --radius: 0.75rem;
+    --border: 232 30% 88%;
+    --input: 232 30% 88%;
+    --ring: 217 91% 55%;
+    --radius: 1rem;
 
-    --creation-quiz: 80 55% 60%;
-    --creation-flashcards: 220 50% 72%;
-    --creation-exam: 330 55% 75%;
+    --creation-quiz: 258 90% 75%;
+    --creation-flashcards: 199 89% 70%;
+    --creation-exam: 330 80% 75%;
+    --creation-quiz-strong: 258 70% 55%;
+    --creation-flashcards-strong: 199 80% 42%;
+    --creation-exam-strong: 330 70% 50%;
 
-    --creation-quiz-strong: 80 55% 38%;
-    --creation-flashcards-strong: 220 50% 50%;
-    --creation-exam-strong: 330 55% 48%;
-
-    --lavender: 250 50% 45%;
+    --lavender: 258 70% 55%;
     --highlight-orange: 24 95% 53%;
 
-    --gradient-hero: linear-gradient(180deg, hsl(40 30% 95%) 0%, hsl(40 30% 95%) 40%, hsl(45 100% 98%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(43 23% 94%) 0%, hsl(43 40% 95%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(217 91% 58%) 0%, hsl(245 85% 65%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(232 45% 98%) 100%);
   }
 
+  /* Dark navy, the student app's look */
   .dark {
-    --background: 240 5% 11%;
-    --foreground: 40 10% 92%;
-    --card: 240 5% 14%;
-    --card-foreground: 40 10% 92%;
-    --popover: 240 5% 14%;
-    --popover-foreground: 40 10% 92%;
-    --primary: 40 10% 92%;
-    --primary-foreground: 240 5% 11%;
-    --secondary: 240 4% 18%;
-    --secondary-foreground: 40 10% 88%;
-    --muted: 240 4% 18%;
-    --muted-foreground: 40 5% 63%;
-    --accent: 40 10% 92%;
-    --accent-foreground: 240 5% 11%;
-    --destructive: 0 72% 51%;
+    --background: 235 27% 14%;
+    --foreground: 235 60% 97%;
+    --card: 234 27% 19%;
+    --card-foreground: 235 60% 97%;
+    --popover: 234 27% 19%;
+    --popover-foreground: 235 60% 97%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --primary-shade: 217 70% 42%;
+    --secondary: 234 26% 25%;
+    --secondary-foreground: 235 60% 95%;
+    --muted: 234 26% 25%;
+    --muted-foreground: 231 22% 68%;
+    --accent: 258 90% 66%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 58%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 4% 20%;
-    --input: 240 4% 20%;
-    --ring: 40 10% 70%;
+    --border: 234 24% 28%;
+    --input: 234 24% 28%;
+    --ring: 217 91% 60%;
 
-    --creation-quiz: 80 55% 65%;
-    --creation-flashcards: 220 50% 75%;
-    --creation-exam: 330 55% 78%;
+    --creation-quiz: 258 90% 72%;
+    --creation-flashcards: 199 89% 64%;
+    --creation-exam: 330 80% 72%;
+    --creation-quiz-strong: 258 90% 75%;
+    --creation-flashcards-strong: 199 89% 64%;
+    --creation-exam-strong: 330 80% 72%;
 
-    --creation-quiz-strong: 80 55% 55%;
-    --creation-flashcards-strong: 220 50% 68%;
-    --creation-exam-strong: 330 55% 70%;
-
-    --lavender: 250 50% 65%;
+    --lavender: 258 90% 75%;
     --highlight-orange: 24 95% 58%;
 
-    --gradient-hero: linear-gradient(180deg, hsl(240 5% 11%) 0%, hsl(240 5% 13%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(240 5% 14%) 0%, hsl(240 5% 16%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(245 80% 64%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(234 27% 19%) 0%, hsl(234 27% 21%) 100%);
   }
 
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Nunito', system-ui, -apple-system, sans-serif;
     color: hsl(var(--foreground));
     background-color: hsl(var(--background));
   }
 
+  /* Headings: the same rounded font, heavier */
   h1, h2, h3, .font-serif {
-    font-family: 'DM Serif Text', Georgia, serif;
+    font-family: 'Nunito', system-ui, sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.01em;
   }
 }
 

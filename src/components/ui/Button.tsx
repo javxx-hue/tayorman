@@ -16,12 +16,13 @@ export const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] select-none';
+  // Raised buttons: a darker edge underneath that the button sinks into when pressed
+  const baseStyles = 'inline-flex items-center justify-center font-bold rounded-2xl transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:pointer-events-none active:translate-y-[2px] select-none';
 
   const variantStyles = {
-    primary: 'bg-primary text-primary-foreground hover:bg-black/90 dark:hover:bg-white/90 shadow-sm',
-    secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border/60',
-    outline: 'border border-border bg-transparent hover:bg-secondary/50 text-foreground',
+    primary: 'bg-primary text-primary-foreground hover:brightness-110 shadow-[0_4px_0_0_hsl(var(--primary-shade))] active:shadow-[0_2px_0_0_hsl(var(--primary-shade))]',
+    secondary: 'bg-secondary text-secondary-foreground hover:brightness-110 shadow-[0_3px_0_0_hsl(var(--border))] active:shadow-[0_1px_0_0_hsl(var(--border))]',
+    outline: 'border border-border bg-card hover:bg-secondary/60 text-foreground shadow-[0_3px_0_0_hsl(var(--border))] active:shadow-[0_1px_0_0_hsl(var(--border))]',
     ghost: 'hover:bg-secondary/60 text-foreground',
     destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
   };

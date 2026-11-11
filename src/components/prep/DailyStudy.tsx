@@ -18,7 +18,7 @@ export const DailyStudyRows: React.FC<DailyStudyRowsProps> = ({ subject, studySe
   const plan = dailyStudy(subject, studySets, (s) => getProgress(progressKey(s)), () => 0);
   if (!plan.quiz) return null;
 
-  const row = 'w-full text-left flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:bg-secondary/50';
+  const row = 'w-full text-left flex items-center gap-3 p-3 rounded-xl bg-secondary/50 hover:bg-secondary';
   const done = <Check size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />;
   const go = <ChevronRight size={16} className="text-muted-foreground shrink-0" />;
 
