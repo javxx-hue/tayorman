@@ -22,6 +22,7 @@ export default {
         },
         primary: {
           DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+          shade: 'hsl(var(--primary-shade) / <alpha-value>)',
           foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
         },
         secondary: {
@@ -48,8 +49,6 @@ export default {
           'quiz-strong': 'hsl(var(--creation-quiz-strong) / <alpha-value>)',
           flashcards: 'hsl(var(--creation-flashcards) / <alpha-value>)',
           'flashcards-strong': 'hsl(var(--creation-flashcards-strong) / <alpha-value>)',
-          notes: 'hsl(var(--creation-notes) / <alpha-value>)',
-          'notes-strong': 'hsl(var(--creation-notes-strong) / <alpha-value>)',
           exam: 'hsl(var(--creation-exam) / <alpha-value>)',
           'exam-strong': 'hsl(var(--creation-exam-strong) / <alpha-value>)',
         },
@@ -59,8 +58,9 @@ export default {
         }
       },
       fontFamily: {
-        serif: ['"DM Serif Text"', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        serif: ['Nunito', 'system-ui', 'sans-serif'],
+        sans: ['Nunito', 'system-ui', 'sans-serif'],
+        chalk: ['Caveat', 'Nunito', 'cursive'],
       },
       borderRadius: {
         'xl': '0.875rem',

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, BookOpen, ListChecks, ChevronRight } from 'lucide-react';
+import { BookOpen, ChevronRight } from 'lucide-react';
+import { SubjectAvatar } from '../components/prep/Readiness';
 import { Button } from '../components/ui/Button';
 import { Language } from '../lib/i18n';
 import { ExamFormat, StudySet, Subject } from '../types';
@@ -61,36 +62,24 @@ export const SubjectsPage: React.FC<SubjectsPageProps> = ({ subjects, studySets,
           </Button>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="rounded-2xl border border-border bg-card divide-y divide-border">
           {sorted.map((s) => {
             const days = daysUntil(s.examDate);
             const readiness = subjectReadiness(s, studySets);
             return (
-              <button
-                key={s.id}
-                onClick={() => navigate(`/subjects/${s.id}`)}
-                className="w-full text-left rounded-2xl bg-card border border-border p-4 hover:border-primary/50 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="text-lg font-serif font-bold text-foreground truncate">{s.name}</h3>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground mt-1">
-                      <span className="flex items-center gap-1"><CalendarDays size={13} />{daysLeftLabel(days, isUz)}</span>
-                      <span>{FORMAT_LABELS[s.examFormat][lang]}</span>
-                      <span className="flex items-center gap-1"><ListChecks size={13} />{s.questions.length} {isUz ? 'savol' : 'вопросов'}</span>
-                    </div>
-                  </div>
-                  <ChevronRight size={18} className="text-muted-foreground shrink-0 mt-1" />
-                </div>
-                <div className="mt-4">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">{isUz ? 'Tayyorlik' : 'Готовность'}</span>
-                    <span className="font-bold text-foreground">{readiness}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                    <div className={`h-full ${readinessColor(readiness)}`} style={{ width: `${readiness}%` }} />
-                  </div>
-                </div>
+              <button key={s.id} onClick={() => navigate(`/subjects/${s.id}`)} className="w-full text-left flex items-center gap-3 p-3.5 hover:bg-secondary/40">
+                <SubjectAvatar name={s.name} index={subjects.indexOf(s)} />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-bold text-foreground truncate">{s.name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {s.questions.length} {isUz ? 'ta savol' : 'вопросов'} · {daysLeftLabel(days, isUz)} · {FORMAT_LABELS[s.examFormat][lang]}
+                  </span>
+                  <span className="block h-1.5 mt-2 rounded-full bg-secondary overflow-hidden">
+                    <span className={`block h-full ${readinessColor(readiness)}`} style={{ width: `${readiness}%` }} />
+                  </span>
+                </span>
+                <span className="text-sm font-bold text-muted-foreground w-10 text-right">{readiness}%</span>
+                <ChevronRight size={16} className="text-muted-foreground shrink-0" />
               </button>
             );
           })}

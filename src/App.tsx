@@ -3,10 +3,11 @@ import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 're
 import { ToastContainer, toast } from './components/ui/Toast';
 import { Button } from './components/ui/Button';
 import { BottomNav, TAB_ROOTS } from './components/layout/BottomNav';
-import { initStorage, getStudySets, getUserStats, getSubjects, subscribeStorage } from './lib/storage';
+import { initStorage, getStudySets, getSubjects, subscribeStorage } from './lib/storage';
 import { Language, tr } from './lib/i18n';
-import { StudySet, Subject, UserStats } from './types';
-import { isMastered } from './lib/srs';
+import { QuizQuestion, StudySet, Subject } from './types';
+import { getProgress, pickQuestions, progressKey, type QuizLaunch } from './lib/quizProgress';
+import { newCardsLeftToday, newCardsToday } from './lib/dailyPlan';
 import { useAuth } from './lib/auth';
 import { startSync } from './lib/sync';
 import { deliverLibrary } from './lib/library';
@@ -21,20 +22,56 @@ import { startTelegram, applyTelegramTheme, useTelegramBackButton, BOT_USERNAME 
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
 const SubjectsPage = lazy(() => import('./pages/SubjectsPage').then((m) => ({ default: m.SubjectsPage })));
 const SubjectPage = lazy(() => import('./pages/SubjectPage').then((m) => ({ default: m.SubjectPage })));
+const BoardPage = lazy(() => import('./pages/BoardPage').then((m) => ({ default: m.BoardPage })));
+const RecallPage = lazy(() => import('./pages/RecallPage').then((m) => ({ default: m.RecallPage })));
+const ClozePage = lazy(() => import('./pages/ClozePage').then((m) => ({ default: m.ClozePage })));
+const TicketsPage = lazy(() => import('./pages/TicketsPage').then((m) => ({ default: m.TicketsPage })));
+const SubjectStatsPage = lazy(() => import('./pages/SubjectStatsPage').then((m) => ({ default: m.SubjectStatsPage })));
 const QuestionPracticePage = lazy(() => import('./pages/QuestionPracticePage').then((m) => ({ default: m.QuestionPracticePage })));
 const AssignmentsPage = lazy(() => import('./pages/AssignmentsPage').then((m) => ({ default: m.AssignmentsPage })));
 const RequestPage = lazy(() => import('./pages/RequestPage').then((m) => ({ default: m.RequestPage })));
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then((m) => ({ default: m.OnboardingPage })));
 const QuizRunner = lazy(() => import('./components/study/QuizRunner').then((m) => ({ default: m.QuizRunner })));
+const QuizSetup = lazy(() => import('./components/study/QuizSetup').then((m) => ({ default: m.QuizSetup })));
 const FlashcardPlayer = lazy(() => import('./components/study/FlashcardPlayer').then((m) => ({ default: m.FlashcardPlayer })));
-const NotesViewer = lazy(() => import('./components/study/NotesViewer').then((m) => ({ default: m.NotesViewer })));
 const ExamSimulator = lazy(() => import('./components/study/ExamSimulator').then((m) => ({ default: m.ExamSimulator })));
 
 const ONBOARDED_KEY = 'sessiyagatayyorlan_onboarded';
 
+// A test set this large opens on a start screen instead of running all of it at once
+const LARGE_QUIZ = 25;
+
+const QuizRoute: React.FC<{ set: StudySet; lang: Language; onFinish: () => void }> = ({ set, lang, onFinish }) => {
+  const launch = (useLocation().state ?? {}) as QuizLaunch;
+  const [session, setSession] = useState<{ n: number; questions: QuizQuestion[] } | null>(() => {
+    if (!launch.autostart) return null;
+    const qs = pickQuestions(set.questions ?? [], getProgress(progressKey(set)), { mode: 'mixed', count: launch.count ?? 10 });
+    return qs.length ? { n: 0, questions: qs } : null;
+  });
+  const start = (questions: QuizQuestion[]) => setSession((s) => ({ n: (s?.n ?? 0) + 1, questions }));
+
+  if (!session) {
+    return <QuizSetup set={set} lang={lang} onStart={start} onBack={onFinish} />;
+  }
+  return (
+    <QuizRunner
+      key={session.n}
+      set={set}
+      lang={lang}
+      onFinish={() => setSession(null)}
+      onRetake={() => start(session.questions)}
+      session={{
+        questions: session.questions,
+        onRetryMistakes: (ids) => start((set.questions ?? []).filter((q) => ids.includes(q.id))),
+        onMore: () => setSession(null),
+      }}
+    />
+  );
+};
+
 // Renders the runner for /study/:id
-const StudyRoute: React.FC<{ studySets: StudySet[]; lang: Language }> = ({ studySets, lang }) => {
+const StudyRoute: React.FC<{ studySets: StudySet[]; subjects: Subject[]; lang: Language }> = ({ studySets, subjects, lang }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState(0);
@@ -53,11 +90,10 @@ const StudyRoute: React.FC<{ studySets: StudySet[]; lang: Language }> = ({ study
   const retake = () => setAttempt((n) => n + 1);
   switch (set.type) {
     case 'quiz':
+      if ((set.questions?.length ?? 0) >= LARGE_QUIZ) return <QuizRoute key={set.id} set={set} lang={lang} onFinish={finish} />;
       return <QuizRunner key={attempt} set={set} lang={lang} onFinish={finish} onRetake={retake} />;
     case 'flashcards':
-      return <FlashcardPlayer key={attempt} set={set} lang={lang} onFinish={finish} />;
-    case 'notes':
-      return <NotesViewer set={set} lang={lang} onBack={finish} />;
+      return <FlashcardPlayer key={attempt} set={set} lang={lang} onFinish={finish} newLimit={newCardsLeftToday(set, subjects, studySets, newCardsToday(set))} />;
     case 'exam':
       return <ExamSimulator key={attempt} set={set} lang={lang} onFinish={finish} onRetake={retake} />;
     default:
@@ -77,7 +113,6 @@ export default function App() {
   const navigate = useNavigate();
 
   const [studySets, setStudySets] = useState<StudySet[]>(getStudySets());
-  const [stats, setStats] = useState<UserStats>(getUserStats());
   const [subjects, setSubjects] = useState<Subject[]>(getSubjects());
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem(ONBOARDED_KEY) === '1');
   const [allowBrowserAccess, setAllowBrowserAccess] = useState(false);
@@ -85,14 +120,13 @@ export default function App() {
   useEffect(() => {
     initStorage();
     startTelegram();
-    return applyTelegramTheme((scheme) => document.documentElement.classList.toggle('dark', scheme === 'dark'));
+    return applyTelegramTheme(); // the page is dark from the start (index.html)
   }, []);
 
   useEffect(
     () =>
       subscribeStorage(() => {
         setStudySets(getStudySets());
-        setStats(getUserStats());
         setSubjects(getSubjects());
       }),
     []
@@ -211,19 +245,23 @@ export default function App() {
   }
 
   // Derived from card states, so re-rating the same card can't inflate it
-  const cardsMastered = studySets.reduce((sum, s) => sum + (s.flashcards?.filter(isMastered).length ?? 0), 0);
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans pb-20">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans pb-28">
       <main className="flex-1">
         <Suspense fallback={loading}>
           <Routes>
-            <Route path="/" element={<HomePage subjects={subjects} studySets={studySets} stats={{ ...stats, cardsMastered }} lang={lang} />} />
+            <Route path="/" element={<HomePage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects" element={<SubjectsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id" element={<SubjectPage subjects={subjects} studySets={studySets} lang={lang} />} />
+            <Route path="/subjects/:id/board" element={<BoardPage subjects={subjects} lang={lang} canAsk={online && !!profile?.board_ai} />} />
+            <Route path="/subjects/:id/recall" element={<RecallPage subjects={subjects} lang={lang} />} />
+            <Route path="/subjects/:id/cloze" element={<ClozePage subjects={subjects} lang={lang} />} />
+            <Route path="/subjects/:id/tickets" element={<TicketsPage subjects={subjects} lang={lang} />} />
+            <Route path="/subjects/:id/stats" element={<SubjectStatsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id/q/:qid" element={<QuestionPracticePage subjects={subjects} lang={lang} />} />
-            <Route path="/study/:id" element={<StudyRoute studySets={studySets} lang={lang} />} />
-            <Route path="/assignments" element={<AssignmentsPage assignments={assignments} server={assignmentProgress} subjects={subjects} studySets={studySets} lang={lang} staff={online && !!profile && profile.role !== 'student'} />} />
+            <Route path="/study/:id" element={<StudyRoute studySets={studySets} subjects={subjects} lang={lang} />} />
+            <Route path="/assignments" element={<AssignmentsPage assignments={assignments} server={assignmentProgress} subjects={subjects} studySets={studySets} lang={lang} staff={online && !!profile && profile.role !== 'student'} userId={online && profile?.role === 'student' ? profile.id : null} />} />
             <Route path="/request" element={<RequestPage lang={lang} />} />
             <Route path="/library" element={<Navigate to="/request" replace />} />
             <Route path="/profile" element={<ProfilePage lang={lang} />} />
@@ -231,7 +269,8 @@ export default function App() {
           </Routes>
         </Suspense>
       </main>
-      <BottomNav lang={lang} openAssignments={openAssignments} />
+      {/* The board takes the whole screen */}
+      {!location.pathname.endsWith('/board') && <BottomNav lang={lang} openAssignments={openAssignments} />}
       {online && !privacyOk && (
         <PrivacyNotice
           lang={lang}

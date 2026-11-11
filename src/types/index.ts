@@ -1,9 +1,16 @@
-export type StudySetType = 'quiz' | 'flashcards' | 'notes' | 'exam';
+export type StudySetType = 'quiz' | 'flashcards' | 'exam';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type Language = 'uz' | 'ru';
 
+// A subject's topic. Library content is tagged with these, so a student can study by topic and see weak spots.
+export interface Topic {
+  no: number;
+  name: string;
+}
+
 export interface QuizQuestion {
   id: string;
+  topic?: number; // Topic.no
   question: string;
   options: string[];
   correctAnswer: number; // 0-based index
@@ -14,6 +21,7 @@ export interface QuizQuestion {
 
 export interface Flashcard {
   id: string;
+  topic?: number; // Topic.no
   front: string;
   back: string;
   example?: string;
@@ -36,14 +44,6 @@ export interface SrsState {
   last_review?: string;
 }
 
-export interface StudyNote {
-  id: string;
-  title: string;
-  summary: string;
-  keyPoints: string[];
-  glossary: { term: string; definition: string }[];
-}
-
 export interface StudySet {
   id: string;
   title: string;
@@ -57,21 +57,12 @@ export interface StudySet {
   sourceSnippet?: string;
   questions?: QuizQuestion[];
   flashcards?: Flashcard[];
-  notes?: StudyNote;
   subjectId?: string; // set generated inside a subject
   libraryId?: string; // copied from the admin library
   libraryUpdatedAt?: string; // library version this copy was last refreshed from
+  topics?: Topic[];
   lastScore?: number;
   completedAt?: number;
-}
-
-export interface UserStats {
-  streakDays: number;
-  lastStudyDate: string; // YYYY-MM-DD
-  quizzesTaken: number;
-  cardsMastered: number;
-  totalStudyMinutes: number;
-  averageScore: number;
 }
 
 // ---------------------------------------------------------------
@@ -101,11 +92,13 @@ export interface AnswerAttempt {
   score: number; // 0-100
   feedback: string;
   missing: string[];
+  mode?: 'recall' | 'cloze'; // how it was practised; none = a written or spoken answer
 }
 
 export interface ExamQuestion {
   id: string;
   text: string;
+  topic?: number; // Topic.no
   modelAnswer?: ModelAnswer;
   attempts: AnswerAttempt[];
 }
@@ -121,5 +114,6 @@ export interface Subject {
   questions: ExamQuestion[];
   libraryId?: string; // copied from the admin library
   libraryUpdatedAt?: string; // library version this copy was last refreshed from
+  topics?: Topic[];
   librarySourceId?: string; // id the admin's subject had; sets published with it name it in their subjectId
 }

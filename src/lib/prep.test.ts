@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { parseQuestionList, planSubject, scoreToGrade, setsOfSubject, subjectReadiness, daysUntil, todayOverview } from './prep';
+import { parseQuestionList, planSubject, readinessParts, scoreToGrade, setsOfSubject, subjectReadiness, daysUntil, todayOverview } from './prep';
 import { buildMaterialContext, fitMaterials, officeXmlToText } from './materials';
 import { ExamQuestion, Subject, StudySet } from '../types';
 
@@ -94,6 +94,15 @@ describe('subjectReadiness', () => {
 
   it('is 0 with nothing done yet', () => {
     expect(subjectReadiness(subject('2026-12-01', []), [])).toBe(0);
+  });
+});
+
+describe('readinessParts', () => {
+  it('shows each part and leaves out what was never started', () => {
+    const s = subject('2026-12-01', [q('a', 100), q('b', 0)]);
+    expect(readinessParts(s, [])).toEqual({ written: 50, tests: null, cards: null, total: 50 });
+    const quiz = { id: 'x', subjectId: 'sub1', type: 'quiz', lastScore: 90 } as StudySet;
+    expect(readinessParts(s, [quiz])).toMatchObject({ written: 50, tests: 90, total: 60 }); // (50*3 + 90) / 4
   });
 });
 

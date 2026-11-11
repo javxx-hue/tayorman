@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, BellOff, Globe, GraduationCap, Users, MessageCircle, ShieldCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Bell, BellOff, Globe, GraduationCap, Users, MessageCircle, ShieldCheck, MessageSquarePlus, ChevronRight } from 'lucide-react';
 import { toast } from '../components/ui/Toast';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
@@ -10,6 +11,7 @@ import { privacyText } from '../lib/privacy';
 
 export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
   const { profile, online, updateProfile, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [communities, setCommunities] = useState<{ id: string; name: string }[]>([]);
   const [university, setUniversity] = useState(profile?.university === 'samdu' ? '' : profile?.university ?? '');
 
@@ -41,10 +43,24 @@ export const ProfilePage: React.FC<{ lang: Language }> = ({ lang }) => {
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-5 pb-6 space-y-3">
-      <h1 className="text-2xl font-serif font-bold text-foreground">
-        {profile?.first_name ?? tr(lang, 'Profil', 'Профиль')}
-        {profile?.username && <span className="block text-sm font-sans font-normal text-muted-foreground">@{profile.username}</span>}
-      </h1>
+      <div className="flex items-center gap-4 py-2">
+        <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-2xl font-extrabold text-primary-foreground shrink-0">
+          {(profile?.first_name ?? '?').slice(0, 1).toUpperCase()}
+        </div>
+        <h1 className="text-2xl font-serif font-bold text-foreground min-w-0">
+          {profile?.first_name ?? tr(lang, 'Profil', 'Профиль')}
+          {profile?.username && <span className="block text-sm font-sans font-normal text-muted-foreground">@{profile.username}</span>}
+        </h1>
+      </div>
+
+      <button onClick={() => navigate('/request')} className={`${card} w-full flex items-center gap-3 text-left hover:bg-secondary/40`}>
+        <span className="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0"><MessageSquarePlus size={18} /></span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-sm font-bold text-foreground">{tr(lang, "So'rov yuborish", 'Отправить запрос')}</span>
+          <span className="block text-xs text-muted-foreground">{tr(lang, "Fan, material so'rash yoki adminga yozish", 'Запросить предмет, материалы или написать админу')}</span>
+        </span>
+        <ChevronRight size={16} className="text-muted-foreground shrink-0" />
+      </button>
 
       {isAdmin && (
         <div className={`${card} border-amber-500/30 bg-amber-500/5`}>

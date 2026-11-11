@@ -1,9 +1,8 @@
-import { StudySet, UserStats, Subject } from '../types';
+import { StudySet, Subject } from '../types';
 
 const STORAGE_KEYS = {
   SETS: 'sessiyagatayyorlan_study_sets',
   SUBJECTS: 'sessiyagatayyorlan_subjects',
-  STATS: 'sessiyagatayyorlan_user_stats',
   LANG: 'sessiyagatayyorlan_language',
 };
 
@@ -20,16 +19,6 @@ function notifyListeners() {
   listeners.forEach((fn) => fn());
 }
 
-// Clean fresh new user stats
-const defaultStats: UserStats = {
-  streakDays: 0,
-  lastStudyDate: '',
-  quizzesTaken: 0,
-  cardsMastered: 0,
-  totalStudyMinutes: 0,
-  averageScore: 0,
-};
-
 // Initialize default data if empty (fresh start)
 export function initStorage(): void {
   if (typeof window === 'undefined') return;
@@ -41,9 +30,6 @@ export function initStorage(): void {
   if (localStorage.getItem(STORAGE_KEYS.SUBJECTS) === null && localStorage.getItem('tayyorman_subjects')) {
     localStorage.setItem(STORAGE_KEYS.SUBJECTS, localStorage.getItem('tayyorman_subjects')!);
   }
-  if (localStorage.getItem(STORAGE_KEYS.STATS) === null && localStorage.getItem('tayyorman_user_stats')) {
-    localStorage.setItem(STORAGE_KEYS.STATS, localStorage.getItem('tayyorman_user_stats')!);
-  }
   if (localStorage.getItem(STORAGE_KEYS.LANG) === null && localStorage.getItem('tayyorman_language')) {
     localStorage.setItem(STORAGE_KEYS.LANG, localStorage.getItem('tayyorman_language')!);
   }
@@ -53,9 +39,6 @@ export function initStorage(): void {
   }
   if (localStorage.getItem(STORAGE_KEYS.SUBJECTS) === null) {
     localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify([]));
-  }
-  if (localStorage.getItem(STORAGE_KEYS.STATS) === null) {
-    localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(defaultStats));
   }
 }
 
@@ -155,18 +138,6 @@ export function newId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// User Stats & Streak
-export function getUserStats(): UserStats {
-  if (typeof window === 'undefined') return defaultStats;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.STATS);
-    if (!raw) return defaultStats;
-    return JSON.parse(raw);
-  } catch {
-    return defaultStats;
-  }
-}
-
 // Calendar day in the user's own time zone (toISOString would use UTC,
 // which shifts the day for students in UTC+5 studying after midnight)
 export function localDateKey(date: Date = new Date()): string {
@@ -176,34 +147,7 @@ export function localDateKey(date: Date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 
-export function nextStreak(lastStudyDate: string, streakDays: number, today: string): number {
-  if (lastStudyDate === today) return Math.max(streakDays, 1);
-  if (!lastStudyDate) return 1;
-  const diffDays = Math.round((Date.parse(today) - Date.parse(lastStudyDate)) / 86_400_000);
-  return diffDays === 1 ? streakDays + 1 : 1;
-}
-
-function withStudyDay(stats: UserStats): UserStats {
-  const today = localDateKey();
-  return { ...stats, streakDays: nextStreak(stats.lastStudyDate, stats.streakDays, today), lastStudyDate: today };
-}
-
-export function recordQuizCompletion(scorePercentage: number, questionsCount: number, set?: StudySet): void {
-  // Keep the latest result on the set itself; subject readiness reads it
-  if (set) saveStudySet({ ...set, lastScore: scorePercentage, completedAt: Date.now() });
-  const stats = withStudyDay(getUserStats());
-  const updatedStats: UserStats = {
-    ...stats,
-    quizzesTaken: stats.quizzesTaken + 1,
-    averageScore: Math.round((stats.averageScore * stats.quizzesTaken + scorePercentage) / (stats.quizzesTaken + 1)),
-    totalStudyMinutes: stats.totalStudyMinutes + Math.ceil(questionsCount * 1.5),
-  };
-  localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(updatedStats));
-  notifyListeners();
-}
-
-// Flashcard reviews count toward the streak too
-export function recordStudyActivity(): void {
-  localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(withStudyDay(getUserStats())));
-  notifyListeners();
+// The latest result of a whole test set is kept on the set; subject readiness reads it
+export function recordQuizCompletion(scorePercentage: number, set: StudySet): void {
+  saveStudySet({ ...set, lastScore: scorePercentage, completedAt: Date.now() });
 }

@@ -33,6 +33,7 @@ export const UsersPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [limitDraft, setLimitDraft] = useState<Record<string, string>>({});
+  const [boardAi, setBoardAi] = useState<Set<string>>(new Set()); // students given AI questions on the board
 
   // Wait until the admin stops typing before asking the database
   useEffect(() => {
@@ -48,7 +49,19 @@ export const UsersPage: React.FC = () => {
     if (err) return setError('Ro\'yxatni yuklab bo\'lmadi.');
     setError(null);
     setRows((data ?? []) as UserRow[]);
-  }, [query, page]);
+    if (isAdmin) {
+      const { data: on } = await supabase.from('profiles').select('id').eq('board_ai', true);
+      setBoardAi(new Set((on ?? []).map((r: { id: string }) => r.id)));
+    }
+  }, [query, page, isAdmin]);
+
+  const toggleBoardAi = async (u: UserRow) => {
+    setBusy(u.id);
+    const { error: err } = await supabase.rpc('admin_set_board_ai', { p_user: u.id, p_on: !boardAi.has(u.id) });
+    setBusy(null);
+    if (err) return setError("Amalni bajarib bo'lmadi.");
+    await load();
+  };
 
   useEffect(() => {
     load();
@@ -112,6 +125,7 @@ export const UsersPage: React.FC = () => {
                   <td className="py-2 pr-3 whitespace-nowrap">
                     <Pill tone={u.role === 'admin' ? 'blue' : u.role === 'moderator' ? 'amber' : 'gray'}>{ROLE_LABEL[u.role]}</Pill>
                     {u.blocked && <> <Pill tone="red">Bloklangan</Pill></>}
+                    {boardAi.has(u.id) && <> <Pill tone="blue">AI doska</Pill></>}
                   </td>
                   <td className="py-2 pr-3 whitespace-nowrap text-xs">
                     {u.ai_today}{u.ai_daily_limit !== null && <span className="text-muted-foreground"> / {u.ai_daily_limit}</span>}
@@ -134,6 +148,11 @@ export const UsersPage: React.FC = () => {
                           <Btn disabled={busy === u.id} onClick={() => act(u, { p_role: u.role === 'moderator' ? 'student' : 'moderator' })}>
                             {u.role === 'moderator' ? 'Moderatorlikdan olish' : 'Moderator qilish'}
                           </Btn>
+                          {u.role === 'student' && (
+                            <Btn disabled={busy === u.id} onClick={() => toggleBoardAi(u)}>
+                              {boardAi.has(u.id) ? "AI doskani o'chirish" : 'AI doska berish'}
+                            </Btn>
+                          )}
                           </>
                         )}
                           <input

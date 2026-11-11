@@ -113,14 +113,6 @@ If targetType is "flashcards":
     { "front": "Term / Question", "back": "Clear definition / Answer", "example": "Example from the source", "source": "e.g. Sahifa 3 (omit if unknown)" }
   ]
 }
-
-If targetType is "notes":
-{
-  "title": "Document title",
-  "summary": "Executive summary paragraph",
-  "keyPoints": ["Bullet point 1", "Bullet point 2", "Bullet point 3"],
-  "glossary": [{ "term": "Key term", "definition": "Clear concise definition" }]
-}
 `;
 }
 
@@ -193,28 +185,9 @@ export async function generateStudySet(params: GenerationParams): Promise<StudyS
     return { ...base, itemCount: questions.length, questions };
   }
 
-  if (targetType === 'flashcards') {
-    const flashcards = parseFlashcards(parsed.flashcards, now);
-    if (flashcards.length === 0) throw new GenerationError('BAD_RESPONSE', 'No valid flashcards in response.');
-    return { ...base, itemCount: flashcards.length, flashcards };
-  }
-
-  if (!isNonEmptyString(parsed.summary)) {
-    throw new GenerationError('BAD_RESPONSE', 'Notes summary missing in response.');
-  }
-  return {
-    ...base,
-    itemCount: 1,
-    notes: {
-      id: `note-${now}`,
-      title: base.title,
-      summary: plainMath(parsed.summary),
-      keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints.filter(isNonEmptyString).map(plainMath) : [],
-      glossary: Array.isArray(parsed.glossary)
-        ? parsed.glossary.filter((g: any) => isNonEmptyString(g?.term) && isNonEmptyString(g?.definition)).map((g: any) => ({ term: plainMath(g.term), definition: plainMath(g.definition) }))
-        : [],
-    },
-  };
+  const flashcards = parseFlashcards(parsed.flashcards, now);
+  if (flashcards.length === 0) throw new GenerationError('BAD_RESPONSE', 'No valid flashcards in response.');
+  return { ...base, itemCount: flashcards.length, flashcards };
 }
 
 export function describeGenerationError(error: unknown, lang: Language): string {

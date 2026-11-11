@@ -3,33 +3,44 @@ import { StudySet, QuizQuestion } from '../../types';
 import { Button } from '../ui/Button';
 import { Check, X, Lightbulb, ArrowRight, RotateCcw, Trophy, Award, Sparkles, ChevronRight, HelpCircle, Clock, Volume2 } from 'lucide-react';
 import { Language, getTranslations } from '../../lib/i18n';
-import { recordQuizCompletion } from '../../lib/storage';
+import { recordQuizCompletion, saveStudySet } from '../../lib/storage';
 import { useSpeech } from '../../lib/speech';
 import { ReportIssue } from '../ReportIssue';
+import { getProgress, overview, progressKey, recordAnswers } from '../../lib/quizProgress';
 
 interface QuizRunnerProps {
   set: StudySet;
   lang: Language;
   onFinish: () => void;
   onRetake: () => void;
+  // A sitting with part of the set (chosen on the start screen). Every answer is remembered per question.
+  session?: {
+    questions: QuizQuestion[];
+    onRetryMistakes: (ids: string[]) => void;
+    onMore: () => void;
+  };
 }
 
-export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onRetake }) => {
+export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onRetake, session }) => {
   const t = getTranslations(lang).quiz;
   const speech = useSpeech(lang);
-  const questions: QuizQuestion[] = set.questions || [];
-  
+  const questions: QuizQuestion[] = session?.questions ?? set.questions ?? [];
+  const [wrongIds, setWrongIds] = useState<string[]>([]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  // One answer per question, so the student can jump between questions by number and come back
+  const [answers, setAnswers] = useState<(number | null)[]>(() => questions.map(() => null));
   const [showHint, setShowHint] = useState(false);
-  const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
-  const [timerEnabled, setTimerEnabled] = useState(true);
+  const [timerEnabled, setTimerEnabled] = useState(false); // off by default: a long question should not turn into a "mistake"
   const [secondsLeft, setSecondsLeft] = useState(30);
 
   const currentQ = questions[currentIndex];
   const totalQ = questions.length;
+  const selectedOption = answers[currentIndex] ?? null;
   const hasAnswered = selectedOption !== null;
+  const score = answers.filter((a, i) => a === questions[i]?.correctAnswer).length;
+  const firstOpen = answers.findIndex((a) => a === null);
   const isCorrect = hasAnswered && selectedOption === currentQ?.correctAnswer;
 
   // Question Timer countdown
@@ -78,21 +89,30 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
 
   const handleSelectOption = (idx: number) => {
     if (hasAnswered) return;
-    setSelectedOption(idx);
+    setAnswers((prev) => prev.map((a, i) => (i === currentIndex ? idx : a)));
     const correct = idx === currentQ.correctAnswer;
-    if (correct) {
-      setScore((prev) => prev + 1);
-    }
+    if (!correct) setWrongIds((prev) => [...prev, currentQ.id]);
+    if (session) recordAnswers(progressKey(set), [{ id: currentQ.id, correct }]);
   };
 
+  const goTo = (i: number) => {
+    setCurrentIndex(i);
+    setShowHint(false);
+  };
+
+  // On to the next question; after the last one, to the first one still open; when none is open, the result
   const handleNext = () => {
-    if (currentIndex < totalQ - 1) {
-      setCurrentIndex((prev) => prev + 1);
-      setSelectedOption(null);
-      setShowHint(false);
-    } else {
-      const finalScore = Math.round(((score + (isCorrect ? 0 : 0)) / totalQ) * 100);
-      recordQuizCompletion(finalScore, totalQ, set);
+    if (currentIndex < totalQ - 1) goTo(currentIndex + 1);
+    else if (firstOpen >= 0) goTo(firstOpen);
+    else {
+      const finalScore = Math.round((score / totalQ) * 100);
+      if (session) {
+        // The set's score is the whole picture (latest answer of every question so far), not just this sitting
+        const all = overview(set.questions ?? [], getProgress(progressKey(set)));
+        saveStudySet({ ...set, lastScore: all.accuracy ?? finalScore, completedAt: Date.now() });
+      } else {
+        recordQuizCompletion(finalScore, set);
+      }
       setIsFinished(true);
     }
   };
@@ -103,7 +123,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
         <HelpCircle size={40} className="mx-auto text-muted-foreground mb-3" />
         <h3 className="text-xl font-serif font-bold">Savollar mavjud emas</h3>
         <p className="text-xs text-muted-foreground mt-2 mb-6">Ushbu to'plamda savollar topilmadi.</p>
-        <Button variant="primary" onClick={onFinish}>Kabinetga qaytish</Button>
+        <Button variant="primary" onClick={onFinish}>Orqaga</Button>
       </div>
     );
   }
@@ -138,6 +158,19 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
           </p>
         </div>
 
+        {session && (
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-3">
+            {wrongIds.length > 0 && (
+              <Button variant="primary" size="md" onClick={() => session.onRetryMistakes(wrongIds)} icon={<RotateCcw size={16} />} className="w-full sm:w-auto">
+                {lang === 'uz' ? `Xatolarni qayta ishlash (${wrongIds.length})` : `Повторить ошибки (${wrongIds.length})`}
+              </Button>
+            )}
+            <Button variant="outline" size="md" onClick={session.onMore} icon={<ChevronRight size={16} />} className="w-full sm:w-auto">
+              {lang === 'uz' ? 'Keyingi savollar' : 'Следующие вопросы'}
+            </Button>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Button
             variant="outline"
@@ -162,7 +195,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
     );
   }
 
-  const progressPct = ((currentIndex + 1) / totalQ) * 100;
+  const progressPct = (answers.filter((a) => a !== null).length / totalQ) * 100;
 
   return (
     <div className="max-w-3xl mx-auto my-4 sm:my-8 px-4">
@@ -197,6 +230,19 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
             className="h-full bg-creation-quiz-strong transition-all duration-300 rounded-full"
             style={{ width: `${progressPct}%` }}
           />
+        </div>
+
+        {/* Question numbers: jump to any question; the colour says right, wrong or not answered yet */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+          {questions.map((q, i) => {
+            const a = answers[i];
+            const state = i === currentIndex ? 'bg-primary text-primary-foreground border-primary' : a === null ? 'bg-card text-muted-foreground border-border' : a === q.correctAnswer ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+            return (
+              <button key={q.id} onClick={() => goTo(i)} className={`min-w-8 h-8 px-2 rounded-lg border text-xs font-bold shrink-0 ${state}`}>
+                {i + 1}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -322,7 +368,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
                 icon={<ChevronRight size={16} />}
                 className="animate-in fade-in"
               >
-                {currentIndex < totalQ - 1 ? t.nextQuestion : t.finishQuiz} <span className="text-[10px] opacity-75 font-mono ml-1">[Enter]</span>
+                {currentIndex < totalQ - 1 || firstOpen >= 0 ? t.nextQuestion : t.finishQuiz} <span className="text-[10px] opacity-75 font-mono ml-1">[Enter]</span>
               </Button>
             )}
           </div>

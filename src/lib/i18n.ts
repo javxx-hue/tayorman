@@ -4,13 +4,6 @@ export type Language = 'uz' | 'ru';
 export const tr = (lang: Language, uz: string, ru: string): string => (lang === 'uz' ? uz : ru);
 
 const uz = {
-  dashboard: {
-    streak: 'Kunlik o\'qish zanjiri',
-    streakDays: 'kun',
-    quizzesTaken: 'Yechilgan testlar',
-    cardsMastered: 'Yodlangan kartalar',
-    avgScore: 'O\'rtacha natija',
-  },
   quiz: {
     question: 'Savol',
     of: '/',
@@ -32,7 +25,6 @@ const uz = {
   },
   flashcards: {
     card: 'Karta',
-    flipHint: 'Aylantirish uchun bosing',
     flipBtn: 'Aylantirish',
     fullscreen: 'To\'liq ekran',
     shuffle: 'Aralashtirish',
@@ -57,25 +49,9 @@ const uz = {
     failedBadge: 'Qayta topshirish kerak',
     weakSpots: 'Kuchaytirish kerak bo\'lgan joylar',
   },
-  notes: {
-    title: 'O\'quv qaydlari',
-    executiveSummary: 'Qisqacha mazmun',
-    keyDefinitions: 'Asosiy tushunchalar va ta\'riflar',
-    bulletPoints: 'Muhim eslatmalar',
-    copyNotes: 'Nusxa olish',
-    copied: 'Nusxalandi!',
-    print: 'Chop etish / PDF',
-  },
 };
 
 const ru: typeof uz = {
-  dashboard: {
-    streak: 'Дней подряд',
-    streakDays: 'дн.',
-    quizzesTaken: 'Пройдено тестов',
-    cardsMastered: 'Выучено карточек',
-    avgScore: 'Средний результат',
-  },
   quiz: {
     question: 'Вопрос',
     of: '/',
@@ -97,7 +73,6 @@ const ru: typeof uz = {
   },
   flashcards: {
     card: 'Карточка',
-    flipHint: 'Нажмите, чтобы перевернуть',
     flipBtn: 'Перевернуть',
     fullscreen: 'Во весь экран',
     shuffle: 'Перемешать',
@@ -121,15 +96,6 @@ const ru: typeof uz = {
     passedBadge: 'Сдано',
     failedBadge: 'Нужно пересдать',
     weakSpots: 'Что стоит подтянуть',
-  },
-  notes: {
-    title: 'Учебный конспект',
-    executiveSummary: 'Краткое содержание',
-    keyDefinitions: 'Основные понятия и определения',
-    bulletPoints: 'Важные пункты',
-    copyNotes: 'Копировать',
-    copied: 'Скопировано!',
-    print: 'Печать / PDF',
   },
 };
 
