@@ -30,7 +30,8 @@ export function useSpeech(lang: Language) {
     };
   }, [lang]);
 
-  const speak = (text: string) => {
+  // onEnd runs when the phrase has been read to the end (the board moves on to its next step then)
+  const speak = (text: string, onEnd?: () => void) => {
     if (!voice) return;
     const synth = window.speechSynthesis;
     synth.cancel();
@@ -38,9 +39,14 @@ export function useSpeech(lang: Language) {
     utterance.voice = voice;
     utterance.lang = voice.lang;
     utterance.rate = 0.95;
+    if (onEnd) utterance.onend = onEnd;
     spoke.current = true;
     synth.speak(utterance);
   };
 
-  return { available: voice !== null, speak };
+  const stop = () => {
+    if (spoke.current) window.speechSynthesis.cancel();
+  };
+
+  return { available: voice !== null, speak, stop };
 }

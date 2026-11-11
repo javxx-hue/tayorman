@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Mic, Sparkles, BookOpen } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Mic, Sparkles, BookOpen, Presentation } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { toast } from '../components/ui/Toast';
 import { Language } from '../lib/i18n';
@@ -164,6 +164,11 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
             {online && !canRecordAudio() && (
               <Button variant="outline" size="sm" onClick={answerByVoice} disabled={busy !== null} icon={<Mic size={14} />}>
                 {isUz ? 'Botda ovoz bilan' : 'Голосом в боте'}
+              </Button>
+            )}
+            {question.modelAnswer && (
+              <Button variant="outline" size="sm" onClick={() => navigate(`/subjects/${subject.id}/board`, { state: { question: question.id } })} icon={<Presentation size={14} />}>
+                {isUz ? 'Doskada tushuntirish' : 'Объяснить на доске'}
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={handleShowModel} disabled={busy !== null} icon={showModel ? <EyeOff size={14} /> : <Eye size={14} />}>

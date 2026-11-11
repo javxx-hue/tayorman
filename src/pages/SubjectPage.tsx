@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, CalendarDays, Play, PenLine, HelpCircle, Layers, Grid3x3, BarChart3, Timer, ChevronRight, Brain, TextCursorInput } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Play, PenLine, HelpCircle, Layers, Grid3x3, BarChart3, Timer, ChevronRight, Brain, TextCursorInput, Presentation } from 'lucide-react';
+import { BOARD_SITTING } from './BoardPage';
 import { RECALL_SITTING } from './RecallPage';
 import { CLOZE_SITTING } from './ClozePage';
 import { Button } from '../components/ui/Button';
@@ -132,6 +133,12 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
           )}
 
           <Section title={tr(lang, 'Tayyorlanish', 'Подготовка')}>
+            <Row
+              icon={<Presentation size={18} className="text-teal-500" />}
+              title={tr(lang, "Doskada o'rganish", 'Учить на доске')}
+              hint={tr(lang, `Javob doskada qadam-baqadam, ovoz bilan · ${BOARD_SITTING} tadan`, `Ответ на доске по шагам, с голосом · по ${BOARD_SITTING}`)}
+              onClick={() => navigate(`/subjects/${subject.id}/board`)}
+            />
             <Row
               icon={<PenLine size={18} className="text-emerald-600 dark:text-emerald-400" />}
               title={tr(lang, 'Javob yozib ko\'rish', 'Написать ответ')}
