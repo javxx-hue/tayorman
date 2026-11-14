@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/auth';
 import { parseLimit } from '../lib/limits';
@@ -26,7 +27,9 @@ const ROLE_LABEL = { student: 'Talaba', moderator: 'Moderator', admin: 'Admin' }
 export const UsersPage: React.FC = () => {
   const { me } = useAuth();
   const isAdmin = me?.role === 'admin';
-  const [search, setSearch] = useState('');
+  // Other pages can open this one already searching for someone (/users?q=<telegram id>)
+  const [params] = useSearchParams();
+  const [search, setSearch] = useState(() => params.get('q') ?? '');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
   const [rows, setRows] = useState<UserRow[] | null>(null);

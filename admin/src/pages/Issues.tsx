@@ -16,6 +16,16 @@ interface Report {
   admin_reply: string | null;
 }
 
+// Who sent a report: enough to find and message them
+interface Person {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  telegram_id: number;
+}
+const nameOf = (p: Person) => [p.first_name, p.last_name].filter(Boolean).join(' ') || 'Talaba';
+
 const STATUS: Record<Status, { label: string; tone: 'amber' | 'green' | 'gray' }> = {
   open: { label: 'Ochiq', tone: 'amber' },
   fixed: { label: 'Tuzatilgan', tone: 'green' },
@@ -37,6 +47,7 @@ export const IssuesPage: React.FC = () => {
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const [reply, setReply] = useState('');
   const [busy, setBusy] = useState(false);
+  const [people, setPeople] = useState<Record<string, Person>>({});
 
   const load = useCallback(async () => {
     let q = supabase
@@ -48,7 +59,13 @@ export const IssuesPage: React.FC = () => {
     const { data, error: err } = await q;
     if (err) return setError("Xabarlarni yuklab bo'lmadi.");
     setError(null);
-    setRows((data ?? []) as Report[]);
+    const reports = (data ?? []) as Report[];
+    setRows(reports);
+    const ids = [...new Set(reports.map((r) => r.user_id))];
+    if (ids.length) {
+      const { data: found } = await supabase.from('profiles').select('id, first_name, last_name, username, telegram_id').in('id', ids);
+      setPeople(Object.fromEntries(((found ?? []) as Person[]).map((p) => [p.id, p])));
+    }
   }, [filter]);
 
   useEffect(() => {
@@ -132,6 +149,23 @@ export const IssuesPage: React.FC = () => {
                         </button>
                       )}
                     </div>
+                    {people[r.user_id] && (() => {
+                      const p = people[r.user_id];
+                      return (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span>
+                            👤 <b className="text-foreground">{nameOf(p)}</b>
+                            {p.username && <> · @{p.username}</>} · ID {p.telegram_id}
+                          </span>
+                          <a href={p.username ? `https://t.me/${p.username}` : `tg://user?id=${p.telegram_id}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">
+                            Telegramda ochish
+                          </a>
+                          <button onClick={() => navigate(`/users?q=${p.telegram_id}`)} className="font-semibold text-primary hover:underline">
+                            Foydalanuvchilarda ko'rish
+                          </button>
+                        </div>
+                      );
+                    })()}
                     {r.admin_reply && <p className="text-xs rounded-lg bg-primary/5 border border-primary/20 p-2 whitespace-pre-wrap"><b>Javobingiz: </b>{r.admin_reply}</p>}
                     {replyTo === r.id && (
                       <div className="space-y-2">
