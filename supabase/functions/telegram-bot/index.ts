@@ -44,7 +44,7 @@ const T = {
     uz: '🎬 Botdan foydalanish bo\'yicha qisqa qo\'llanma',
     ru: '🎬 Короткая инструкция, как пользоваться ботом',
   },
-  videoMissing: { uz: 'Video qo\'llanma hali qo\'shilmagan.', ru: 'Видеоинструкция пока не добавлена.' },
+  videoMissing: { uz: "🎬 Video qo'llanma yangilanmoqda, tez orada qo'shiladi.", ru: '🎬 Видеоинструкция обновляется и скоро появится.' },
   videoSaved: {
     uz: '✅ Video qo\'llanma saqlandi. Endi /video buyrug\'i va «Video qo\'llanma» tugmasi shuni yuboradi.',
     ru: '✅ Видеоинструкция сохранена. Теперь команда /video и кнопка «Видеоинструкция» отправляют её.',
@@ -108,10 +108,14 @@ async function profileOf(tgUser: TelegramUser) {
 
 const appKeyboard = (lang: Lang, path = '') => ({ reply_markup: { inline_keyboard: [[openAppButton(t('open', lang), path)]] } });
 
-// The four buttons that stay under the message box
-const menuKeyboard = (lang: Lang) => ({
+// The buttons that stay under the message box (the video one only while a video is there)
+const menuKeyboard = (lang: Lang, hasVideo: boolean) => ({
   reply_markup: {
-    keyboard: [[openAppButton(t('kbOpen', lang), '')], [{ text: t('kbVideo', lang) }, { text: t('kbReminders', lang) }], [{ text: t('kbHelp', lang) }]],
+    keyboard: [
+      [openAppButton(t('kbOpen', lang), '')],
+      hasVideo ? [{ text: t('kbVideo', lang) }, { text: t('kbReminders', lang) }] : [{ text: t('kbReminders', lang) }],
+      [{ text: t('kbHelp', lang) }],
+    ],
     resize_keyboard: true,
     is_persistent: true,
   },
@@ -203,8 +207,9 @@ async function runCommand(chatId: number, text: string, user: TelegramUser, prof
           reply_markup: { inline_keyboard: [[{ text: t('loginConfirm', lang), callback_data: `al:${nonce}` }]] },
         }));
       }
-      await sendMessage(chatId, t('welcome', lang)(user.first_name ?? ''), welcomeKeyboard(lang, !!(await guideVideoId())));
-      await sendMessage(chatId, t('useButtons', lang), menuKeyboard(lang));
+      const hasVideo = !!(await guideVideoId());
+      await sendMessage(chatId, t('welcome', lang)(user.first_name ?? ''), welcomeKeyboard(lang, hasVideo));
+      await sendMessage(chatId, t('useButtons', lang), menuKeyboard(lang, hasVideo));
       const code = arg?.match(/^c_([a-f0-9]{12})$/)?.[1];
       if (code) {
         const joined = await joinCommunity(profile.id, code);

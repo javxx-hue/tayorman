@@ -1,11 +1,14 @@
-// An admin answers a student's request from the admin site. The answer is saved and sent
-// to the student in the bot. Admin role only.
+// An admin answers a student from the admin site: a request ("Adminga yozish") or, with kind "issue", a report that
+// a question has a mistake. The answer is saved and sent to the student in the bot. Admin role only.
 // Secrets: TELEGRAM_BOT_TOKEN
 import { corsHeaders, json } from '../_shared/cors.ts';
 import { admin, isAdmin, requireUser } from '../_shared/admin.ts';
 import { sendMessage } from '../_shared/telegram.ts';
 
-const STATUSES = ['new', 'seen', 'accepted', 'declined'];
+const KINDS = {
+  request: { table: 'suggestions', text: 'text', statuses: ['new', 'seen', 'accepted', 'declined'], about: { uz: "Sizning so'rovingiz", ru: 'Ваш запрос' } },
+  issue: { table: 'issue_reports', text: 'question_text', statuses: ['open', 'fixed', 'dismissed'], about: { uz: 'Siz xabar bergan savol', ru: 'Вопрос, о котором вы сообщили' } },
+} as const;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(req) });
@@ -15,27 +18,28 @@ Deno.serve(async (req) => {
   if (!user || !(await isAdmin(user.id))) return json(req, { error: 'Forbidden' }, 403);
 
   const body = await req.json().catch(() => null);
+  const kind = KINDS[body?.kind === 'issue' ? 'issue' : 'request'];
   const id = Number(body?.id);
   const status = String(body?.status ?? '');
   const reply = typeof body?.reply === 'string' ? body.reply.trim().slice(0, 2000) : '';
-  if (!Number.isInteger(id) || !STATUSES.includes(status)) return json(req, { error: 'Bad request' }, 400);
+  if (!Number.isInteger(id) || !(kind.statuses as readonly string[]).includes(status)) return json(req, { error: 'Bad request' }, 400);
 
-  const { data: row } = await admin.from('suggestions').select('id, user_id, text').eq('id', id).maybeSingle();
+  const { data: row } = await admin.from(kind.table).select(`id, user_id, ${kind.text}`).eq('id', id).maybeSingle();
   if (!row) return json(req, { error: 'Not found' }, 404);
 
   const patch: Record<string, unknown> = { status };
   if (reply) Object.assign(patch, { admin_reply: reply, replied_at: new Date().toISOString() });
-  const { error } = await admin.from('suggestions').update(patch).eq('id', id);
+  const { error } = await admin.from(kind.table).update(patch).eq('id', id);
   if (error) return json(req, { error: 'Failed' }, 500);
 
   let delivered = false;
   if (reply) {
     const { data: who } = await admin.from('profiles').select('telegram_id, language').eq('id', row.user_id).maybeSingle();
     if (who?.telegram_id) {
-      const uz = who.language !== 'ru';
-      const head = uz ? '💬 Adminning javobi' : '💬 Ответ администратора';
-      const yours = uz ? 'Sizning so\'rovingiz' : 'Ваш запрос';
-      delivered = await sendMessage(who.telegram_id, `${head}\n\n${reply}\n\n— ${yours}: «${String(row.text).slice(0, 120)}»`);
+      const lang = who.language === 'ru' ? 'ru' : 'uz';
+      const head = lang === 'uz' ? '💬 Adminning javobi' : '💬 Ответ администратора';
+      const about = String((row as Record<string, unknown>)[kind.text] ?? '').slice(0, 120);
+      delivered = await sendMessage(who.telegram_id, `${head}\n\n${reply}${about ? `\n\n— ${kind.about[lang]}: «${about}»` : ''}`);
     }
   }
   return json(req, { ok: true, delivered });

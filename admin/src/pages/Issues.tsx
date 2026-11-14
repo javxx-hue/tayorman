@@ -13,6 +13,7 @@ interface Report {
   note: string | null;
   status: Status;
   created_at: string;
+  admin_reply: string | null;
 }
 
 const STATUS: Record<Status, { label: string; tone: 'amber' | 'green' | 'gray' }> = {
@@ -33,11 +34,14 @@ export const IssuesPage: React.FC = () => {
   const [filter, setFilter] = useState<Status | 'all'>('open');
   const [rows, setRows] = useState<Report[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const [reply, setReply] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     let q = supabase
       .from('issue_reports')
-      .select('id, user_id, library_item_id, context, question_text, note, status, created_at')
+      .select('id, user_id, library_item_id, context, question_text, note, status, created_at, admin_reply')
       .order('created_at', { ascending: false })
       .limit(200);
     if (filter !== 'all') q = q.eq('status', filter);
@@ -56,6 +60,20 @@ export const IssuesPage: React.FC = () => {
     setError(null);
     const { error: err } = await supabase.from('issue_reports').update({ status }).in('id', ids);
     if (err) return setError("O'zgartirib bo'lmadi.");
+    load();
+  };
+
+  // An answer to one student: saved with the report and sent to them in the bot
+  const sendReply = async (r: Report, status: Status) => {
+    if (!reply.trim()) return;
+    setBusy(true);
+    setError(null);
+    const { data, error: err } = await supabase.functions.invoke('admin-reply', { body: { kind: 'issue', id: r.id, status, reply: reply.trim() } });
+    setBusy(false);
+    if (err) return setError("Javobni yuborib bo'lmadi. Qayta urinib ko'ring.");
+    if (data && data.delivered === false) setError("Javob saqlandi, lekin talabaga botdan yuborilmadi (u botni bloklagan bo'lishi mumkin).");
+    setReply('');
+    setReplyTo(null);
     load();
   };
 
@@ -103,8 +121,35 @@ export const IssuesPage: React.FC = () => {
               </div>
               <ul className="mt-2 space-y-1.5">
                 {reports.slice(0, 5).map((r) => (
-                  <li key={r.id} className="text-sm rounded-lg bg-secondary/60 px-3 py-1.5">
-                    {r.note} <span className="text-xs text-muted-foreground">· {formatTime(r.created_at)}</span>
+                  <li key={r.id} className="text-sm rounded-lg bg-secondary/60 px-3 py-1.5 space-y-1.5">
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="flex-1 min-w-0">
+                        {r.note} <span className="text-xs text-muted-foreground">· {formatTime(r.created_at)}</span>
+                      </span>
+                      {replyTo !== r.id && (
+                        <button onClick={() => { setReplyTo(r.id); setReply(''); }} className="text-xs font-semibold text-primary hover:underline">
+                          {r.admin_reply ? 'Yana javob yozish' : 'Javob yozish'}
+                        </button>
+                      )}
+                    </div>
+                    {r.admin_reply && <p className="text-xs rounded-lg bg-primary/5 border border-primary/20 p-2 whitespace-pre-wrap"><b>Javobingiz: </b>{r.admin_reply}</p>}
+                    {replyTo === r.id && (
+                      <div className="space-y-2">
+                        <textarea
+                          rows={3}
+                          maxLength={2000}
+                          value={reply}
+                          onChange={(e) => setReply(e.target.value)}
+                          placeholder="Talabaga javob (botga yuboriladi)"
+                          className="w-full p-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <Btn tone="primary" disabled={busy || !reply.trim()} onClick={() => sendReply(r, 'fixed')}>Javob + tuzatildi</Btn>
+                          <Btn disabled={busy || !reply.trim()} onClick={() => sendReply(r, 'dismissed')}>Javob + rad etish</Btn>
+                          <Btn disabled={busy} onClick={() => setReplyTo(null)}>Bekor qilish</Btn>
+                        </div>
+                      </div>
+                    )}
                   </li>
                 ))}
                 {reports.length > 5 && <li className="text-xs text-muted-foreground">... va yana {reports.length - 5} ta</li>}
