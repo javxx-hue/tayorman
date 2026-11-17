@@ -24,7 +24,7 @@ const TABLE_LABEL: Record<string, string> = {
   app_settings: 'Sozlama',
   admin_site: 'Admin sayti',
 };
-const ACTION_LABEL: Record<string, string> = { insert: 'qo\'shdi', update: 'o\'zgartirdi', delete: 'o\'chirdi', login: 'kirdi' };
+const ACTION_LABEL: Record<string, string> = { insert: 'qo\'shdi', update: 'o\'zgartirdi', delete: 'o\'chirdi', login: 'kirdi', message: 'xabar yubordi' };
 
 const brief = (d: Record<string, unknown>) =>
   Object.entries(d)
