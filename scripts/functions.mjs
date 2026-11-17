@@ -9,6 +9,7 @@ export const FUNCTIONS = [
   { name: 'admin-accounts', verifyJwt: true }, // owner only: logins and passwords for admins
   { name: 'admin-broadcast', verifyJwt: true },
   { name: 'admin-reply', verifyJwt: true },
+  { name: 'admin-message', verifyJwt: true },
   { name: 'assignment-notify', verifyJwt: true },
   { name: 'duel-notify', verifyJwt: true },
   { name: 'request-admin', verifyJwt: true },

@@ -37,6 +37,10 @@ export const UsersPage: React.FC = () => {
   const [busy, setBusy] = useState<string | null>(null);
   const [limitDraft, setLimitDraft] = useState<Record<string, string>>({});
   const [boardAi, setBoardAi] = useState<Set<string>>(new Set()); // students given AI questions on the board
+  // A message to one user, written under their row
+  const [writeTo, setWriteTo] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [sent, setSent] = useState<{ id: string; ok: boolean } | null>(null);
 
   // Wait until the admin stops typing before asking the database
   useEffect(() => {
@@ -88,6 +92,21 @@ export const UsersPage: React.FC = () => {
     await load();
   };
 
+  const sendMessage = async (u: UserRow) => {
+    const text = draft.trim();
+    if (!text) return;
+    setBusy(u.id);
+    setError(null);
+    const { data, error: err } = await supabase.functions.invoke('admin-message', { body: { userId: u.id, text } });
+    setBusy(null);
+    if (err) return setError("Xabarni yuborib bo'lmadi. Qayta urinib ko'ring.");
+    setSent({ id: u.id, ok: data?.delivered !== false });
+    if (data?.delivered !== false) {
+      setDraft('');
+      setWriteTo(null);
+    }
+  };
+
   const total = rows?.[0]?.total ?? 0;
   const pages = Math.max(Math.ceil(Number(total) / PAGE), 1);
 
@@ -116,7 +135,8 @@ export const UsersPage: React.FC = () => {
             </thead>
             <tbody>
               {rows.map((u) => (
-                <tr key={u.id} className={`border-t border-border align-top ${u.blocked ? 'opacity-60' : ''}`}>
+                <React.Fragment key={u.id}>
+                <tr className={`border-t border-border align-top ${u.blocked ? 'opacity-60' : ''}`}>
                   <td className="py-2 pr-3">
                     <div className="font-semibold">{[u.first_name, u.last_name].filter(Boolean).join(' ') || '-'}</div>
                     <div className="text-xs text-muted-foreground">{u.username ? `@${u.username} · ` : ''}{u.telegram_id}</div>
@@ -137,6 +157,11 @@ export const UsersPage: React.FC = () => {
                   {isAdmin && (
                     <td className="py-2">
                       <div className="flex flex-wrap gap-1.5 items-center">
+                        {!u.blocked && u.id !== me?.id && (
+                          <Btn tone="primary" disabled={busy === u.id} onClick={() => { setWriteTo(writeTo === u.id ? null : u.id); setDraft(''); setSent(null); }}>
+                            Xabar yozish
+                          </Btn>
+                        )}
                         {u.role === 'admin' ? (
                           <span className="text-xs text-muted-foreground">admin: ro'yxat orqali</span>
                         ) : (
@@ -170,6 +195,37 @@ export const UsersPage: React.FC = () => {
                     </td>
                   )}
                 </tr>
+                {isAdmin && (writeTo === u.id || sent?.id === u.id) && (
+                  <tr>
+                    <td colSpan={6} className="pb-3">
+                      {writeTo === u.id && (
+                        <div className="rounded-xl border border-border bg-secondary/40 p-3 space-y-2">
+                          <textarea
+                            rows={3}
+                            maxLength={3500}
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            placeholder={`${u.first_name ?? 'Foydalanuvchi'}ga xabar (bot orqali boradi)`}
+                            className="w-full p-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+                          />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Btn tone="primary" disabled={busy === u.id || !draft.trim()} onClick={() => sendMessage(u)}>
+                              {busy === u.id ? 'Yuborilmoqda...' : 'Yuborish'}
+                            </Btn>
+                            <Btn disabled={busy === u.id} onClick={() => { setWriteTo(null); setDraft(''); }}>Bekor qilish</Btn>
+                            <span className="text-xs text-muted-foreground">{draft.trim().length} / 3500</span>
+                          </div>
+                        </div>
+                      )}
+                      {sent?.id === u.id && (
+                        <p className={`text-xs mt-1 ${sent.ok ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {sent.ok ? 'Xabar yuborildi.' : "Xabar yetkazilmadi: foydalanuvchi botni bloklagan yoki o'chirgan bo'lishi mumkin."}
+                        </p>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
