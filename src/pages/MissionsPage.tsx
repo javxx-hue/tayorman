@@ -16,6 +16,7 @@ interface MissionsProps {
 
 // After this many wrong checks the reference solution can be opened
 const SHOW_SOLUTION_AFTER = 3;
+const TIGHT = [',', ')', ';'];
 
 const rankOf = (done: number, lang: Language) =>
   done >= BAZA_MISSIONS.length ? 'Junior' : tr(lang, 'Stajyor', 'Стажёр');
@@ -130,7 +131,9 @@ export const MissionPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
   const { mid } = useParams();
   const subject = useBazaSubject(subjects);
   const mission = BAZA_MISSIONS.find((m) => String(m.id) === mid);
-  const editor = useRef<HTMLTextAreaElement>(null);
+  // Where the cursor was when the student last typed or tapped in the editor. Chips insert there without
+  // focusing the editor, so a tap never opens the phone keyboard.
+  const caret = useRef<{ start: number; end: number } | null>(null);
   const [sql, setSql] = useState('');
   const [out, setOut] = useState<RunOutput | null>(null);
   const [problem, setProblem] = useState('');
@@ -142,6 +145,7 @@ export const MissionPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
   // A new mission starts clean; the engine loads while the student reads
   useEffect(() => {
     setSql('');
+    caret.current = null;
     setOut(null);
     setProblem('');
     setMisses(0);
@@ -157,20 +161,25 @@ export const MissionPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
   const next = BAZA_MISSIONS.find((m) => m.id === mission.id + 1);
   const solved = !!out?.ok;
 
-  // Taps add a piece where the cursor is, with a space around it
+  const remember = (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    caret.current = { start: e.currentTarget.selectionStart, end: e.currentTarget.selectionEnd };
+  };
+
+  // Taps add a piece where the cursor was (or at the end), with a space around it;
+  // a comma, a closing bracket and a semicolon stick to the word before them
   const insert = (piece: string) => {
-    const el = editor.current;
-    const at = el?.selectionStart ?? sql.length;
-    const before = sql.slice(0, at);
-    const after = sql.slice(el?.selectionEnd ?? at);
-    const left = before && !/\s$/.test(before) ? ' ' : '';
-    const text = `${before}${left}${piece} ${after.replace(/^\s+/, '')}`;
-    setSql(text);
-    const caret = (before + left + piece).length + 1;
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(caret, caret);
-    });
+    const at = Math.min(caret.current?.start ?? sql.length, sql.length);
+    const after = sql.slice(Math.min(Math.max(caret.current?.end ?? at, at), sql.length));
+    const tight = TIGHT.includes(piece);
+    const before = tight ? sql.slice(0, at).replace(/\s+$/, '') : sql.slice(0, at);
+    const left = before && !tight && !/\s$/.test(before) ? ' ' : '';
+    setSql(`${before}${left}${piece} ${after.replace(/^\s+/, '')}`);
+    const pos = (before + left + piece).length + 1;
+    caret.current = { start: pos, end: pos };
+  };
+  const clear = () => {
+    setSql('');
+    caret.current = null;
   };
 
   const check = async () => {
@@ -230,9 +239,12 @@ export const MissionPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
 
       <div className="space-y-2">
         <textarea
-          ref={editor}
           value={sql}
-          onChange={(e) => setSql(e.target.value)}
+          onChange={(e) => {
+            setSql(e.target.value);
+            remember(e);
+          }}
+          onSelect={remember}
           rows={5}
           placeholder="SELECT ..."
           autoCapitalize="none"
@@ -245,7 +257,7 @@ export const MissionPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
           {[...mission.chips, '*', ',', '(', ')', '=', ';'].map((c, i) => (
             <button key={`${c}-${i}`} className={chip} onClick={() => insert(c)}>{c}</button>
           ))}
-          <button className={`${chip} text-muted-foreground`} onClick={() => setSql('')} aria-label={tr(lang, 'Tozalash', 'Очистить')}>
+          <button className={`${chip} text-muted-foreground`} onClick={clear} aria-label={tr(lang, 'Tozalash', 'Очистить')}>
             <RotateCcw size={12} />
           </button>
         </div>
