@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { parseQuestionList, planSubject, readinessParts, scoreToGrade, setsOfSubject, subjectReadiness, daysUntil, todayOverview } from './prep';
+import { bySubjectOrder, parseQuestionList, planSubject, readinessParts, scoreToGrade, setsOfSubject, subjectReadiness, daysUntil, todayOverview } from './prep';
 import { buildMaterialContext, fitMaterials, officeXmlToText } from './materials';
 import { ExamQuestion, Subject, StudySet } from '../types';
 
@@ -46,6 +46,14 @@ etuvchi omillar.
 
   it('keeps numbers that are part of the question text', () => {
     expect(parseQuestionList('1. 1991 yil voqealari\n2. XX asr')).toEqual(['1991 yil voqealari', 'XX asr']);
+  });
+});
+
+describe('bySubjectOrder', () => {
+  it('puts the nearest exam first and keeps subjects with the same date in name order', () => {
+    const s = (name: string, examDate: string) => ({ name, examDate }) as Subject;
+    const list = [s("Ma'lumotlar bazasi", '2027-01-20'), s('Chiziqli algebra', '2027-01-20'), s('Fizika', '2027-01-10'), s('Elektronika', '2027-01-20')];
+    expect([...list].sort(bySubjectOrder).map((x) => x.name)).toEqual(['Fizika', 'Chiziqli algebra', 'Elektronika', "Ma'lumotlar bazasi"]);
   });
 });
 

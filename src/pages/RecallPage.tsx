@@ -62,7 +62,7 @@ export const RecallPage: React.FC<RecallPageProps> = ({ subjects, lang }) => {
 
       <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
         <span className="text-xs font-semibold text-primary">{tr(lang, `${number}-bilet`, `Билет ${number}`)}</span>
-        <h1 className="text-lg font-extrabold text-foreground leading-snug">{question.text}</h1>
+        <h1 className="text-lg font-semibold text-foreground leading-relaxed">{question.text}</h1>
         {!open ? (
           <textarea
             rows={5}

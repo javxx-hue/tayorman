@@ -169,7 +169,7 @@ export const QuestionPracticePage: React.FC<QuestionPracticePageProps> = ({ subj
               : isUz ? `${index + 1}-savol / ${subject.questions.length}` : `Вопрос ${index + 1} / ${subject.questions.length}`}
           </span>
         </div>
-        <h1 className="text-xl font-extrabold text-foreground leading-snug">{question.text}</h1>
+        <h1 className="text-lg font-semibold text-foreground leading-relaxed">{question.text}</h1>
         <ReportIssue lang={lang} libraryId={subject.libraryId} context={subject.name} questionText={question.text} />
 
         {/* Student answer */}

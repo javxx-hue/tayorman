@@ -25,6 +25,8 @@ const SubjectPage = lazy(() => import('./pages/SubjectPage').then((m) => ({ defa
 const BoardPage = lazy(() => import('./pages/BoardPage').then((m) => ({ default: m.BoardPage })));
 const RecallPage = lazy(() => import('./pages/RecallPage').then((m) => ({ default: m.RecallPage })));
 const ClozePage = lazy(() => import('./pages/ClozePage').then((m) => ({ default: m.ClozePage })));
+const MissionsPage = lazy(() => import('./pages/MissionsPage').then((m) => ({ default: m.MissionsPage })));
+const MissionPage = lazy(() => import('./pages/MissionsPage').then((m) => ({ default: m.MissionPage })));
 const TicketsPage = lazy(() => import('./pages/TicketsPage').then((m) => ({ default: m.TicketsPage })));
 const SubjectStatsPage = lazy(() => import('./pages/SubjectStatsPage').then((m) => ({ default: m.SubjectStatsPage })));
 const QuestionPracticePage = lazy(() => import('./pages/QuestionPracticePage').then((m) => ({ default: m.QuestionPracticePage })));
@@ -257,6 +259,8 @@ export default function App() {
             <Route path="/subjects/:id/board" element={<BoardPage subjects={subjects} lang={lang} canAsk={online && !!profile?.board_ai} />} />
             <Route path="/subjects/:id/recall" element={<RecallPage subjects={subjects} lang={lang} />} />
             <Route path="/subjects/:id/cloze" element={<ClozePage subjects={subjects} lang={lang} />} />
+            <Route path="/subjects/:id/missions" element={<MissionsPage subjects={subjects} lang={lang} />} />
+            <Route path="/subjects/:id/missions/:mid" element={<MissionPage subjects={subjects} lang={lang} />} />
             <Route path="/subjects/:id/tickets" element={<TicketsPage subjects={subjects} lang={lang} />} />
             <Route path="/subjects/:id/stats" element={<SubjectStatsPage subjects={subjects} studySets={studySets} lang={lang} />} />
             <Route path="/subjects/:id/q/:qid" element={<QuestionPracticePage subjects={subjects} lang={lang} />} />

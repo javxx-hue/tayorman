@@ -2,10 +2,11 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { TodayPlan } from '../components/prep/TodayPlan';
+import { MissionsCard } from '../components/missions/MissionsCard';
 import { ReadinessHero, SubjectAvatar } from '../components/prep/Readiness';
 import { Language, tr } from '../lib/i18n';
 import { StudySet, Subject } from '../types';
-import { subjectReadiness } from '../lib/prep';
+import { bySubjectOrder, subjectReadiness } from '../lib/prep';
 import { readinessColor } from './SubjectsPage';
 import { useAuth } from '../lib/auth';
 
@@ -15,11 +16,12 @@ interface HomePageProps {
   lang: Language;
 }
 
-// Home: how ready the student is overall and per subject, then today's work
+// Home: how ready the student is overall and per subject, the missions, then today's work
 export const HomePage: React.FC<HomePageProps> = ({ subjects, studySets, lang }) => {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const scores = subjects.map((s) => ({ subject: s, readiness: subjectReadiness(s, studySets) }));
+  const ordered = [...subjects].sort(bySubjectOrder);
+  const scores = ordered.map((s) => ({ subject: s, readiness: subjectReadiness(s, studySets) }));
   const average = scores.length ? Math.round(scores.reduce((sum, x) => sum + x.readiness, 0) / scores.length) : 0;
 
   return (
@@ -51,7 +53,9 @@ export const HomePage: React.FC<HomePageProps> = ({ subjects, studySets, lang })
         </section>
       )}
 
-      <TodayPlan subjects={subjects} studySets={studySets} lang={lang} />
+      <MissionsCard subjects={ordered} lang={lang} />
+
+      <TodayPlan subjects={ordered} studySets={studySets} lang={lang} />
     </div>
   );
 };

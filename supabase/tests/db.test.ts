@@ -79,6 +79,7 @@ beforeAll(async () => {
   await db.exec(sql('0013_duel_notices.sql'));
   await db.exec(sql('0014_duels_realtime.sql'));
   await db.exec(sql('0015_issue_replies.sql'));
+  await db.exec(sql('0016_missions.sql'));
   await db.exec(`
     insert into auth.users (id, email) values
       ('${U.admin}', 'a@x'), ('${U.mod}', 'm@x'), ('${U.s1}', 's1@x'), ('${U.s2}', 's2@x'), ('${U.blocked}', 'b@x');
@@ -649,5 +650,29 @@ describe('AI on the board (admin bonus)', () => {
     expect(await flag()).toBe(false);
     const log = await rows(`select details from public.audit_log where target_id = '${U.s1}' and details ? 'board_ai' order by id`);
     expect(log.map((r) => r.details.board_ai)).toEqual([true, false]);
+  });
+});
+
+describe('mission XP (Stajyor missiyalari)', () => {
+  const mine = (uid: string) => as(uid, () => rows(`select ref, points from public.xp_events where kind = 'mission' order by ref`));
+
+  it('gives 40 XP once per mission, in story order, and the rows are the progress', async () => {
+    await expect(as(U.s2, () => rows(`select public.submit_mission('baza', 2)`))).rejects.toThrow(/previous mission first/);
+    expect((await as(U.s2, () => rows(`select public.submit_mission('baza', 1) as xp`)))[0].xp).toBe(40);
+    expect((await as(U.s2, () => rows(`select public.submit_mission('baza', 1) as xp`)))[0].xp).toBe(0); // already counted
+    expect((await as(U.s2, () => rows(`select public.submit_mission('baza', 2) as xp`)))[0].xp).toBe(40);
+    expect(await mine(U.s2)).toEqual([
+      { ref: 'baza:1', points: 40 },
+      { ref: 'baza:2', points: 40 },
+    ]);
+    expect(await mine(U.s1)).toEqual([]); // nobody sees another student's progress
+  });
+
+  it('refuses unknown missions, visitors and blocked students', async () => {
+    await expect(as(U.s2, () => rows(`select public.submit_mission('fizika', 1)`))).rejects.toThrow(/bad mission/);
+    await expect(as(U.s2, () => rows(`select public.submit_mission('baza', 6)`))).rejects.toThrow(/bad mission/);
+    await expect(as(null, () => rows(`select public.submit_mission('baza', 1)`))).rejects.toThrow(/permission denied/i);
+    await expect(as(U.blocked, () => rows(`select public.submit_mission('baza', 1)`))).rejects.toThrow(/blocked/);
+    await expect(as(U.s2, () => db.exec(`insert into public.xp_events (user_id, kind, ref, points) values ('${U.s2}', 'mission', 'baza:3', 500)`))).rejects.toThrow(/row-level security|permission denied/i);
   });
 });

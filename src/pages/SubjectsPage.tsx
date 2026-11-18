@@ -5,7 +5,7 @@ import { SubjectAvatar } from '../components/prep/Readiness';
 import { Button } from '../components/ui/Button';
 import { Language } from '../lib/i18n';
 import { ExamFormat, StudySet, Subject } from '../types';
-import { daysUntil, subjectReadiness } from '../lib/prep';
+import { bySubjectOrder, daysUntil, subjectReadiness } from '../lib/prep';
 
 export const FORMAT_LABELS: Record<ExamFormat, { uz: string; ru: string }> = {
   test: { uz: 'Test', ru: 'Тест' },
@@ -37,7 +37,7 @@ interface SubjectsPageProps {
 export const SubjectsPage: React.FC<SubjectsPageProps> = ({ subjects, studySets, lang }) => {
   const isUz = lang === 'uz';
   const navigate = useNavigate();
-  const sorted = [...subjects].sort((a, b) => a.examDate.localeCompare(b.examDate));
+  const sorted = [...subjects].sort(bySubjectOrder);
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-5 pb-6">

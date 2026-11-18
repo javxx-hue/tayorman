@@ -195,6 +195,9 @@ export function practiceOrder(subject: Subject, today: string = localDateKey()):
   return [...new Set([...plan.today, ...plan.more, ...weakest])];
 }
 
+// One order for subjects everywhere: the nearest exam first, then by name (a library refresh must not shuffle them)
+export const bySubjectOrder = (a: Subject, b: Subject): number => a.examDate.localeCompare(b.examDate) || a.name.localeCompare(b.name);
+
 export function daysUntil(examDate: string, today: string = localDateKey()): number {
   return Math.round((Date.parse(examDate) - Date.parse(today)) / 86_400_000);
 }
