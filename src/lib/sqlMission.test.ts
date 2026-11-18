@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import initSqlJs, { type SqlJsStatic } from 'sql.js';
 import { evaluate, explainError, isSorted, missingWhere, SqlMission } from './sqlMission';
-import { insertPiece, missionOpen, STORIES } from './missionStories';
+import { insertPiece, missionOpen, progressOfRefs, STORIES } from './missionStories';
 import { TARMOQ_MISSIONS } from './tarmoqMissions';
 import { BAZA_MISSIONS, BAZA_SETUP, BAZA_TABLES } from './bazaMissions';
 
@@ -109,6 +109,9 @@ describe('helpers', () => {
     expect(missionOpen([], 1)).toBe(true);
     expect(missionOpen([], 2)).toBe(false);
     expect(missionOpen([1], 2)).toBe(true);
+  });
+  it("reads the server's XP rows back as progress, ignoring anything odd", () => {
+    expect(progressOfRefs(['baza:1', 'baza:2', 'algebra:1', 'fizika:1', 'baza:9', 'tarmoq:x', 'tarmoq'])).toEqual({ baza: [1, 2], algebra: [1] });
   });
   it('knows how many missions each story has', () => {
     expect(STORIES.find((s) => s.id === 'baza')?.count).toBe(BAZA_MISSIONS.length);

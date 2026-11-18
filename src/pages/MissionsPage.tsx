@@ -12,7 +12,7 @@ import { Subject } from '../types';
 import { BAZA_MISSIONS, BAZA_TABLES, BOSS, COMPANY } from '../lib/bazaMissions';
 import { NET_BOSS, NetMission, missionLab, TARMOQ_MISSIONS } from '../lib/tarmoqMissions';
 import { newSession, prompt, runCommand, Session } from '../lib/netLab';
-import { doneMissions, insertPiece, markMissionDone, missionOpen, StoryId, StoryRef, storyOf } from '../lib/missionStories';
+import { doneMissions, insertPiece, missionOpen, saveMission, StoryId, StoryRef, storyOf, syncMissions } from '../lib/missionStories';
 import { RunOutput, SHOWN_ROWS, SqlMission } from '../lib/sqlMission';
 import { prepareSqlEngine, runMission, stopSqlEngine } from '../lib/sqlRunner';
 import { track } from '../lib/track';
@@ -105,8 +105,12 @@ export const MissionsPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
   const navigate = useNavigate();
   const found = useStory(subjects);
   const storyId = found?.story.id;
+  const [, refresh] = useState(0);
   useEffect(() => {
-    if (storyId) track(`mission_open_${storyId}`, { oncePerSession: true });
+    if (!storyId) return;
+    track(`mission_open_${storyId}`, { oncePerSession: true });
+    // missions finished on another device show up here too
+    void syncMissions().then(() => refresh((n) => n + 1));
   }, [storyId]);
   if (!found) return null;
   const { subject, story, content } = found;
@@ -172,6 +176,7 @@ export const MissionPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
   const { mid } = useParams();
   const found = useStory(subjects);
   const [solvedId, setSolvedId] = useState<string | null>(null);
+  const [earned, setEarned] = useState<{ key: string; xp: number } | null>(null);
   const mission = found?.content.missions.find((m) => String(m.id) === mid);
   if (!found || !mission) return null;
   const { subject, story, content } = found;
@@ -183,10 +188,11 @@ export const MissionPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
 
   const onSolved = () => {
     if (solved) return;
-    markMissionDone(story.id, mission.id);
     track(`mission_done_${story.id}_${mission.id}`);
     setSolvedId(key);
+    void saveMission(story.id, mission.id).then((xp) => setEarned({ key, xp }));
   };
+  const xp = earned?.key === key ? earned.xp : 0;
 
   const examQuestions = mission.questions
     .map((qid) => ({ qid, index: subject.questions.findIndex((q) => q.id === qid) }))
@@ -213,6 +219,11 @@ export const MissionPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
       {solved && (
         <div className="space-y-4">
           <BossSays boss={content.boss} role={content.role} tone="good" lines={mission.success} />
+          {xp > 0 && (
+            <div className="rounded-2xl bg-amber-500/15 border border-amber-500/30 p-3 text-sm font-bold text-foreground text-center">
+              +{xp} XP · {tr(lang, 'Musobaqa reytingiga qo\'shildi', 'Добавлено в рейтинг')}
+            </div>
+          )}
           {examQuestions.length > 0 && (
             <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
               <div className="text-sm font-semibold text-foreground">{tr(lang, 'Bu missiya imtihonning shu savollariga tayyorlaydi:', 'Эта миссия готовит к вопросам экзамена:')}</div>

@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { TodayPlan } from '../components/prep/TodayPlan';
+import { MissionsCard } from '../components/missions/MissionsCard';
 import { ReadinessHero, SubjectAvatar } from '../components/prep/Readiness';
 import { Language, tr } from '../lib/i18n';
 import { StudySet, Subject } from '../types';
@@ -28,6 +29,8 @@ export const HomePage: React.FC<HomePageProps> = ({ subjects, studySets, lang })
         {profile?.first_name && <div className="text-sm text-muted-foreground">{tr(lang, `Salom, ${profile.first_name}`, `Привет, ${profile.first_name}`)}</div>}
         <h1 className="text-3xl font-serif text-foreground">{tr(lang, 'Asosiy', 'Главная')}</h1>
       </div>
+
+      <MissionsCard subjects={subjects} lang={lang} />
 
       {scores.length > 0 && (
         <section className="space-y-3">
