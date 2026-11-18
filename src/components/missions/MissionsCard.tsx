@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Briefcase, ChevronRight } from 'lucide-react';
 import { Language, tr } from '../../lib/i18n';
 import { Subject } from '../../types';
-import { doneMissions, MISSION_XP, storyOf, syncMissions } from '../../lib/missionStories';
+import { doneMissions, MISSION_XP, storyOf, syncedXpMessage, syncMissions } from '../../lib/missionStories';
+import { toast } from '../ui/Toast';
 
 // Once per app start is enough for the home page; the missions page syncs every time it opens
 let synced = false;
@@ -20,7 +21,10 @@ export const MissionsCard: React.FC<{ subjects: Subject[]; lang: Language }> = (
   useEffect(() => {
     if (synced || rows.length === 0) return;
     synced = true;
-    void syncMissions().then(() => refresh((n) => n + 1));
+    void syncMissions().then((xp) => {
+      if (xp > 0) toast.success(syncedXpMessage(xp, lang === 'uz'));
+      refresh((n) => n + 1);
+    });
   }, [rows.length]);
 
   if (rows.length === 0) return null;

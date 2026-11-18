@@ -60,39 +60,47 @@ export function progressOfRefs(refs: string[]): Partial<Record<StoryId, number[]
   return out;
 }
 
-const submit = async (story: StoryId, id: number): Promise<number> => {
-  if (!supabase) return 0;
-  const { data, error } = await supabase.rpc('submit_mission', { p_story: story, p_mission: id });
-  return error ? 0 : Number(data ?? 0);
+// The XP the server gave for a mission: 0 when it was counted before, null when the server was not reached
+// (offline or not signed in; the next sync sends it)
+const submit = async (story: StoryId, id: number): Promise<number | null> => {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase.rpc('submit_mission', { p_story: story, p_mission: id });
+    return error ? null : Number(data ?? 0);
+  } catch {
+    return null;
+  }
 };
 
-// Marks a mission done here and on the server; returns the XP it earned (0 offline or when counted before)
-export async function saveMission(story: StoryId, id: number): Promise<number> {
+// Marks a mission done here and on the server
+export async function saveMission(story: StoryId, id: number): Promise<number | null> {
   markMissionDone(story, id);
-  try {
-    return await submit(story, id);
-  } catch {
-    return 0; // offline: the next sync sends it
-  }
+  return submit(story, id);
 }
 
-// Brings missions finished on another device to this one, and sends up the ones only this one knows
-export async function syncMissions(): Promise<void> {
-  if (!supabase) return;
+// Brings missions finished on another device to this one and sends up the ones only this one knows.
+// Returns the XP those earned now, so the student hears about it.
+export async function syncMissions(): Promise<number> {
+  if (!supabase) return 0;
+  let earned = 0;
   try {
     const { data, error } = await supabase.from('xp_events').select('ref').eq('kind', 'mission');
-    if (error || !data) return;
+    if (error || !data) return 0;
     const server = progressOfRefs(data.map((r) => String(r.ref)));
     for (const s of STORIES) {
       const there = server[s.id] ?? [];
       for (const id of there) markMissionDone(s.id, id);
       // in story order: the server accepts a mission only after the one before it
-      for (const id of doneMissions(s.id).sort((a, b) => a - b)) if (!there.includes(id)) await submit(s.id, id);
+      for (const id of doneMissions(s.id).sort((a, b) => a - b)) if (!there.includes(id)) earned += (await submit(s.id, id)) ?? 0;
     }
   } catch {
     /* offline: progress stays on this phone until the next time */
   }
+  return earned;
 }
+
+export const syncedXpMessage = (xp: number, uz: boolean): string =>
+  uz ? `+${xp} XP: avval bajargan missiyalaringiz hisobga olindi` : `+${xp} XP: засчитаны миссии, выполненные ранее`;
 
 // Chips put a piece where the cursor was (or at the end) with a space around it; a comma, a closing bracket
 // and a semicolon stick to the word before them
