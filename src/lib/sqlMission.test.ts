@@ -80,6 +80,15 @@ describe('common mistakes get a plain explanation', () => {
     expect(run(4, "SELECT vaqt, foydalanuvchi FROM jurnal WHERE amal LIKE '%kuryer_id%'").message).toMatch(/Madinaniki/);
     expect(run(4, "SELECT vaqt, foydalanuvchi FROM jurnal WHERE vaqt LIKE '2026-11-16%'").message).toMatch(/kuryer_id borini/);
   });
+  it('mission 1: a date written as on paper gets the database format', () => {
+    expect(run(1, "SELECT id, mijoz_id, sana FROM buyurtmalar WHERE holat = 'kutilmoqda' AND sana <= '15.11.2026' ORDER BY sana").message).toMatch(
+      /'15\.11\.2026' o'rniga '2026-11-15'/
+    );
+  });
+  it('a SELECT that finds nothing is told so, not asked for a SELECT', () => {
+    expect(run(1, "SELECT id, mijoz_id, sana FROM buyurtmalar WHERE holat = 'yo''q'").message).toMatch(/birorta ham qator topmadi/);
+    expect(run(1, 'UPDATE buyurtmalar SET summa = 1').message).toMatch(/SELECT bilan chiqaring/);
+  });
   it('every near miss differs from the right answer', () => {
     for (const m of BAZA_MISSIONS) for (const n of m.nearMisses ?? []) expect(run(m.id, n.sql).ok, n.sql).toBe(false);
   });

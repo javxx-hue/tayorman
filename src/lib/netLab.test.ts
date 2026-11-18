@@ -129,6 +129,35 @@ describe('mission 4: wrong DNS server', () => {
   });
 });
 
+describe('typed the way students really type', () => {
+  it('takes ipconfig/renew without the space', () => {
+    const s = session(1);
+    run(s, SWITCH, 'int fa0/3', 'switchport access vlan 10');
+    expect(run(s, 'PC-Kassa', 'ipconfig/renew')).toMatch(/IPv4 Address.*192\.168\.10\.102/);
+    expect(run(s, 'PC-Kassa', 'ipconfig -release')).toMatch(/0\.0\.0\.0/);
+  });
+  it('saves the configuration like a real device', () => {
+    const s = session(2);
+    expect(run(s, ROUTER, 'wr')).toMatch(/\[OK\]/);
+    expect(run(s, SWITCH, 'copy run start')).toMatch(/\[OK\]/);
+  });
+  it('names a mistyped DHCP pool instead of making an empty one', () => {
+    const s = session(2);
+    expect(run(s, ROUTER, 'conf t', 'ip dhcp pool OFFICE')).toMatch(/Bunday DHCP pool yo'q.*BUX, OMBOR/);
+    expect(s.lab.pools.map((p) => p.name)).toEqual(['BUX', 'OMBOR']);
+    expect(prompt(s, ROUTER)).toBe('R1(config)#');
+  });
+  it('pings from the router itself', () => {
+    const s = session(3);
+    expect(run(s, ROUTER, 'ping 8.8.8.8')).toMatch(/U\.U\.U/);
+    expect(run(s, ROUTER, 'ping 203.0.113.1')).toMatch(/!!!!!/);
+    expect(run(s, ROUTER, 'ping 192.168.10.10')).toMatch(/Success rate is 100 percent/);
+    run(s, ROUTER, 'ip route 0.0.0.0 0.0.0.0 203.0.113.1');
+    expect(run(s, ROUTER, 'do ping 8.8.8.8')).toMatch(/!!!!!/);
+    expect(run(s, ROUTER, 'ping 192.168.10.99')).toMatch(/\.\.\.\.\./);
+  });
+});
+
 describe('mission 5: the /26 subnet', () => {
   it('wants the exact address and mask', () => {
     const s = session(5);

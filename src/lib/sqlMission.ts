@@ -117,12 +117,22 @@ export function evaluate(SQL: SqlJsStatic, setup: string, mission: SqlMission, t
       const want = lastResult(ref.exec(mission.solution));
       const wantRows = asRows(want);
       const got = asRows(shown);
-      if (!shown) return { ...out, message: "So'rov natija qaytarmadi. Natijani SELECT bilan chiqaring." };
+      // A date written as on paper compares as text and quietly finds the wrong rows
+      const date = sql.match(/'(\d{1,2})[./](\d{1,2})[./](\d{4})'/);
+      const dateHint = date
+        ? `Bazada sana YYYY-MM-DD ko'rinishida saqlanadi: '${date[0].slice(1, -1)}' o'rniga '${date[3]}-${date[2].padStart(2, '0')}-${date[1].padStart(2, '0')}' yozing.`
+        : '';
+      // sql.js gives no result at all for a SELECT that found nothing
+      if (!shown) {
+        if (!/\bselect\b/i.test(sql)) return { ...out, message: "So'rov natija qaytarmadi. Natijani SELECT bilan chiqaring." };
+        return { ...out, message: dateHint || "So'rov birorta ham qator topmadi (0 ta). WHERE dagi shartlar va qiymatlarni tekshiring." };
+      }
       if (shown.columns.length !== (want?.columns.length ?? 0))
         return { ...out, message: `Ustunlar soni mos emas: ${want?.columns.length ?? 0} ta kerak, sizda ${shown.columns.length} ta.` };
       if (!sameRows(got, wantRows)) {
         const near = mission.nearMisses?.find((n) => sameRows(got, asRows(lastResult(ref.exec(n.sql)))));
         if (near) return { ...out, message: near.message };
+        if (dateHint) return { ...out, message: dateHint };
         const hint =
           got.length !== wantRows.length
             ? `Sizda ${got.length} ta qator chiqdi, kerakli natijada ${wantRows.length} ta.`

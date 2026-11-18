@@ -246,7 +246,9 @@ function nslookup(lab: Lab, pc: Pc, name: string): string {
   return ip ? `${head}Non-authoritative answer:\nName:    ${name}\nAddress:  ${ip}` : `${head}*** dns.google can't find ${name}: Non-existent domain`;
 }
 
-function pcCommand(lab: Lab, pc: Pc, text: string): string {
+function pcCommand(lab: Lab, pc: Pc, typed: string): string {
+  // a phone keyboard often drops the space: "ipconfig/renew", "ipconfig -renew"
+  const text = typed.replace(/^ipconfig\s*[/-]\s*(renew|release|all)$/, 'ipconfig /$1');
   const w = text.split(' ');
   if (w[0] === 'ipconfig') {
     if (w[1] === '/renew') {
@@ -284,6 +286,9 @@ function modeCommand(s: Session, device: string, text: string): string | null {
     s.modes[device] = m.kind === 'if' || m.kind === 'pool' ? { kind: 'config' } : { kind: 'exec' };
     return '';
   }
+  // saving the configuration, as students are taught to do at the end
+  if (['wr', 'write', 'write memory', 'wr mem', 'copy running-config startup-config', 'copy run start'].includes(text))
+    return 'Building configuration...\n[OK]';
   return null;
 }
 
@@ -403,6 +408,29 @@ function showPools(lab: Lab): string {
 const BAD_IP = '% Invalid address. (Manzil 4 ta 0–255 sondan iborat bo\'ladi, masalan 192.168.10.1)';
 const BAD_MASK = "% Bad mask. (Maska noto'g'ri, masalan 255.255.255.0)";
 
+// R1 pings from itself: its own addresses, hosts in its VLANs, the provider, and the Internet through a route
+function routerPing(lab: Lab, dst: string): string {
+  if (ipNum(dst) === null) return '% Unrecognized host or address.';
+  let r: 'ok' | 'timeout' | 'unreachable';
+  if (dst === WAN.ip || dst === ISP || lab.subs.some((x) => x.ip === dst)) r = 'ok';
+  else {
+    const local = lab.subs.find((x) => x.vlan !== null && x.ip && maskBits(x.mask) !== null && sameNet(dst, x.ip, x.mask!));
+    if (local) r = answers(lab, local.vlan!, dst) ? 'ok' : 'timeout';
+    else {
+      const route = lab.routes.find((x) => maskBits(x.mask) !== null && sameNet(dst, x.net, x.mask));
+      r = !route ? 'unreachable' : (route.via === ISP || route.via === WAN.name) && INTERNET_HOSTS.includes(dst) ? 'ok' : 'timeout';
+    }
+  }
+  const marks = r === 'ok' ? '!!!!!' : r === 'unreachable' ? 'U.U.U' : '.....';
+  const got = r === 'ok' ? 5 : 0;
+  return [
+    'Type escape sequence to abort.',
+    `Sending 5, 100-byte ICMP Echos to ${dst}, timeout is 2 seconds:`,
+    marks,
+    `Success rate is ${got * 20} percent (${got}/5)`,
+  ].join('\n');
+}
+
 function routerCommand(s: Session, text: string, raw: string): string {
   const lab = s.lab;
   const mode = modeCommand(s, ROUTER, text);
@@ -455,10 +483,13 @@ function routerCommand(s: Session, text: string, raw: string): string {
   const pool = raw.trim().match(/^ip dhcp pool (\S+)$/i);
   if (pool) {
     const name = pool[1].toUpperCase();
-    if (!lab.pools.some((p) => p.name === name)) lab.pools.push({ name, network: null, mask: null, router: null, dns: null });
+    // a real router would quietly create an empty pool; here a typo should be noticed
+    if (!lab.pools.some((p) => p.name === name)) return `% Bunday DHCP pool yo'q. R1 dagi pullar: ${lab.pools.map((p) => p.name).join(', ')}`;
     s.modes[ROUTER] = { kind: 'pool', name };
     return '';
   }
+  const ping = text.match(/^ping (\S+)$/);
+  if (ping) return routerPing(lab, ping[1]);
   const inPool = m?.kind === 'pool' ? lab.pools.find((p) => p.name === m.name) : undefined;
   const one = text.match(/^(default-router|dns-server) (\S+)$/);
   if (one) {

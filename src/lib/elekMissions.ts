@@ -98,7 +98,7 @@ export const ELEK_MISSIONS: ElekMission[] = [
       "Qutida to'rtta rezistor bor, yozuvi yo'q, faqat rangli halqalari. Hisoblab, to'g'risini tanlang.",
     ],
     task: "Pin kuchlanishi 5 V, LED da 2 V tushadi, LED ko'pi bilan 20 mA ga chidaydi. Kerakli qarshilikni hisoblang, rezistorni halqalaridan o'qib tanlang va LED ni to'g'ri qutbda ulang.",
-    hint: "R = (5 − 2) / 0,02 = 150 Ω. Bundan kichik bo'lmagan eng yaqin rezistor kerak. Halqalar: 1- va 2-halqa raqam, 3-halqa nechta nol qo'shilishi. Qizil=2, jigarrang=1, qora=0. LED ning uzun oyog'i — anod, pin tomonga.",
+    hint: "R = (5 − 2) / 0,02 = 150 Ω. Bundan kichik bo'lmagan eng yaqin rezistor kerak. Tilla (oltin) halqa — aniqlik, u o'ngda turadi; o'qish chapdan boshlanadi: 1- va 2-halqa raqam, 3-halqa nechta nol qo'shilishi. Qora=0, jigarrang=1, qizil=2, to'q sariq=3. LED ning uzun oyog'i — anod, pin tomonga.",
     solution: "220 Ω (qizil-qizil-jigarrang-tilla), uzun oyog'i D13 ga",
     success: [
       "Yondi! 220 Ω bilan tok 13,6 mA — LED uzoq xizmat qiladi.",
