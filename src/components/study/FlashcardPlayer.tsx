@@ -217,7 +217,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ set, lang, onF
               {isUz ? 'Savol / Tushuncha' : 'Вопрос / Термин'}
             </span>
             <div className="my-auto text-center px-2">
-              <h3 className="text-2xl font-extrabold text-foreground leading-snug">{currentCard.front}</h3>
+              <h3 className="text-xl font-semibold text-foreground leading-relaxed">{currentCard.front}</h3>
             </div>
             <div className="text-center text-xs text-muted-foreground">
               {isUz ? 'Kartani bossangiz, javob ochiladi' : 'Нажмите на карточку, чтобы увидеть ответ'}

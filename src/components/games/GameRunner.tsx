@@ -55,7 +55,7 @@ export const GameRunner: React.FC<Props> = ({ title, questions, lang, onDone, on
         ))}
       </div>
 
-      <p className="text-lg font-bold text-foreground leading-snug whitespace-pre-wrap">{q.question}</p>
+      <p className="text-lg font-semibold text-foreground leading-relaxed whitespace-pre-wrap">{q.question}</p>
 
       <div className="space-y-2">
         {q.options.map((option, i) => {
