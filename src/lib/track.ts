@@ -2,7 +2,8 @@
 // Never carries content: just who did what kind of step, and when.
 import { supabase } from './supabase';
 
-export type EventType = 'app_open' | 'got_content' | 'first_answer';
+// mission_* : the SQL missions (opened the list, finished mission N)
+export type EventType = 'app_open' | 'got_content' | 'first_answer' | 'mission_open' | `mission_done_${number}`;
 
 const sentThisSession = new Set<EventType>();
 
