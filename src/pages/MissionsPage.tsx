@@ -5,6 +5,8 @@ import { Button } from '../components/ui/Button';
 import { box, chip, HelpButtons, pick, TaskCard, WorkspaceProps } from '../components/missions/shared';
 import { ElekWorkspace } from '../components/missions/ElekWorkspace';
 import { ELEK_BOSS, ELEK_MISSIONS, ElekMission } from '../lib/elekMissions';
+import { AlgebraWorkspace } from '../components/missions/AlgebraWorkspace';
+import { ALGEBRA_BOSS, ALGEBRA_MISSIONS, AlgebraMission } from '../lib/algebraMissions';
 import { Language, tr } from '../lib/i18n';
 import { Subject } from '../types';
 import { BAZA_MISSIONS, BAZA_TABLES, BOSS, COMPANY } from '../lib/bazaMissions';
@@ -57,6 +59,13 @@ const CONTENT: Record<StoryId, StoryContent> = {
     intro: "Siz kompaniyaning ta'mirlash ustaxonasida stajyorsiz. Multimetr, rezistorlar va ossillograf bilan qurilmalarni tuzating.",
     finale: "Siz endi Junior usta! 5 ta qurilmani o'zingiz tekshirib, tuzatdingiz.",
     missions: ELEK_MISSIONS,
+  },
+  algebra: {
+    boss: ALGEBRA_BOSS,
+    role: 'dron dasturchisi',
+    intro: "Siz kompaniyaning dron yetkazish bo'limida stajyorsiz. Har bir hisobingiz dronni yuritadi: xato hisob — xato parvoz.",
+    finale: 'Siz endi Junior dron muhandisi! Kompleks sonlar, determinantlar, matritsalar va Gauss usuli bilan dronni boshqardingiz.',
+    missions: ALGEBRA_MISSIONS,
   },
 };
 
@@ -199,6 +208,7 @@ export const MissionPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
       {story.id === 'baza' && <SqlWorkspace key={key} mission={mission as SqlMission} lang={lang} solved={solved} onSolved={onSolved} />}
       {story.id === 'tarmoq' && <NetWorkspace key={key} mission={mission as NetMission} lang={lang} solved={solved} onSolved={onSolved} />}
       {story.id === 'elektronika' && <ElekWorkspace key={key} mission={mission as ElekMission} lang={lang} solved={solved} onSolved={onSolved} />}
+      {story.id === 'algebra' && <AlgebraWorkspace key={key} mission={mission as AlgebraMission} lang={lang} solved={solved} onSolved={onSolved} />}
 
       {solved && (
         <div className="space-y-4">

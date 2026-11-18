@@ -144,6 +144,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
                     baza: tr(lang, 'Kompaniya muammosini haqiqiy SQL bilan yeching', 'Решите проблему компании настоящим SQL'),
                     tarmoq: tr(lang, "Ofis tarmog'idagi nosozliklarni haqiqiy buyruqlar bilan tuzating", 'Исправьте сбои офисной сети настоящими командами'),
                     elektronika: tr(lang, 'Qurilmalarni multimetr va ossillograf bilan tuzating', 'Чините устройства мультиметром и осциллографом'),
+                    algebra: tr(lang, 'Hisob-kitoblaringiz bilan dronni boshqaring', 'Управляйте дроном своими расчётами'),
                   }[story.id]
                 } · ${doneMissions(story.id).length}/${story.count}`}
                 onClick={() => navigate(`/subjects/${subject.id}/missions`)}
