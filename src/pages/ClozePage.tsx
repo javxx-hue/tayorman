@@ -72,7 +72,7 @@ export const ClozePage: React.FC<ClozePageProps> = ({ subjects, lang }) => {
 
       <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
         <span className="text-xs font-semibold text-primary">{tr(lang, `${cloze.answers.length} ta atama`, `Терминов: ${cloze.answers.length}`)}</span>
-        <h1 className="text-base font-serif font-bold text-foreground leading-snug">{q.text}</h1>
+        <h1 className="text-lg font-semibold text-foreground leading-relaxed">{q.text}</h1>
         <p className="text-sm text-foreground leading-loose border-t border-border pt-4">
           {cloze.parts.map((p, i) =>
             typeof p === 'string' ? (
