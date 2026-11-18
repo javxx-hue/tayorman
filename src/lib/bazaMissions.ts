@@ -89,6 +89,16 @@ export const BAZA_MISSIONS: SqlMission[] = [
     solution: "SELECT id, mijoz_id, sana FROM buyurtmalar WHERE holat = 'kutilmoqda' AND sana <= '2026-11-15' ORDER BY sana;",
     kind: 'select',
     orderBy: [{ col: 2 }],
+    nearMisses: [
+      {
+        sql: "SELECT id, mijoz_id, sana FROM buyurtmalar WHERE sana <= '2026-11-15'",
+        message: "Holat sharti yo'q: yetkazilgan va bekor qilingan buyurtmalar ham chiqib qoldi. WHERE ga holat = 'kutilmoqda' ni qo'shing.",
+      },
+      {
+        sql: "SELECT id, mijoz_id, sana FROM buyurtmalar WHERE holat = 'kutilmoqda'",
+        message: "Sana sharti yo'q: 16–18-noyabrdagi yangi buyurtmalar ham chiqdi. Bizga 2026-11-15 yoki undan oldingilari kerak.",
+      },
+    ],
     success: [
       'Rahmat! 7 ta buyurtma. Eng eskisi 12-noyabrdan beri kutyapti.',
       'Endi ular qaysi kuryerda qolib ketganini bilishimiz kerak.',
@@ -104,11 +114,25 @@ export const BAZA_MISSIONS: SqlMission[] = [
     ],
     task: "Holati 'kutilmoqda' bo'lgan buyurtmalarni kuryer_id bo'yicha guruhlab sanang. Ustunlar: kuryer_id va soni. Eng ko'pi birinchi tursin.",
     tables: ['buyurtmalar'],
-    chips: ['SELECT', 'COUNT(*)', 'AS soni', 'FROM', 'WHERE', 'GROUP BY', 'ORDER BY', 'DESC'],
+    chips: ['SELECT', 'COUNT(*)', 'AS soni', 'FROM', 'WHERE', "'kutilmoqda'", 'GROUP BY', 'ORDER BY', 'DESC'],
     hint: "COUNT(*) har guruhdagi qatorlarni sanaydi. Guruh uchun GROUP BY kuryer_id, kamayish tartibi uchun ORDER BY soni DESC.",
     solution: "SELECT kuryer_id, COUNT(*) AS soni FROM buyurtmalar WHERE holat = 'kutilmoqda' GROUP BY kuryer_id ORDER BY soni DESC;",
     kind: 'select',
     orderBy: [{ col: 1, desc: true }],
+    nearMisses: [
+      {
+        sql: "SELECT kuryer_id, COUNT(*) FROM buyurtmalar WHERE holat = 'kutilmoqda' AND sana <= '2026-11-15' GROUP BY kuryer_id",
+        message: "Siz faqat 15-noyabrgacha bo'lganlarni sanadingiz. Bu safar barcha kutilayotgan buyurtmalar kerak: sana shartini olib tashlang.",
+      },
+      {
+        sql: 'SELECT kuryer_id, COUNT(*) FROM buyurtmalar GROUP BY kuryer_id',
+        message: "Siz barcha buyurtmalarni sanadingiz, yetkazilganlari ham kirib ketdi. WHERE holat = 'kutilmoqda' sharti kerak.",
+      },
+      {
+        sql: "SELECT COUNT(*), kuryer_id FROM buyurtmalar WHERE holat = 'kutilmoqda' GROUP BY kuryer_id",
+        message: 'Ustunlar joyi almashib qolgan: avval kuryer_id, keyin soni.',
+      },
+    ],
     success: [
       "7 tasi bitta kuryerda, 3-raqamlida! Qolganlarida bittadan, ular yangi buyurtmalar.",
       "3-raqamli kim ekan? Direktorga raqam bilan bora olmayman.",
@@ -124,11 +148,17 @@ export const BAZA_MISSIONS: SqlMission[] = [
     ],
     task: "2026-11-15 yoki undan oldingi kutilayotgan buyurtmalar uchun buyurtma id raqami, kuryer ismi (ism) va faolligini (faol) chiqaring. buyurtmalar va kuryerlar jadvallarini JOIN bilan bog'lang.",
     tables: ['buyurtmalar', 'kuryerlar'],
-    chips: ['SELECT', 'FROM', 'buyurtmalar b', 'JOIN', 'kuryerlar k', 'ON', 'b.kuryer_id = k.id', 'WHERE', 'AND'],
+    chips: ['SELECT', 'FROM', 'buyurtmalar b', 'JOIN', 'kuryerlar k', 'ON', 'b.kuryer_id = k.id', 'WHERE', "b.holat = 'kutilmoqda'", 'AND', "b.sana <= '2026-11-15'"],
     hint: "Jadvallarga qisqa nom bering: FROM buyurtmalar b JOIN kuryerlar k ON b.kuryer_id = k.id. Ikkala jadvalda ham id bor, shuning uchun b.id deb yozing.",
     solution:
       "SELECT b.id, k.ism, k.faol FROM buyurtmalar b JOIN kuryerlar k ON b.kuryer_id = k.id WHERE b.holat = 'kutilmoqda' AND b.sana <= '2026-11-15';",
     kind: 'select',
+    nearMisses: [
+      {
+        sql: "SELECT b.id, k.ism, k.faol FROM buyurtmalar b JOIN kuryerlar k ON b.kuryer_id = k.id WHERE b.holat = 'kutilmoqda'",
+        message: "Sana sharti yo'q: 16-noyabrdan keyingi yangi buyurtmalar ham chiqib qoldi. b.sana <= '2026-11-15' ni qo'shing.",
+      },
+    ],
     success: [
       'Sardor?! U 12-noyabrdan beri ta\'tilda, faol = 0. Buyurtmalar ta\'tildagi odamga berilgan!',
       "Unga kim berdi? Bazadagi har bir buyruq jurnal jadvaliga yozib boriladi...",
@@ -148,6 +178,16 @@ export const BAZA_MISSIONS: SqlMission[] = [
     hint: "Matn ichidan qidirish uchun LIKE ishlatiladi: amal LIKE '%kuryer_id%'. % belgisi «istalgan matn» degani. Kun bo'yicha: vaqt LIKE '2026-11-16%'.",
     solution: "SELECT vaqt, foydalanuvchi FROM jurnal WHERE amal LIKE '%kuryer_id%' AND vaqt LIKE '2026-11-16%';",
     kind: 'select',
+    nearMisses: [
+      {
+        sql: "SELECT vaqt, foydalanuvchi FROM jurnal WHERE amal LIKE '%kuryer_id%'",
+        message: "Ikki yozuv chiqdi: 11-noyabrdagisi Madinaniki, u boshqa buyurtma. Faqat 2026-11-16 kungisi kerak.",
+      },
+      {
+        sql: "SELECT vaqt, foydalanuvchi FROM jurnal WHERE vaqt LIKE '2026-11-16%'",
+        message: "16-noyabrdagi hamma yozuvlar chiqdi. Ulardan amal matnida kuryer_id borini ajrating.",
+      },
+    ],
     success: [
       "test_skript! Dasturchilar sinov uchun yozgan skript kechasi haqiqiy bazada ishlab ketgan.",
       "U barcha kutilayotgan buyurtmalarni ta'tildagi Sardorga yozib qo'ygan. Endi buni tuzatamiz.",

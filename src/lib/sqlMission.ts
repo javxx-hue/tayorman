@@ -16,6 +16,7 @@ export interface SqlMission {
   kind: 'select' | 'change';
   orderBy?: { col: number; desc?: boolean }[]; // select: the rows must come sorted by these result columns
   check?: string; // change: the query that shows the table after the student's statements
+  nearMisses?: { sql: string; message: string }[]; // select: common wrong answers and what to say about them
   success: string[]; // the story goes on
   questions: string[]; // exam question ids this mission prepares for
 }
@@ -70,7 +71,7 @@ export function explainError(raw: string): string {
   const m = (re: RegExp) => raw.match(re);
   let r: RegExpMatchArray | null;
   if ((r = m(/no such table: ([\w.]+)/))) return `Bunday jadval yo'q: ${r[1]}. Jadval nomini tekshiring.`;
-  if ((r = m(/no such column: ([\w.]+)/))) return `Bunday ustun yo'q: ${r[1]}. Ustun nomini yoki jadval qisqartmasini tekshiring.`;
+  if ((r = m(/no such column: (\S+)/))) return `Bunday ustun yo'q: ${r[1]}. Ustun nomini yoki jadval qisqartmasini tekshiring.`;
   if ((r = m(/ambiguous column name: ([\w.]+)/)))
     return `"${r[1]}" ustuni ikkala jadvalda ham bor. Oldiga jadval nomini yozing, masalan: b.${r[1]}`;
   if ((r = m(/near "(.+?)": syntax error/))) return `Yozuvda xato bor: "${r[1]}" so'zi yonida.`;
@@ -86,6 +87,9 @@ function fresh(SQL: SqlJsStatic, setup: string): Database {
   return db;
 }
 
+// Phone keyboards put typographic quotes (‘ ’ ʻ ʼ “ ”) where SQL needs plain ' and "
+export const plainQuotes = (sql: string): string => sql.replace(/[‘’ʻʼ`´′]/g, "'").replace(/[“”″]/g, '"').replace(/\u00a0/g, ' ');
+
 // An UPDATE or DELETE without WHERE touches every row
 export const missingWhere = (sql: string): boolean =>
   sql.split(';').some((st) => /^\s*(update|delete)\b/i.test(st) && !/\bwhere\b/i.test(st));
@@ -93,8 +97,9 @@ export const missingWhere = (sql: string): boolean =>
 const asRows = (r: QueryExecResult | undefined): Cell[][] => (r ? r.values.map((row) => row.map(cell)) : []);
 
 // Runs the student's SQL on a fresh database and tells whether it does what the mission asks
-export function evaluate(SQL: SqlJsStatic, setup: string, mission: SqlMission, sql: string): RunOutput {
+export function evaluate(SQL: SqlJsStatic, setup: string, mission: SqlMission, typed: string): RunOutput {
   const empty: RunOutput = { columns: [], rows: [], ok: false, message: '' };
+  const sql = plainQuotes(typed);
   if (!sql.trim()) return { ...empty, message: "Avval so'rov yozing." };
 
   const ref = fresh(SQL, setup);
@@ -116,6 +121,8 @@ export function evaluate(SQL: SqlJsStatic, setup: string, mission: SqlMission, s
       if (shown.columns.length !== (want?.columns.length ?? 0))
         return { ...out, message: `Ustunlar soni mos emas: ${want?.columns.length ?? 0} ta kerak, sizda ${shown.columns.length} ta.` };
       if (!sameRows(got, wantRows)) {
+        const near = mission.nearMisses?.find((n) => sameRows(got, asRows(lastResult(ref.exec(n.sql)))));
+        if (near) return { ...out, message: near.message };
         const hint =
           got.length !== wantRows.length
             ? `Sizda ${got.length} ta qator chiqdi, kerakli natijada ${wantRows.length} ta.`

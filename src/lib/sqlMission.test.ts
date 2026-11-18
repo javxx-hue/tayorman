@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import initSqlJs, { type SqlJsStatic } from 'sql.js';
-import { evaluate, explainError, isSorted, missingWhere, SqlMission } from './sqlMission';
+import { evaluate, explainError, isSorted, missingWhere, plainQuotes, SqlMission } from './sqlMission';
 import { insertPiece, missionOpen, progressOfRefs, STORIES } from './missionStories';
 import { TARMOQ_MISSIONS } from './tarmoqMissions';
 import { BAZA_MISSIONS, BAZA_SETUP, BAZA_TABLES } from './bazaMissions';
@@ -44,12 +44,44 @@ describe('mission 1: waiting orders', () => {
     expect(out.columns).toEqual(['id', 'mijoz_id', 'sana']);
   });
   it('says what is wrong: missing status, wrong columns, wrong order, a typo', () => {
-    expect(run(1, "SELECT id, mijoz_id, sana FROM buyurtmalar WHERE sana <= '2026-11-15' ORDER BY sana").message).toMatch(/qator chiqdi/);
+    expect(run(1, "SELECT id, mijoz_id, sana FROM buyurtmalar WHERE holat = 'kutilmoqda' AND sana < '2026-11-14'").message).toMatch(/qator chiqdi/);
     expect(run(1, "SELECT * FROM buyurtmalar WHERE holat = 'kutilmoqda' AND sana <= '2026-11-15'").message).toMatch(/Ustunlar soni/);
     expect(run(1, "SELECT id, mijoz_id, sana FROM buyurtmalar WHERE holat = 'kutilmoqda' AND sana <= '2026-11-15' ORDER BY sana DESC").message).toMatch(/tartibi/);
     expect(run(1, 'SELECT id FROM buyurtma').message).toMatch(/Bunday jadval yo'q: buyurtma/);
     expect(run(1, 'SELEC id FROM buyurtmalar').message).toMatch(/Yozuvda xato/);
     expect(run(1, '   ').message).toMatch(/so'rov yozing/);
+  });
+});
+
+describe('typed on a phone', () => {
+  it('accepts the typographic quotes a phone keyboard puts in', () => {
+    expect(plainQuotes('‘a’ ʻbʼ “c” `d`')).toBe(`'a' 'b' "c" 'd'`);
+    const ok = "SELECT kuryer_id, COUNT(*) AS soni FROM buyurtmalar WHERE holat = 'kutilmoqda' GROUP BY kuryer_id ORDER BY soni DESC";
+    for (const q of ['‘kutilmoqda’', 'ʻkutilmoqdaʼ', '’kutilmoqda’']) expect(run(2, ok.replace("'kutilmoqda'", q)).ok, q).toBe(true);
+  });
+  it('explains an unknown column even with odd characters in it', () => {
+    expect(explainError('no such column: ‘x’')).toMatch(/Bunday ustun yo'q: ‘x’/);
+  });
+});
+
+describe('common mistakes get a plain explanation', () => {
+  it('mission 1: no status or no date', () => {
+    expect(run(1, "SELECT id, mijoz_id, sana FROM buyurtmalar WHERE sana <= '2026-11-15' ORDER BY sana").message).toMatch(/Holat sharti yo'q/);
+    expect(run(1, "SELECT id, mijoz_id, sana FROM buyurtmalar WHERE holat = 'kutilmoqda' ORDER BY sana").message).toMatch(/Sana sharti yo'q/);
+  });
+  it('mission 2: the date of mission 1 kept, no status, columns swapped', () => {
+    const base = "FROM buyurtmalar WHERE holat = 'kutilmoqda' GROUP BY kuryer_id ORDER BY 2 DESC";
+    expect(run(2, `SELECT kuryer_id, COUNT(*) FROM buyurtmalar WHERE holat = 'kutilmoqda' AND sana <= '2026-11-15' GROUP BY kuryer_id`).message).toMatch(/15-noyabrgacha/);
+    expect(run(2, 'SELECT kuryer_id, COUNT(*) FROM buyurtmalar GROUP BY kuryer_id ORDER BY 2 DESC').message).toMatch(/barcha buyurtmalarni/);
+    expect(run(2, `SELECT COUNT(*), kuryer_id ${base.replace('ORDER BY 2', 'ORDER BY 1')}`).message).toMatch(/joyi almashib/);
+  });
+  it('mission 3 and 4: a missing condition is named', () => {
+    expect(run(3, "SELECT b.id, k.ism, k.faol FROM buyurtmalar b JOIN kuryerlar k ON b.kuryer_id = k.id WHERE b.holat = 'kutilmoqda'").message).toMatch(/Sana sharti/);
+    expect(run(4, "SELECT vaqt, foydalanuvchi FROM jurnal WHERE amal LIKE '%kuryer_id%'").message).toMatch(/Madinaniki/);
+    expect(run(4, "SELECT vaqt, foydalanuvchi FROM jurnal WHERE vaqt LIKE '2026-11-16%'").message).toMatch(/kuryer_id borini/);
+  });
+  it('every near miss differs from the right answer', () => {
+    for (const m of BAZA_MISSIONS) for (const n of m.nearMisses ?? []) expect(run(m.id, n.sql).ok, n.sql).toBe(false);
   });
 });
 
