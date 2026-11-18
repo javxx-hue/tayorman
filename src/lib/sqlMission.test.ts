@@ -1,6 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import initSqlJs, { type SqlJsStatic } from 'sql.js';
-import { evaluate, explainError, isSorted, missingWhere, missionOpen, SqlMission } from './sqlMission';
+import { evaluate, explainError, isSorted, missingWhere, SqlMission } from './sqlMission';
+import { insertPiece, missionOpen, STORIES } from './missionStories';
+import { TARMOQ_MISSIONS } from './tarmoqMissions';
 import { BAZA_MISSIONS, BAZA_SETUP, BAZA_TABLES } from './bazaMissions';
 
 let SQL: SqlJsStatic;
@@ -107,5 +109,15 @@ describe('helpers', () => {
     expect(missionOpen([], 1)).toBe(true);
     expect(missionOpen([], 2)).toBe(false);
     expect(missionOpen([1], 2)).toBe(true);
+  });
+  it('knows how many missions each story has', () => {
+    expect(STORIES.find((s) => s.id === 'baza')?.count).toBe(BAZA_MISSIONS.length);
+    expect(STORIES.find((s) => s.id === 'tarmoq')?.count).toBe(TARMOQ_MISSIONS.length);
+  });
+  it('puts tapped pieces at the cursor with tidy spaces', () => {
+    expect(insertPiece('', null, 'SELECT')).toEqual({ text: 'SELECT ', caret: 7 });
+    expect(insertPiece('SELECT id FROM t', { start: 9, end: 9 }, ',')).toEqual({ text: 'SELECT id, FROM t', caret: 11 });
+    expect(insertPiece('SELECT id, FROM t', { start: 11, end: 11 }, 'sana')).toEqual({ text: 'SELECT id, sana FROM t', caret: 16 });
+    expect(insertPiece('abc', { start: 99, end: 99 }, 'x').text).toBe('abc x ');
   });
 });

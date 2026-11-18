@@ -1,8 +1,7 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, Play, PenLine, HelpCircle, Layers, Grid3x3, BarChart3, Timer, ChevronRight, Brain, TextCursorInput, Presentation, Briefcase } from 'lucide-react';
-import { BAZA_MISSIONS, BAZA_STORY, BAZA_SUBJECT } from '../lib/bazaMissions';
-import { doneMissions } from '../lib/sqlMission';
+import { doneMissions, storyOf } from '../lib/missionStories';
 import { BOARD_SITTING } from './BoardPage';
 import { RECALL_SITTING } from './RecallPage';
 import { CLOZE_SITTING } from './ClozePage';
@@ -64,6 +63,7 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
   const quiz = own.find((s) => s.type === 'quiz');
   const cards = own.find((s) => s.type === 'flashcards');
   const exams = own.filter((s) => s.type === 'exam');
+  const story = storyOf(subject.librarySourceId);
 
   // Opens a question with the order to go through them in
   const practise = (ids: string[], first = ids[0]) => navigate(`/subjects/${subject.id}/q/${first}`, { state: { queue: ids } });
@@ -135,15 +135,15 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
           )}
 
           <Section title={tr(lang, 'Tayyorlanish', 'Подготовка')}>
-            {subject.librarySourceId === BAZA_SUBJECT && (
+            {story && (
               <Row
                 icon={<Briefcase size={18} className="text-amber-600 dark:text-amber-400" />}
                 title={tr(lang, 'Stajyor missiyalari', 'Миссии стажёра')}
-                hint={tr(
-                  lang,
-                  `Kompaniya muammosini haqiqiy SQL bilan yeching · ${doneMissions(BAZA_STORY).length}/${BAZA_MISSIONS.length}`,
-                  `Решите проблему компании настоящим SQL · ${doneMissions(BAZA_STORY).length}/${BAZA_MISSIONS.length}`
-                )}
+                hint={`${
+                  story.id === 'baza'
+                    ? tr(lang, 'Kompaniya muammosini haqiqiy SQL bilan yeching', 'Решите проблему компании настоящим SQL')
+                    : tr(lang, "Ofis tarmog'idagi nosozliklarni haqiqiy buyruqlar bilan tuzating", 'Исправьте сбои офисной сети настоящими командами')
+                } · ${doneMissions(story.id).length}/${story.count}`}
                 onClick={() => navigate(`/subjects/${subject.id}/missions`)}
               />
             )}

@@ -3,8 +3,6 @@
 // gave every waiting order to Sardor, a courier who is on leave since 12 November.
 import type { SqlMission } from './sqlMission';
 
-export const BAZA_STORY = 'baza';
-export const BAZA_SUBJECT = 'sub-lib-baza'; // the library subject these missions belong to
 export const COMPANY = 'TezYetkaz';
 export const BOSS = 'Dilnoza';
 

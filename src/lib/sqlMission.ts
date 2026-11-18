@@ -153,28 +153,3 @@ export function evaluate(SQL: SqlJsStatic, setup: string, mission: SqlMission, s
     db.close();
   }
 }
-
-// ---------------------------------------------------------------- progress on this phone
-const progressKey = (story: string) => `tayyorman_missions_${story}`;
-
-export function doneMissions(story: string): number[] {
-  try {
-    const v = JSON.parse(localStorage.getItem(progressKey(story)) ?? '[]') as unknown;
-    return Array.isArray(v) ? v.filter((x): x is number => typeof x === 'number') : [];
-  } catch {
-    return [];
-  }
-}
-
-export function markMissionDone(story: string, id: number): void {
-  const done = doneMissions(story);
-  if (done.includes(id)) return;
-  try {
-    localStorage.setItem(progressKey(story), JSON.stringify([...done, id]));
-  } catch {
-    /* blocked storage: the mission simply stays open to play again */
-  }
-}
-
-// A mission opens once the one before it is done
-export const missionOpen = (done: number[], id: number): boolean => id === 1 || done.includes(id - 1);
