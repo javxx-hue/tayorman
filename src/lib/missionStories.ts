@@ -1,7 +1,7 @@
 // Which subjects have missions and how far the student got. Kept small on purpose: the subject page imports it,
 // the stories themselves load only with the missions page.
 
-export type StoryId = 'baza' | 'tarmoq';
+export type StoryId = 'baza' | 'tarmoq' | 'elektronika';
 
 export interface StoryRef {
   id: StoryId;
@@ -12,6 +12,7 @@ export interface StoryRef {
 export const STORIES: StoryRef[] = [
   { id: 'baza', subject: 'sub-lib-baza', count: 5 },
   { id: 'tarmoq', subject: 'sub-lib-tarmoq', count: 5 },
+  { id: 'elektronika', subject: 'sub-lib-elektronika', count: 5 },
 ];
 
 export const storyOf = (librarySourceId: string | undefined): StoryRef | undefined => STORIES.find((s) => s.subject === librarySourceId);

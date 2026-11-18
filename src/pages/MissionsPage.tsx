@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Briefcase, CheckCircle2, ChevronRight, CornerDownLeft, Lightbulb, Lock, Play, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Briefcase, CheckCircle2, ChevronRight, CornerDownLeft, Lock, Play, RotateCcw } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { box, chip, HelpButtons, pick, TaskCard, WorkspaceProps } from '../components/missions/shared';
+import { ElekWorkspace } from '../components/missions/ElekWorkspace';
+import { ELEK_BOSS, ELEK_MISSIONS, ElekMission } from '../lib/elekMissions';
 import { Language, tr } from '../lib/i18n';
 import { Subject } from '../types';
 import { BAZA_MISSIONS, BAZA_TABLES, BOSS, COMPANY } from '../lib/bazaMissions';
@@ -48,17 +51,18 @@ const CONTENT: Record<StoryId, StoryContent> = {
     finale: "Siz endi Junior tarmoqchi! Ofisdagi 5 ta nosozlikni o'zingiz topib, tuzatdingiz.",
     missions: TARMOQ_MISSIONS,
   },
+  elektronika: {
+    boss: ELEK_BOSS,
+    role: 'usta',
+    intro: "Siz kompaniyaning ta'mirlash ustaxonasida stajyorsiz. Multimetr, rezistorlar va ossillograf bilan qurilmalarni tuzating.",
+    finale: "Siz endi Junior usta! 5 ta qurilmani o'zingiz tekshirib, tuzatdingiz.",
+    missions: ELEK_MISSIONS,
+  },
 };
 
 // After this many wrong tries the reference solution can be opened
 const SQL_TRIES = 3;
 const NET_TRIES = 8;
-
-const chip = 'px-2.5 py-1 rounded-lg border border-border bg-card text-xs font-mono text-foreground hover:bg-secondary active:translate-y-[1px]';
-const box = {
-  hint: 'rounded-2xl bg-amber-500/10 border border-amber-500/30 p-3 text-sm text-foreground',
-  bad: 'rounded-2xl bg-destructive/10 border border-destructive/30 p-3 text-sm text-foreground',
-};
 
 // The subject and its story, when this subject has missions
 function useStory(subjects: Subject[]): { subject: Subject; story: StoryRef; content: StoryContent } | null {
@@ -86,33 +90,6 @@ const BossSays: React.FC<{ boss: string; role: string; lines: string[]; tone?: '
     </div>
   </div>
 );
-
-// Hint, then after enough tries the solution
-const HelpButtons: React.FC<{ lang: Language; hint: string; solution: string; tries: number; need: number; solved: boolean }> = ({ lang, hint, solution, tries, need, solved }) => {
-  const [showHint, setShowHint] = useState(false);
-  const [showSolution, setShowSolution] = useState(false);
-  return (
-    <>
-      <div className="flex flex-wrap gap-2">
-        {!showHint && (
-          <Button variant="outline" icon={<Lightbulb size={14} />} onClick={() => setShowHint(true)}>
-            {tr(lang, 'Yordam', 'Подсказка')}
-          </Button>
-        )}
-        {tries >= need && !showSolution && !solved && (
-          <Button variant="ghost" onClick={() => setShowSolution(true)}>{tr(lang, "Yechimni ko'rish", 'Показать решение')}</Button>
-        )}
-      </div>
-      {showHint && <div className={box.hint}>{hint}</div>}
-      {showSolution && (
-        <div className="rounded-2xl border border-border bg-card p-3 space-y-2">
-          <pre className="font-mono text-xs text-foreground whitespace-pre-wrap">{solution}</pre>
-          <p className="text-xs text-muted-foreground">{tr(lang, "Uni o'zingiz yozib, tekshirib ko'ring: qo'l bilan yozilgani yaxshiroq eslab qolinadi.", 'Напишите его сами и проверьте: так лучше запоминается.')}</p>
-        </div>
-      )}
-    </>
-  );
-};
 
 // ---------------------------------------------------------------- the list
 export const MissionsPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
@@ -219,11 +196,9 @@ export const MissionPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
       <BossSays boss={content.boss} role={content.role} lines={mission.brief} />
 
       {/* keyed: a new mission starts with a clean workspace */}
-      {story.id === 'baza' ? (
-        <SqlWorkspace key={key} mission={mission as SqlMission} lang={lang} solved={solved} onSolved={onSolved} />
-      ) : (
-        <NetWorkspace key={key} mission={mission as NetMission} lang={lang} solved={solved} onSolved={onSolved} />
-      )}
+      {story.id === 'baza' && <SqlWorkspace key={key} mission={mission as SqlMission} lang={lang} solved={solved} onSolved={onSolved} />}
+      {story.id === 'tarmoq' && <NetWorkspace key={key} mission={mission as NetMission} lang={lang} solved={solved} onSolved={onSolved} />}
+      {story.id === 'elektronika' && <ElekWorkspace key={key} mission={mission as ElekMission} lang={lang} solved={solved} onSolved={onSolved} />}
 
       {solved && (
         <div className="space-y-4">
@@ -251,13 +226,6 @@ export const MissionPage: React.FC<MissionsProps> = ({ subjects, lang }) => {
     </div>
   );
 };
-
-interface WorkspaceProps<M> {
-  mission: M;
-  lang: Language;
-  solved: boolean;
-  onSolved: () => void;
-}
 
 // Remembers where the cursor was in a field, so chips can insert there without focusing it: a tap on a chip
 // never opens the phone keyboard
@@ -330,9 +298,7 @@ const SqlWorkspace: React.FC<WorkspaceProps<SqlMission>> = ({ mission, lang, sol
 
   return (
     <>
-      <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4 space-y-3">
-        <div className="text-xs font-bold text-primary">{tr(lang, 'Topshiriq', 'Задание')}</div>
-        <p className="text-sm text-foreground leading-relaxed">{mission.task}</p>
+      <TaskCard lang={lang} task={mission.task}>
         <div className="space-y-1.5">
           {BAZA_TABLES.filter((t) => mission.tables.includes(t.name)).map((t) => (
             <div key={t.name} className="flex flex-wrap items-center gap-1.5">
@@ -343,7 +309,7 @@ const SqlWorkspace: React.FC<WorkspaceProps<SqlMission>> = ({ mission, lang, sol
             </div>
           ))}
         </div>
-      </div>
+      </TaskCard>
 
       <div className="space-y-2">
         <textarea
@@ -435,20 +401,14 @@ const NetWorkspace: React.FC<WorkspaceProps<NetMission>> = ({ mission, lang, sol
 
   return (
     <>
-      <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4 space-y-3">
-        <div className="text-xs font-bold text-primary">{tr(lang, 'Topshiriq', 'Задание')}</div>
-        <p className="text-sm text-foreground leading-relaxed">{mission.task}</p>
+      <TaskCard lang={lang} task={mission.task}>
         <pre className="text-[11px] leading-relaxed font-mono text-muted-foreground whitespace-pre-wrap">{OFFICE_MAP}</pre>
-      </div>
+      </TaskCard>
 
       <div className="space-y-2">
         <div className="flex flex-wrap gap-1.5">
           {mission.devices.map((d) => (
-            <button
-              key={d}
-              onClick={() => setDevice(d)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${d === device ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border'}`}
-            >
+            <button key={d} onClick={() => setDevice(d)} className={pick(d === device)}>
               {d}
             </button>
           ))}

@@ -140,9 +140,11 @@ export const SubjectPage: React.FC<SubjectPageProps> = ({ subjects, studySets, l
                 icon={<Briefcase size={18} className="text-amber-600 dark:text-amber-400" />}
                 title={tr(lang, 'Stajyor missiyalari', 'Миссии стажёра')}
                 hint={`${
-                  story.id === 'baza'
-                    ? tr(lang, 'Kompaniya muammosini haqiqiy SQL bilan yeching', 'Решите проблему компании настоящим SQL')
-                    : tr(lang, "Ofis tarmog'idagi nosozliklarni haqiqiy buyruqlar bilan tuzating", 'Исправьте сбои офисной сети настоящими командами')
+                  {
+                    baza: tr(lang, 'Kompaniya muammosini haqiqiy SQL bilan yeching', 'Решите проблему компании настоящим SQL'),
+                    tarmoq: tr(lang, "Ofis tarmog'idagi nosozliklarni haqiqiy buyruqlar bilan tuzating", 'Исправьте сбои офисной сети настоящими командами'),
+                    elektronika: tr(lang, 'Qurilmalarni multimetr va ossillograf bilan tuzating', 'Чините устройства мультиметром и осциллографом'),
+                  }[story.id]
                 } · ${doneMissions(story.id).length}/${story.count}`}
                 onClick={() => navigate(`/subjects/${subject.id}/missions`)}
               />
