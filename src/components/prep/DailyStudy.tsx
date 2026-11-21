@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HelpCircle, ChevronRight, Check } from 'lucide-react';
+import { HelpCircle, ChevronRight, Check, RotateCcw } from 'lucide-react';
 import { Language, tr } from '../../lib/i18n';
 import { StudySet, Subject } from '../../types';
 import { dailyStudy } from '../../lib/dailyPlan';
@@ -27,20 +27,24 @@ export const DailyStudyRows: React.FC<DailyStudyRowsProps> = ({ subject, studySe
       {plan.quiz && (() => {
         const { set, target, done: did, dueMistakes } = plan.quiz;
         const left = Math.max(target - did, 0);
-        const finished = left === 0 && dueMistakes === 0;
-        // Exactly today's share: the tests still left plus the mistakes due again (at most 20 in one go)
-        const launch: QuizLaunch = { count: Math.min(Math.max(left + dueMistakes, 1), 20), autostart: !finished };
+        // What a row shows is exactly what opens: today's new tests in one, the mistakes that came back in another
+        const newTests: QuizLaunch = { mode: 'new', count: left, autostart: left > 0 };
+        const mistakes: QuizLaunch = { mode: 'mistakes', count: dueMistakes, autostart: true };
         return (
-          <button className={row} onClick={() => navigate(`/study/${set.id}`, { state: launch })}>
-            <HelpCircle size={18} className="text-creation-quiz-strong shrink-0" />
-            <span className="flex-1 min-w-0">
-              <span className="block text-sm text-foreground">{tr(lang, `Testlar: bugun ${did}/${target}`, `Тесты: сегодня ${did}/${target}`)}</span>
-              {dueMistakes > 0 && (
-                <span className="block text-xs text-rose-600 dark:text-rose-400">{tr(lang, `${dueMistakes} ta xato qaytadi`, `ошибок к повторению: ${dueMistakes}`)}</span>
-              )}
-            </span>
-            {finished ? done : go}
-          </button>
+          <>
+            <button className={row} onClick={() => navigate(`/study/${set.id}`, { state: newTests })}>
+              <HelpCircle size={18} className="text-creation-quiz-strong shrink-0" />
+              <span className="flex-1 min-w-0 text-sm text-foreground">{tr(lang, `Testlar: bugun ${did}/${target}`, `Тесты: сегодня ${did}/${target}`)}</span>
+              {left === 0 ? done : go}
+            </button>
+            {dueMistakes > 0 && (
+              <button className={row} onClick={() => navigate(`/study/${set.id}`, { state: mistakes })}>
+                <RotateCcw size={18} className="text-rose-600 dark:text-rose-400 shrink-0" />
+                <span className="flex-1 min-w-0 text-sm text-foreground">{tr(lang, `Qaytgan xatolar: ${dueMistakes} ta`, `Вернувшиеся ошибки: ${dueMistakes}`)}</span>
+                {go}
+              </button>
+            )}
+          </>
         );
       })()}
     </div>

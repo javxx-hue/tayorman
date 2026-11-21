@@ -34,7 +34,7 @@ export function recordAnswer(prev: QStat | undefined, correct: boolean, now: num
 export const isMistake = (s: QStat | undefined): boolean => !!s && s.wrong > 0 && s.box < MASTERED_BOX;
 export const isMistakeDue = (s: QStat | undefined, now: number): boolean => !!s && isMistake(s) && s.due <= now;
 
-export type PickMode = 'mistakes' | 'mixed';
+export type PickMode = 'mistakes' | 'mixed' | 'new';
 export interface PickOptions {
   mode: PickMode;
   count: number;
@@ -43,7 +43,8 @@ export interface PickOptions {
 }
 
 // The questions for one sitting. "mixed" is new questions with a third of the mistakes that came back between them
-// (then older ones when little is new); "mistakes" is only questions answered wrong before, those due first.
+// (then older ones when little is new); "mistakes" is only questions answered wrong before, those due first;
+// "new" is only questions never answered (the daily plan, so its count is exactly what the student sees).
 // Never longer than asked.
 export function pickQuestions<Q extends { id: string; topic?: number }>(questions: Q[], progress: SetProgress, opts: PickOptions): Q[] {
   const now = opts.now ?? Date.now();
@@ -55,6 +56,7 @@ export function pickQuestions<Q extends { id: string; topic?: number }>(question
 
   let order: Q[];
   if (opts.mode === 'mistakes') order = [...dueMistakes, ...laterMistakes];
+  else if (opts.mode === 'new') order = unseen;
   else {
     const back = dueMistakes.slice(0, Math.ceil(opts.count / 3));
     order = [...back, ...unseen, ...dueMistakes.slice(back.length), ...laterMistakes, ...known];
@@ -64,6 +66,7 @@ export function pickQuestions<Q extends { id: string; topic?: number }>(question
 
 // What a link may ask for when it opens a large test (the daily plan does): start right away with these settings
 export interface QuizLaunch {
+  mode?: PickMode;
   count?: number;
   autostart?: boolean;
 }
