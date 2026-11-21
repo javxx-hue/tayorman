@@ -71,6 +71,13 @@ describe('pickQuestions', () => {
     expect(pickQuestions(questions, {}, { mode: 'mistakes', count: 10, now: T0 })).toEqual([]);
   });
 
+  it('"new" is only never-answered questions, so the daily plan opens exactly the number it shows', () => {
+    expect(pickQuestions(questions, progress, { mode: 'new', count: 2, now: T0 }).map((x) => x.id)).toEqual(['c', 'e']);
+    expect(pickQuestions(questions, progress, { mode: 'new', count: 10, now: T0 }).map((x) => x.id)).toEqual(['c', 'e', 'f']);
+    // the due mistake "b" waits for its own row, it never takes a new question's place
+    expect(pickQuestions(questions, progress, { mode: 'mistakes', count: 1, now: T0 }).map((x) => x.id)).toEqual(['b']);
+  });
+
   it('"mixed" brings due mistakes back between the new questions', () => {
     const got = pickQuestions(questions, progress, { mode: 'mixed', count: 3, now: T0 }).map((x) => x.id);
     expect(got).toEqual(['b', 'c', 'e']);
