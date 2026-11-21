@@ -202,24 +202,20 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
       
       {/* Quiz Header with progress */}
       <div className="mb-6 space-y-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-          <div className="flex items-center gap-2">
-            <span className="font-serif text-base text-foreground font-bold">
-              {set.title}
-            </span>
-            <button
-              onClick={() => setTimerEnabled(!timerEnabled)}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] transition-colors ${
-                timerEnabled ? 'bg-secondary text-foreground border-border' : 'bg-muted/40 text-muted-foreground border-transparent'
-              }`}
-              title="Vaqt bosimi rejimini yoqish/o'chirish"
-            >
-              <Clock size={12} />
-              {timerEnabled ? `${secondsLeft}s` : 'Taymer o\'chiq'}
-            </button>
-          </div>
-
-          <span>
+        {/* Title on its own line (a long set name wraps there), the timer and the count on one tidy row below */}
+        <h1 className="font-serif text-base text-foreground font-bold leading-snug">{set.title}</h1>
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground font-medium">
+          <button
+            onClick={() => setTimerEnabled(!timerEnabled)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[11px] whitespace-nowrap shrink-0 transition-colors ${
+              timerEnabled ? 'bg-secondary text-foreground border-border' : 'bg-muted/40 text-muted-foreground border-transparent'
+            }`}
+            title="Vaqt bosimi rejimini yoqish/o'chirish"
+          >
+            <Clock size={12} />
+            {timerEnabled ? `${secondsLeft}s` : 'Taymer o\'chiq'}
+          </button>
+          <span className="whitespace-nowrap shrink-0">
             {t.question} {currentIndex + 1} {t.of} {totalQ}
           </span>
         </div>
@@ -251,7 +247,7 @@ export const QuizRunner: React.FC<QuizRunnerProps> = ({ set, lang, onFinish, onR
         
         {/* Question Text */}
         <div className="flex items-start justify-between gap-4">
-          <h3 className="text-xl sm:text-2xl font-serif text-foreground leading-snug">
+          <h3 className="text-xl sm:text-2xl font-serif font-semibold text-foreground leading-snug">
             {currentQ.question}
           </h3>
           {speech.available && (

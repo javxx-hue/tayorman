@@ -201,7 +201,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
               {set.title}
             </h2>
             {reviewMistakesMode && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-600 dark:text-rose-400 uppercase">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap shrink-0 bg-rose-500/20 text-rose-600 dark:text-rose-400 uppercase">
                 {tr(lang, 'Xatolar tahlili', 'Разбор ошибок')}
               </span>
             )}
@@ -247,7 +247,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ set, lang, onFinis
             </button>
           </div>
 
-          <h3 className="text-xl sm:text-2xl font-serif text-foreground leading-snug">
+          <h3 className="text-xl sm:text-2xl font-serif font-semibold text-foreground leading-snug">
             {currentQ.question}
           </h3>
 
